@@ -23,7 +23,14 @@ y `calendar_events` se filtran además por `visible_to_client`.
 - `supabase/schema.sql` — esquema + RLS. `supabase/seed.sql` — trigger de perfiles, admin y cliente demo.
 
 ## Estado
-Construido según `PLAN.md`. **Fases 1–5 completas.**
+Construido según `PLAN.md`. **Fases 1–6 completas.**
+- Fase 6 (Portal del cliente): vistas de SOLO LECTURA para el rol client bajo `/portal`
+  (`/portal/que-viene`, `/portal/proyectos` + `[id]`, `/portal/avance`), heredando la estética
+  del panel. Sin escritura y sin nada financiero. Reutiliza `GanttChart` con `basePath`. La
+  seguridad la garantiza RLS (comprobado: el cliente ve 0 contratos/cuotas aunque existan, no
+  accede a datos de otro cliente ni por URL directa —404—, el filtro `visible_to_client` aplica,
+  y no puede escribir). Cliente de prueba: `cliente.demo@colormedia.cl` enlazado a Novamed.
+
 - Fase 5 (Cobros y UF): separa el ACUERDO (`contracts`, evolucionado: modality/has_iva/net_uf/
   net_clp_fixed/installments_count) de las CUOTAS (`installments`, tabla nueva). Tres modalidades
   (proyecto/plazo_fijo/retainer); neto en UF o CLP fijo + IVA (19%) guardado aparte, nunca el total.

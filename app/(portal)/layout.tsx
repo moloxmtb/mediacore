@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
-import { logout } from "@/app/auth/actions";
+import PortalNav from "@/components/portal/PortalNav";
 import { getSessionProfile } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 
 /**
- * Layout del portal del cliente (solo rol client, solo lectura). El
- * middleware ya impide que un admin caiga aquí; esta comprobación es
- * defensa en profundidad. El cliente NUNCA ve tarifas ni estado de pago:
- * esas tablas no tienen política de lectura para él (ver schema.sql).
+ * Layout del portal del cliente (solo rol client, SOLO LECTURA). El middleware
+ * ya impide que un admin caiga aquí; esta comprobación es defensa en
+ * profundidad. El cliente NUNCA ve tarifas, contratos, cuotas ni cobros: esas
+ * tablas no tienen política de lectura para él (ver schema.sql / fase5.sql).
  */
 export default async function PortalLayout({
   children,
@@ -17,40 +18,62 @@ export default async function PortalLayout({
   if (!session) redirect("/login");
   if (session.role !== "client") redirect("/dashboard");
 
+  // El cliente solo puede leer su propia empresa (RLS clients: id = auth_client_id()).
+  const supabase = await createClient();
+  const { data: client } = await supabase
+    .from("clients")
+    .select("name, accent_color")
+    .maybeSingle();
+
+  const companyName: string = client?.name ?? "Tu empresa";
+  const contact = session.fullName ?? session.email ?? "Cliente";
+  const initials = companyName
+    .split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
   return (
-    <div className="app-main">
-      <header className="app-header">
-        <div style={{ display: "flex", alignItems: "stretch", gap: "14px" }}>
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <div className="brand-bars" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
+          <div className="brand-txt">
+            <div className="name">Color Media</div>
+            <div className="sub">Portal cliente</div>
+          </div>
+        </div>
+
+        <PortalNav />
+
+        <div className="sidebar-who">
           <div
-            className="brand-bars"
-            aria-hidden="true"
-            style={{ height: "34px" }}
+            className="avatar"
+            style={{
+              background: client?.accent_color
+                ? `linear-gradient(135deg, ${client.accent_color}, #3d6bcb)`
+                : undefined,
+            }}
           >
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
+            {initials}
           </div>
           <div>
-            <h1 style={{ fontSize: "17px" }}>Color Media</h1>
-            <p>Portal del cliente</p>
+            <div className="n">{companyName}</div>
+            <div className="r">{contact}</div>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <span style={{ fontSize: "13px", color: "var(--muted)" }}>
-            {session.fullName ?? session.email}
-          </span>
-          <form action={logout}>
-            <button type="submit" className="logout-btn">
-              Cerrar sesión
-            </button>
-          </form>
-        </div>
-      </header>
-      <div className="app-content">{children}</div>
+      </aside>
+
+      <main className="app-main">{children}</main>
     </div>
   );
 }

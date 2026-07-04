@@ -25,6 +25,7 @@ export default function GanttChart({
   events,
   actionsByPhase,
   deliverablesByPhase,
+  basePath = "/gantt",
 }: {
   projects: ProjectChip[];
   selectedId: string;
@@ -32,6 +33,7 @@ export default function GanttChart({
   events: CalendarEvent[];
   actionsByPhase: Record<string, Action[]>;
   deliverablesByPhase: Record<string, Deliverable[]>;
+  basePath?: string;
 }) {
   const [today, setToday] = useState<Date | null>(null);
   useEffect(() => setToday(new Date()), []);
@@ -70,7 +72,7 @@ export default function GanttChart({
         {projects.map((p) => (
           <Link
             key={p.id}
-            href={`/gantt?p=${p.id}`}
+            href={`${basePath}?p=${p.id}`}
             className={`chip${p.id === selectedId ? " active" : ""}`}
           >
             {p.name}
