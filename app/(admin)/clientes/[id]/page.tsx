@@ -28,7 +28,8 @@ import {
   eliminarContrato,
   guardarCalendarioCliente,
 } from "../actions";
-import { generarCuotas, generarCuotaMes } from "@/app/(admin)/cobros/actions";
+import { generarCuotaMes, generarCuotasPorTramos } from "@/app/(admin)/cobros/actions";
+import TramosEditor from "@/components/admin/TramosEditor";
 
 export default async function ClienteDetallePage({
   params,
@@ -190,25 +191,38 @@ export default async function ClienteDetallePage({
                       contract={c}
                       submitLabel="Guardar contrato"
                     />
-                    <div style={{ display: "flex", gap: "8px", marginTop: "12px", flexWrap: "wrap", alignItems: "center" }}>
+                    <div style={{ marginTop: "12px" }}>
                       {c.modality === "retainer" ? (
-                        <form action={generarCuotaMes}>
-                          <input type="hidden" name="contract_id" value={c.id} />
-                          <button className="btn btn-sm" type="submit">
-                            Generar cuota del mes
-                          </button>
-                        </form>
+                        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                          <form action={generarCuotaMes}>
+                            <input type="hidden" name="contract_id" value={c.id} />
+                            <button className="btn btn-sm" type="submit">
+                              Generar cuota del mes
+                            </button>
+                          </form>
+                          <Link href="/cobros" className="btn btn-sm">
+                            Ver en Cobros
+                          </Link>
+                        </div>
                       ) : (
-                        <form action={generarCuotas}>
-                          <input type="hidden" name="contract_id" value={c.id} />
-                          <button className="btn btn-sm" type="submit">
-                            Generar cuotas
-                          </button>
-                        </form>
+                        <details>
+                          <summary className="btn btn-sm">Generar cuotas por tramos</summary>
+                          <div style={{ padding: "14px 2px 4px" }}>
+                            <TramosEditor
+                              action={generarCuotasPorTramos}
+                              contractId={c.id}
+                              currency={c.currency}
+                              defaultNet={c.currency === "UF" ? c.net_uf : c.net_clp_fixed}
+                              defaultCount={c.installments_count ?? 1}
+                            />
+                            <div style={{ marginTop: "10px" }}>
+                              <Link href="/cobros" className="btn btn-sm">
+                                Ver en Cobros
+                              </Link>
+                            </div>
+                          </div>
+                        </details>
                       )}
-                      <Link href="/cobros" className="btn btn-sm">
-                        Ver en Cobros
-                      </Link>
                     </div>
                     <div style={{ marginTop: "12px" }}>
                       <DeleteButton

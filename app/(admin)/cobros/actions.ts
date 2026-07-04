@@ -8,6 +8,13 @@ import type { Contract, Installment } from "@/lib/types";
 
 export type FormState = { error: string | null; ok?: boolean };
 
+export type GenerarState = {
+  error: string | null;
+  message?: string;
+  needsConfirm?: boolean;
+  counts?: { proyectadas: number; billed: number };
+};
+
 function str(fd: FormData, key: string): string {
   return String(fd.get(key) ?? "").trim();
 }
@@ -125,6 +132,145 @@ export async function generarCuotaMes(fd: FormData): Promise<void> {
   revalidatePath(`/clientes/${c.client_id}`);
 }
 
+// ---- Generación por tramos (plazo fijo / proyecto, escalonado) ----
+type Tramo = { from: number; to: number; net: number };
+
+function parseTramos(json: string): Tramo[] | null {
+  try {
+    const arr = JSON.parse(json);
+    if (!Array.isArray(arr)) return null;
+    return arr.map((t) => ({
+      from: Number(t.from),
+      to: Number(t.to),
+      net: Number(t.net),
+    }));
+  } catch {
+    return null;
+  }
+}
+
+/** Valida que los tramos cubran 1..N de forma contigua, sin huecos ni solapes. */
+function validateTramos(tramos: Tramo[]): { error?: string; count?: number } {
+  if (!tramos.length) return { error: "Agrega al menos un tramo." };
+  const sorted = [...tramos].sort((a, b) => a.from - b.from);
+  if (sorted[0].from !== 1)
+    return { error: "El primer tramo debe empezar en la cuota 1." };
+  let expected = 1;
+  for (const t of sorted) {
+    if (!Number.isInteger(t.from) || !Number.isInteger(t.to) || t.from > t.to)
+      return { error: "Rango de tramo inválido." };
+    if (t.from !== expected)
+      return { error: `Los tramos deben ser contiguos: revisa la cuota ${expected}.` };
+    if (!Number.isFinite(t.net) || t.net <= 0)
+      return { error: "Cada tramo necesita un neto mayor que cero." };
+    expected = t.to + 1;
+  }
+  return { count: expected - 1 };
+}
+
+function netForCuota(tramos: Tramo[], number: number): number {
+  const t = tramos.find((x) => number >= x.from && number <= x.to);
+  return t ? t.net : 0;
+}
+
+export async function generarCuotasPorTramos(
+  _prev: GenerarState,
+  fd: FormData,
+): Promise<GenerarState> {
+  const contractId = str(fd, "contract_id");
+  const force = str(fd, "confirm") === "force";
+  const tramos = parseTramos(str(fd, "tramos"));
+
+  if (!contractId) return { error: "Falta el contrato." };
+  if (!tramos) return { error: "No pude leer los tramos." };
+  const v = validateTramos(tramos);
+  if (v.error) return { error: v.error };
+  const count = v.count!;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("contracts")
+    .select("*")
+    .eq("id", contractId)
+    .maybeSingle();
+  const c = data as Contract | null;
+  if (!c) return { error: "No existe el contrato." };
+
+  const { data: existing } = await supabase
+    .from("installments")
+    .select("number, status")
+    .eq("contract_id", contractId);
+  const existRows = existing ?? [];
+
+  // Guard de doble generación: si ya hay cuotas y no viene forzado, avisa.
+  if (existRows.length > 0 && !force) {
+    const proyectadas = existRows.filter((x) => x.status === "proyectada").length;
+    return {
+      error: null,
+      needsConfirm: true,
+      counts: { proyectadas, billed: existRows.length - proyectadas },
+    };
+  }
+
+  // Forzado: borra SOLO las proyectadas; nunca facturadas/pagadas.
+  if (force) {
+    await supabase
+      .from("installments")
+      .delete()
+      .eq("contract_id", contractId)
+      .eq("status", "proyectada");
+  }
+
+  // Genera las cuotas faltantes (respeta números ya ocupados por cuotas con
+  // movimiento que se conservan).
+  const { data: kept } = await supabase
+    .from("installments")
+    .select("number")
+    .eq("contract_id", contractId);
+  const have = new Set((kept ?? []).map((x) => x.number));
+
+  const rows = [];
+  for (let k = 1; k <= count; k++) {
+    if (have.has(k)) continue;
+    const net = netForCuota(tramos, k);
+    rows.push({
+      contract_id: contractId,
+      client_id: c.client_id,
+      number: k,
+      currency: c.currency,
+      net_uf: c.currency === "UF" ? net : null,
+      net_clp_fixed: c.currency === "CLP" ? Math.round(net) : null,
+      has_iva: c.has_iva,
+      iva_rate: 0.19,
+      due_date: dueDate(c.start_date, k - 1, c.billing_day),
+      status: "proyectada" as const,
+    });
+  }
+
+  if (rows.length) {
+    const { error } = await supabase.from("installments").insert(rows);
+    if (error) return { error: "No se pudieron crear las cuotas: " + error.message };
+  }
+  // Ajusta el N del acuerdo al calendario generado.
+  await supabase
+    .from("contracts")
+    .update({ installments_count: count })
+    .eq("id", contractId);
+
+  const money = (n: number) =>
+    c.currency === "UF" ? `${n} UF` : `$${new Intl.NumberFormat("es-CL").format(n)}`;
+  const parts = tramos
+    .sort((a, b) => a.from - b.from)
+    .map((t) => `${t.to - t.from + 1} a ${money(t.net)}`);
+
+  revalidatePath("/cobros");
+  revalidatePath(`/clientes/${c.client_id}`);
+  return {
+    error: null,
+    message: `Se generaron ${rows.length} cuota(s) — ${parts.join(", ")}.`,
+  };
+}
+
 // ============================================================
 //  Ciclo de vida de una cuota
 // ============================================================
@@ -201,6 +347,13 @@ export async function eliminarCuota(fd: FormData): Promise<void> {
   const id = str(fd, "id");
   if (!id) return;
   const supabase = await createClient();
+  const { data } = await supabase
+    .from("installments")
+    .select("status")
+    .eq("id", id)
+    .maybeSingle();
+  // Guarda: una cuota facturada o pagada no se borra (hay que anularla antes).
+  if (data && (data.status === "facturada" || data.status === "pagada")) return;
   await supabase.from("installments").delete().eq("id", id);
   revalidatePath("/cobros");
 }
