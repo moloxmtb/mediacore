@@ -23,7 +23,15 @@ y `calendar_events` se filtran además por `visible_to_client`.
 - `supabase/schema.sql` — esquema + RLS. `supabase/seed.sql` — trigger de perfiles, admin y cliente demo.
 
 ## Estado
-Construido según `PLAN.md`. **Fases 1–4 completas.**
+Construido según `PLAN.md`. **Fases 1–5 completas.**
+- Fase 5 (Cobros y UF): separa el ACUERDO (`contracts`, evolucionado: modality/has_iva/net_uf/
+  net_clp_fixed/installments_count) de las CUOTAS (`installments`, tabla nueva). Tres modalidades
+  (proyecto/plazo_fijo/retainer); neto en UF o CLP fijo + IVA (19%) guardado aparte, nunca el total.
+  Facturación manual (`facturarCuota`) congela la UF del día; estados y N° DTE. Cron de UF
+  `/api/uf/refresh` (mindicador.cl). Vista `/cobros` con paybar y ciclo facturar→pagar. Generación
+  de cuotas desde la ficha del cliente. `lib/billing.ts`, `scripts/seed-fase5.mjs`. Migración:
+  `supabase/fase5.sql` (retira `billings`). IVA por cuota con `iva_rate` congelada.
+
 - Fase 1 (Fundaciones): auth por email, `proxy.ts` con ruteo por rol, RLS.
 - Fase 2 (Datos): CRUD de clientes, contratos y proyectos; estética del prototipo; dashboard.
 - Fase 3 (Gantt + entregables): carta Gantt desde las fases, CRUD de fases/entregables/acciones,

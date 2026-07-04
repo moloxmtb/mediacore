@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   CLIENT_STATUS_LABELS,
   SEGMENT_LABELS,
-  contractBaseLabel,
+  contractNetLabel,
   formatMonthYear,
 } from "@/lib/format";
 import type { Client, Contract } from "@/lib/types";
@@ -15,7 +15,7 @@ export default async function ClientesPage() {
     supabase.from("clients").select("*").order("created_at", { ascending: true }),
     supabase
       .from("contracts")
-      .select("id, client_id, currency, base_amount, status, start_date"),
+      .select("id, client_id, currency, net_uf, net_clp_fixed, status, start_date"),
   ]);
 
   // Un contrato representativo por cliente (prioriza el activo).
@@ -85,7 +85,7 @@ export default async function ClientesPage() {
                         )}
                       </td>
                       <td className="num mono">
-                        {con ? contractBaseLabel(con as Contract) : "—"}
+                        {con ? contractNetLabel(con as Contract) : "—"}
                       </td>
                       <td>
                         {con ? (

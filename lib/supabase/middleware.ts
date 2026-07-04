@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /** Rutas accesibles sin sesión. El endpoint de sync se autoriza por dentro
  *  (CRON_SECRET o sesión admin), por eso queda exento del gate. */
-const PUBLIC_PATHS = ["/login", "/api/calendar/sync"];
+const PUBLIC_PATHS = ["/login", "/api/calendar/sync", "/api/uf/refresh"];
 
 /** Home de cada rol tras autenticarse. */
 const ADMIN_HOME = "/dashboard";

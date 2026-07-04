@@ -28,28 +28,27 @@ export function formatUF(value: number | null | undefined): string {
 }
 
 /**
- * Monto mensual de un contrato en pesos. Los contratos en UF se convierten
- * con el valor de UF entregado (el del día). Los CLP van tal cual.
- * (El congelado de UF por período llega en la Fase 5.)
+ * Neto mensual de un contrato en pesos. UF → se convierte con la UF del día;
+ * CLP fijo → va tal cual. Es el NETO (sin IVA).
  */
-export function contractMonthlyCLP(
-  contract: Pick<Contract, "currency" | "base_amount">,
+export function contractMonthlyNetCLP(
+  contract: Pick<Contract, "currency" | "net_uf" | "net_clp_fixed">,
   ufValue: number | null,
 ): number | null {
   if (contract.currency === "UF") {
-    if (ufValue == null) return null;
-    return Math.round(contract.base_amount * ufValue);
+    if (ufValue == null || contract.net_uf == null) return null;
+    return Math.round(contract.net_uf * ufValue);
   }
-  return contract.base_amount;
+  return contract.net_clp_fixed;
 }
 
-/** Etiqueta corta de la tarifa base (para tablas): "45,0 UF" o "$650.000". */
-export function contractBaseLabel(
-  contract: Pick<Contract, "currency" | "base_amount">,
+/** Etiqueta corta del neto por cuota (para tablas): "45,0 UF" o "$650.000". */
+export function contractNetLabel(
+  contract: Pick<Contract, "currency" | "net_uf" | "net_clp_fixed">,
 ): string {
   return contract.currency === "UF"
-    ? formatUF(contract.base_amount)
-    : formatCLP(contract.base_amount);
+    ? formatUF(contract.net_uf)
+    : formatCLP(contract.net_clp_fixed);
 }
 
 // ---------- Fechas ----------

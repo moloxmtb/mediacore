@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import type { FormState } from "@/app/(admin)/clientes/actions";
 import type { Contract } from "@/lib/types";
+import { MODALITY_LABELS } from "@/lib/billing";
 
 const initial: FormState = { error: null };
 
@@ -19,6 +20,13 @@ export default function ContractForm({
 }) {
   const [state, formAction, pending] = useActionState(action, initial);
 
+  const netDefault =
+    contract == null
+      ? ""
+      : contract.currency === "UF"
+        ? (contract.net_uf ?? "")
+        : (contract.net_clp_fixed ?? "");
+
   return (
     <form action={formAction} className="form" style={{ maxWidth: "none" }}>
       <input type="hidden" name="client_id" value={clientId} />
@@ -26,24 +34,62 @@ export default function ContractForm({
 
       <div className="form-row">
         <div className="field">
-          <label>Moneda</label>
+          <label>Modalidad</label>
+          <select name="modality" defaultValue={contract?.modality ?? "retainer"}>
+            {Object.entries(MODALITY_LABELS).map(([v, l]) => (
+              <option key={v} value={v}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label>Moneda del neto</label>
           <select name="currency" defaultValue={contract?.currency ?? "UF"}>
             <option value="UF">UF (indexado)</option>
             <option value="CLP">CLP (fijo)</option>
           </select>
         </div>
+      </div>
+
+      <div className="form-row">
         <div className="field">
-          <label>Monto base</label>
+          <label>Neto por cuota</label>
           <input
-            name="base_amount"
+            name="net_amount"
             inputMode="decimal"
-            defaultValue={contract ? String(contract.base_amount) : ""}
-            placeholder="45 (UF) o 650000 (CLP)"
+            defaultValue={String(netDefault)}
+            placeholder="45 (UF) · 650000 (CLP)"
             required
           />
-          <span className="hint">En UF usa decimales (45,0). En CLP el monto entero.</span>
+          <span className="hint">
+            El neto (sin IVA). En UF usa decimales (45,0); en CLP el monto entero.
+          </span>
+        </div>
+        <div className="field">
+          <label>N° de cuotas</label>
+          <input
+            name="installments_count"
+            type="number"
+            min={1}
+            defaultValue={contract?.installments_count ?? ""}
+            placeholder="Retainer: dejar vacío"
+          />
+          <span className="hint">Proyecto / plazo fijo. En retainer se deja vacío.</span>
         </div>
       </div>
+
+      <label
+        style={{ display: "flex", gap: "8px", alignItems: "center", fontSize: "13px", color: "var(--muted)" }}
+      >
+        <input
+          type="checkbox"
+          name="has_iva"
+          defaultChecked={contract ? contract.has_iva : true}
+          style={{ width: "auto" }}
+        />
+        Afecto a IVA (19%). Desmarcar si es exento.
+      </label>
 
       <div className="form-row">
         <div className="field">

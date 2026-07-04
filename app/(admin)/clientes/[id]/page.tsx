@@ -11,8 +11,8 @@ import { getConnectionStatus, listCalendars } from "@/lib/google";
 import {
   CLIENT_STATUS_LABELS,
   SEGMENT_LABELS,
-  contractBaseLabel,
-  contractMonthlyCLP,
+  contractNetLabel,
+  contractMonthlyNetCLP,
   formatCLP,
   formatDate,
   projectStatusBadge,
@@ -28,6 +28,7 @@ import {
   eliminarContrato,
   guardarCalendarioCliente,
 } from "../actions";
+import { generarCuotas, generarCuotaMes } from "@/app/(admin)/cobros/actions";
 
 export default async function ClienteDetallePage({
   params,
@@ -143,11 +144,11 @@ export default async function ClienteDetallePage({
                 </thead>
                 <tbody>
                   {contractList.map((c) => {
-                    const monthly = contractMonthlyCLP(c, uf.value);
+                    const monthly = contractMonthlyNetCLP(c, uf.value);
                     return (
                       <tr key={c.id}>
                         <td className="mono">
-                          {contractBaseLabel(c)}{" "}
+                          {contractNetLabel(c)}{" "}
                           {c.currency === "UF" ? (
                             <span className="badge b-accent" style={{ marginLeft: "6px" }}>UF</span>
                           ) : (
@@ -180,7 +181,7 @@ export default async function ClienteDetallePage({
               {contractList.map((c) => (
                 <details key={c.id}>
                   <summary className="btn btn-sm">
-                    Editar contrato · {contractBaseLabel(c)}
+                    Editar contrato · {contractNetLabel(c)}
                   </summary>
                   <div style={{ padding: "16px 2px 6px" }}>
                     <ContractForm
@@ -189,6 +190,26 @@ export default async function ClienteDetallePage({
                       contract={c}
                       submitLabel="Guardar contrato"
                     />
+                    <div style={{ display: "flex", gap: "8px", marginTop: "12px", flexWrap: "wrap", alignItems: "center" }}>
+                      {c.modality === "retainer" ? (
+                        <form action={generarCuotaMes}>
+                          <input type="hidden" name="contract_id" value={c.id} />
+                          <button className="btn btn-sm" type="submit">
+                            Generar cuota del mes
+                          </button>
+                        </form>
+                      ) : (
+                        <form action={generarCuotas}>
+                          <input type="hidden" name="contract_id" value={c.id} />
+                          <button className="btn btn-sm" type="submit">
+                            Generar cuotas
+                          </button>
+                        </form>
+                      )}
+                      <Link href="/cobros" className="btn btn-sm">
+                        Ver en Cobros
+                      </Link>
+                    </div>
                     <div style={{ marginTop: "12px" }}>
                       <DeleteButton
                         action={eliminarContrato}

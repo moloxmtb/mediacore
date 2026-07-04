@@ -6,7 +6,7 @@ import {
   CLIENT_STATUS_LABELS,
   SEGMENT_LABELS,
   clientStatusBadge,
-  contractMonthlyCLP,
+  contractMonthlyNetCLP,
   formatCLP,
   formatUF,
   PROJECT_STATUS_LABELS,
@@ -45,9 +45,9 @@ export default async function DashboardPage() {
   let activeUfTotal = 0;
   for (const c of contractList) {
     if (c.status !== "activo") continue;
-    const m = contractMonthlyCLP(c, uf.value);
+    const m = contractMonthlyNetCLP(c, uf.value);
     if (m != null) monthlyTotal += m;
-    if (c.currency === "UF") activeUfTotal += c.base_amount;
+    if (c.currency === "UF") activeUfTotal += c.net_uf ?? 0;
   }
 
   const activeClients = clientList.filter((c) => c.status === "activo").length;
@@ -112,7 +112,7 @@ export default async function DashboardPage() {
                 <tbody>
                   {clientList.map((cl) => {
                     const con = activeByClient.get(cl.id);
-                    const monthly = con ? contractMonthlyCLP(con, uf.value) : null;
+                    const monthly = con ? contractMonthlyNetCLP(con, uf.value) : null;
                     return (
                       <tr key={cl.id}>
                         <td>
@@ -133,7 +133,7 @@ export default async function DashboardPage() {
                           <div className="amount mono">
                             {monthly != null ? formatCLP(monthly) : "—"}
                             {con?.currency === "UF" && (
-                              <span className="uf">{formatUF(con.base_amount)}</span>
+                              <span className="uf">{formatUF(con.net_uf)}</span>
                             )}
                           </div>
                         </td>

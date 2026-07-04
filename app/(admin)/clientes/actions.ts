@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { ClientSegment, ClientStatus, CurrencyKind } from "@/lib/types";
+import type {
+  ClientSegment,
+  ClientStatus,
+  ContractModality,
+  CurrencyKind,
+} from "@/lib/types";
 
 export type FormState = { error: string | null; ok?: boolean };
 
@@ -129,14 +134,24 @@ export async function guardarCalendarioCliente(
 // ============================================================
 //  CONTRATOS (viven dentro de la ficha del cliente)
 // ============================================================
+const MODALITIES: ContractModality[] = ["proyecto", "plazo_fijo", "retainer"];
+
 function parseContract(fd: FormData) {
   const currency = str(fd, "currency") as CurrencyKind;
-  const base = Number(str(fd, "base_amount").replace(/\./g, "").replace(",", "."));
+  const modality = str(fd, "modality") as ContractModality;
+  const net = Number(
+    str(fd, "net_amount").replace(/\./g, "").replace(",", "."),
+  );
   const billingDay = parseInt(str(fd, "billing_day") || "1", 10);
+  const count = parseInt(str(fd, "installments_count") || "", 10);
   return {
+    modality,
     currency,
-    base_amount: base,
-    indexed_uf: fd.get("indexed_uf") != null || currency === "UF",
+    has_iva: fd.get("has_iva") != null,
+    net_uf: currency === "UF" ? net : null,
+    net_clp_fixed: currency === "CLP" ? Math.round(net) : null,
+    installments_count:
+      modality === "retainer" ? null : Number.isFinite(count) ? count : null,
     billing_day: Number.isFinite(billingDay)
       ? Math.min(Math.max(billingDay, 1), 28)
       : 1,
@@ -147,19 +162,27 @@ function parseContract(fd: FormData) {
   };
 }
 
+function validContract(c: ReturnType<typeof parseContract>): string | null {
+  if (!MODALITIES.includes(c.modality)) return "Modalidad inválida.";
+  if (c.currency !== "UF" && c.currency !== "CLP") return "Moneda inválida.";
+  const net = c.currency === "UF" ? c.net_uf : c.net_clp_fixed;
+  if (net == null || !Number.isFinite(net) || net <= 0)
+    return "El neto por cuota debe ser un número mayor que cero.";
+  if (!c.start_date) return "La fecha de inicio es obligatoria.";
+  if (c.modality !== "retainer" && (!c.installments_count || c.installments_count < 1))
+    return "Indica el número de cuotas (1 o más) para proyecto o plazo fijo.";
+  return null;
+}
+
 export async function crearContrato(
   _prev: FormState,
   fd: FormData,
 ): Promise<FormState> {
   const clientId = str(fd, "client_id");
   const c = parseContract(fd);
-
   if (!clientId) return { error: "Falta el cliente." };
-  if (c.currency !== "UF" && c.currency !== "CLP")
-    return { error: "Moneda inválida." };
-  if (!Number.isFinite(c.base_amount) || c.base_amount <= 0)
-    return { error: "El monto base debe ser un número mayor que cero." };
-  if (!c.start_date) return { error: "La fecha de inicio es obligatoria." };
+  const err = validContract(c);
+  if (err) return { error: err };
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -180,11 +203,9 @@ export async function actualizarContrato(
   const id = str(fd, "id");
   const clientId = str(fd, "client_id");
   const c = parseContract(fd);
-
   if (!id) return { error: "Falta el identificador del contrato." };
-  if (!Number.isFinite(c.base_amount) || c.base_amount <= 0)
-    return { error: "El monto base debe ser un número mayor que cero." };
-  if (!c.start_date) return { error: "La fecha de inicio es obligatoria." };
+  const err = validContract(c);
+  if (err) return { error: err };
 
   const supabase = await createClient();
   const { error } = await supabase.from("contracts").update(c).eq("id", id);

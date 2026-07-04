@@ -10,6 +10,13 @@ export type ClientStatus = "activo" | "propuesta" | "inactivo";
 export type CurrencyKind = "UF" | "CLP";
 export type ProjectStatus = "activo" | "pausado" | "cerrado";
 export type DeliverableStatus = "en_proceso" | "entregado" | "aprobado";
+export type ContractModality = "proyecto" | "plazo_fijo" | "retainer";
+export type InstallmentStatus =
+  | "proyectada"
+  | "facturada"
+  | "pagada"
+  | "vencida"
+  | "anulada";
 export type EventSource = "google" | "panel";
 
 export type Client = {
@@ -27,14 +34,41 @@ export type Client = {
 export type Contract = {
   id: string;
   client_id: string;
+  modality: ContractModality;
   currency: CurrencyKind;
-  base_amount: number;
-  indexed_uf: boolean;
+  has_iva: boolean;
+  net_uf: number | null; // neto en UF (modo UF)
+  net_clp_fixed: number | null; // neto en CLP (modo CLP fijo)
+  installments_count: number | null; // N cuotas (proyecto/plazo_fijo; null retainer)
   billing_day: number;
   start_date: string;
   end_date: string | null;
   status: string;
   notes: string | null;
+  created_at: string;
+};
+
+export type Installment = {
+  id: string;
+  contract_id: string;
+  client_id: string;
+  number: number;
+  currency: CurrencyKind;
+  net_uf: number | null;
+  net_clp_fixed: number | null;
+  has_iva: boolean;
+  iva_rate: number;
+  due_date: string;
+  status: InstallmentStatus;
+  // Congelado al facturar:
+  uf_value: number | null;
+  net_clp: number | null;
+  iva_clp: number | null;
+  total_clp: number | null;
+  issued_at: string | null;
+  dte_type: number | null;
+  dte_number: string | null;
+  paid_at: string | null;
   created_at: string;
 };
 
