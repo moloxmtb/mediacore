@@ -19,6 +19,22 @@ export type InstallmentStatus =
   | "anulada";
 export type EventSource = "google" | "panel";
 
+export type ContentPeriodKind = "mensual" | "quincenal" | "semanal";
+export type ContentStatus =
+  | "borrador"
+  | "propuesta"
+  | "aprobada_cliente"
+  | "cambios_solicitados"
+  | "aprobada"
+  | "rechazada";
+export type ReviewKind =
+  | "aprobacion"
+  | "cambios"
+  | "comentario"
+  | "confirmacion"
+  | "devolucion";
+export type ReviewActor = "client" | "admin";
+
 export type Client = {
   id: string;
   name: string;
@@ -136,5 +152,49 @@ export type CalendarEvent = {
   source: EventSource;
   visible_to_client: boolean;
   synced_at: string | null;
+  created_at: string;
+};
+
+export type ContentPeriod = {
+  id: string;
+  client_id: string;
+  kind: ContentPeriodKind;
+  label: string;
+  start_date: string | null;
+  end_date: string | null;
+  published: boolean;
+  created_at: string;
+};
+
+export type ContentPiece = {
+  id: string;
+  period_id: string;
+  client_id: string;
+  title: string;
+  sort_order: number;
+  current_version_id: string | null;
+  status: ContentStatus;
+  created_at: string;
+};
+
+export type ContentVersion = {
+  id: string;
+  piece_id: string;
+  version_number: number;
+  image_path: string | null;
+  body: string | null;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type ContentReview = {
+  id: string;
+  piece_id: string;
+  version_id: string | null;
+  actor: ReviewActor;
+  kind: ReviewKind;
+  comment: string | null;
+  created_by: string | null;
   created_at: string;
 };

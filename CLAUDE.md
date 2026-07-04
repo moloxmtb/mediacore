@@ -52,8 +52,16 @@ Construido según `PLAN.md`. **Fases 1–6 completas.**
   `scripts/seed-fase4.mjs`. Migración: `supabase/fase4.sql`.
 
 Hubs: contratos en `/clientes/[id]`; fases/entregables/acciones/hitos y mapeo de calendario
-en `/proyectos/[id]` y `/clientes/[id]`. `cobros` sigue como placeholder (Fase 5). No avanzar
-de fase hasta que la anterior funcione end to end.
+en `/proyectos/[id]` y `/clientes/[id]`.
+
+**Aprobación de contenido (post Fase 6):** piezas (imagen+texto) por cliente y período, con
+aprobación del cliente. Panel `/contenido` (crear período/piezas, publicar, subir versiones,
+confirmar/rechazar); portal `/portal/contenido` (aprobar/pedir cambios, "aprobar todo").
+Tablas `content_periods/pieces/versions/reviews`; imágenes en bucket privado `contenido`
+(signed URLs, Storage RLS por carpeta = client_id). Escritura del cliente MUY acotada: solo
+inserta `content_reviews` sobre sus piezas; un trigger `SECURITY DEFINER` mueve el estado
+(el cliente no tiene UPDATE sobre piezas). Migración `supabase/fase-contenido.sql` (incluye el
+bucket). `scripts/seed-contenido.mjs`. Seguridad verificada (11/11 pruebas RLS).
 
 ## Setup local
 1. `npm install`
