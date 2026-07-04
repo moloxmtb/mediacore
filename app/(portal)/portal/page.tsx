@@ -5,6 +5,7 @@ export default async function PortalHomePage() {
 
   return (
     <div className="card">
+      <div className="card-body">
       <span className="badge-soft">Fase 1 · Fundaciones</span>
       <h2 style={{ fontSize: "16px", margin: "12px 0 6px" }}>
         Bienvenido a tu portal
@@ -34,6 +35,7 @@ export default async function PortalHomePage() {
           <span className="badge-soft">{session?.role}</span>
         </dd>
       </dl>
+      </div>
     </div>
   );
 }

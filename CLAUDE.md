@@ -23,8 +23,14 @@ y `calendar_events` se filtran además por `visible_to_client`.
 - `supabase/schema.sql` — esquema + RLS. `supabase/seed.sql` — trigger de perfiles, admin y cliente demo.
 
 ## Estado
-Construido según `PLAN.md`. **Fase 1 (Fundaciones) completa.**
-Las secciones marcadas "Fase N" son placeholders hasta construir esa fase. No avanzar de fase
+Construido según `PLAN.md`. **Fases 1 y 2 completas.**
+- Fase 1 (Fundaciones): auth por email, `proxy.ts` con ruteo por rol, RLS.
+- Fase 2 (Datos): CRUD de clientes, contratos (dentro de la ficha del cliente) y proyectos;
+  estética del prototipo portada (KPIs, tablas, badges, formularios); dashboard con datos reales.
+  Datos de ejemplo en `scripts/seed-datos-ejemplo.mjs`.
+
+Contratos: se gestionan dentro de `/clientes/[id]` (su hogar natural). `gantt`, `cobros`,
+`acciones`, `entregables` siguen como placeholders de fases posteriores. No avanzar de fase
 hasta que la anterior funcione end to end.
 
 ## Setup local
