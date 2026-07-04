@@ -9,6 +9,8 @@ export type ClientSegment =
 export type ClientStatus = "activo" | "propuesta" | "inactivo";
 export type CurrencyKind = "UF" | "CLP";
 export type ProjectStatus = "activo" | "pausado" | "cerrado";
+export type DeliverableStatus = "en_proceso" | "entregado" | "aprobado";
+export type EventSource = "google" | "panel";
 
 export type Client = {
   id: string;
@@ -44,5 +46,61 @@ export type Project = {
   status: ProjectStatus;
   start_date: string | null;
   end_date: string | null;
+  created_at: string;
+};
+
+export type Phase = {
+  id: string;
+  project_id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  progress: number;
+  sort_order: number;
+  created_at: string;
+};
+
+export type Deliverable = {
+  id: string;
+  project_id: string;
+  phase_id: string | null;
+  title: string;
+  description: string | null;
+  url: string | null;
+  status: DeliverableStatus;
+  result: string | null;
+  delivered_at: string | null;
+  visible_to_client: boolean;
+  created_at: string;
+};
+
+export type Action = {
+  id: string;
+  client_id: string;
+  project_id: string | null;
+  phase_id: string | null;
+  action_date: string;
+  title: string;
+  description: string | null;
+  result: string | null;
+  kind: string | null;
+  visible_to_client: boolean;
+  created_at: string;
+};
+
+export type CalendarEvent = {
+  id: string;
+  client_id: string;
+  project_id: string | null;
+  google_calendar_id: string | null;
+  google_event_id: string | null;
+  title: string;
+  description: string | null;
+  starts_at: string;
+  ends_at: string | null;
+  kind: string | null;
+  source: EventSource;
+  visible_to_client: boolean;
+  synced_at: string | null;
   created_at: string;
 };

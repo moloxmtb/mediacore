@@ -23,15 +23,22 @@ y `calendar_events` se filtran además por `visible_to_client`.
 - `supabase/schema.sql` — esquema + RLS. `supabase/seed.sql` — trigger de perfiles, admin y cliente demo.
 
 ## Estado
-Construido según `PLAN.md`. **Fases 1 y 2 completas.**
+Construido según `PLAN.md`. **Fases 1–4 completas.**
 - Fase 1 (Fundaciones): auth por email, `proxy.ts` con ruteo por rol, RLS.
-- Fase 2 (Datos): CRUD de clientes, contratos (dentro de la ficha del cliente) y proyectos;
-  estética del prototipo portada (KPIs, tablas, badges, formularios); dashboard con datos reales.
-  Datos de ejemplo en `scripts/seed-datos-ejemplo.mjs`.
+- Fase 2 (Datos): CRUD de clientes, contratos y proyectos; estética del prototipo; dashboard.
+- Fase 3 (Gantt + entregables): carta Gantt desde las fases, CRUD de fases/entregables/acciones,
+  modal de detalle, vistas `/entregables` y `/acciones`.
+- Fase 4 (Google Calendar): OAuth (`/api/auth/google` + callback) con refresh token cifrado
+  (`lib/crypto.ts`, AES-256-GCM) en la tabla `google_credentials`; `lib/google.ts` (sync
+  incremental con syncToken → upsert por `google_event_id`, y push panel→Google al crear/editar/
+  mover/borrar hitos); mapeo calendario↔cliente (`clients.google_calendar_id`); página
+  `/integraciones`; hitos en `/proyectos/[id]`; carril de hitos + modal de evento en la Gantt.
+  Endpoint `/api/calendar/sync` (cron con `x-cron-secret` o sesión admin, exento del middleware).
+  `scripts/seed-fase4.mjs`. Migración: `supabase/fase4.sql`.
 
-Contratos: se gestionan dentro de `/clientes/[id]` (su hogar natural). `gantt`, `cobros`,
-`acciones`, `entregables` siguen como placeholders de fases posteriores. No avanzar de fase
-hasta que la anterior funcione end to end.
+Hubs: contratos en `/clientes/[id]`; fases/entregables/acciones/hitos y mapeo de calendario
+en `/proyectos/[id]` y `/clientes/[id]`. `cobros` sigue como placeholder (Fase 5). No avanzar
+de fase hasta que la anterior funcione end to end.
 
 ## Setup local
 1. `npm install`

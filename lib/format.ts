@@ -2,6 +2,7 @@ import type {
   ClientSegment,
   ClientStatus,
   Contract,
+  DeliverableStatus,
   ProjectStatus,
 } from "./types";
 
@@ -68,6 +69,18 @@ export function formatDate(date: string | null | undefined): string {
   });
 }
 
+/** Fecha + hora, para hitos/eventos de calendario (timestamptz ISO). */
+export function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleString("es-CL", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 // ---------- Etiquetas de enums ----------
 export const SEGMENT_LABELS: Record<ClientSegment, string> = {
   corporativo: "Corporativo",
@@ -95,4 +108,18 @@ export function clientStatusBadge(status: ClientStatus): string {
 
 export function projectStatusBadge(status: ProjectStatus): string {
   return status === "activo" ? "b-ok" : status === "pausado" ? "b-warn" : "b-idle";
+}
+
+export const DELIVERABLE_STATUS_LABELS: Record<DeliverableStatus, string> = {
+  en_proceso: "En proceso",
+  entregado: "Entregado",
+  aprobado: "Aprobado",
+};
+
+export function deliverableStatusBadge(status: DeliverableStatus): string {
+  return status === "aprobado"
+    ? "b-ok"
+    : status === "entregado"
+      ? "b-accent"
+      : "b-warn";
 }

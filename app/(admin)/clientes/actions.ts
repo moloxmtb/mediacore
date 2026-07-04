@@ -104,6 +104,28 @@ export async function eliminarCliente(fd: FormData): Promise<void> {
   redirect("/clientes");
 }
 
+// Mapeo calendario de Google ↔ cliente (clients.google_calendar_id).
+export async function guardarCalendarioCliente(
+  _prev: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  const id = str(fd, "id");
+  const cal = opt(fd, "google_calendar_id");
+  if (!id) return { error: "Falta el cliente." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("clients")
+    .update({ google_calendar_id: cal })
+    .eq("id", id);
+  if (error) return { error: "No se pudo guardar el calendario: " + error.message };
+
+  revalidatePath(`/clientes/${id}`);
+  revalidatePath("/integraciones");
+  revalidatePath("/gantt");
+  return { error: null, ok: true };
+}
+
 // ============================================================
 //  CONTRATOS (viven dentro de la ficha del cliente)
 // ============================================================

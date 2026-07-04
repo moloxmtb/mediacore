@@ -84,3 +84,77 @@ export async function eliminarProyecto(fd: FormData): Promise<void> {
   revalidatePath("/dashboard");
   redirect("/proyectos");
 }
+
+// ============================================================
+//  FASES (barras de la carta Gantt)
+// ============================================================
+function parsePhase(fd: FormData) {
+  const progress = parseInt(str(fd, "progress") || "0", 10);
+  const sort = parseInt(str(fd, "sort_order") || "0", 10);
+  return {
+    project_id: str(fd, "project_id"),
+    name: str(fd, "name"),
+    start_date: str(fd, "start_date"),
+    end_date: str(fd, "end_date"),
+    progress: Number.isFinite(progress)
+      ? Math.min(Math.max(progress, 0), 100)
+      : 0,
+    sort_order: Number.isFinite(sort) ? sort : 0,
+  };
+}
+
+function validPhase(p: ReturnType<typeof parsePhase>): string | null {
+  if (!p.project_id) return "Falta el proyecto.";
+  if (!p.name) return "El nombre de la fase es obligatorio.";
+  if (!p.start_date || !p.end_date)
+    return "La fase necesita fecha de inicio y de término.";
+  if (p.end_date < p.start_date)
+    return "El término no puede ser anterior al inicio.";
+  return null;
+}
+
+export async function crearFase(
+  _prev: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  const p = parsePhase(fd);
+  const err = validPhase(p);
+  if (err) return { error: err };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("phases").insert(p);
+  if (error) return { error: "No se pudo crear la fase: " + error.message };
+
+  revalidatePath(`/proyectos/${p.project_id}`);
+  revalidatePath("/gantt");
+  return { error: null, ok: true };
+}
+
+export async function actualizarFase(
+  _prev: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  const id = str(fd, "id");
+  const p = parsePhase(fd);
+  if (!id) return { error: "Falta el identificador de la fase." };
+  const err = validPhase(p);
+  if (err) return { error: err };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("phases").update(p).eq("id", id);
+  if (error) return { error: "No se pudo actualizar la fase: " + error.message };
+
+  revalidatePath(`/proyectos/${p.project_id}`);
+  revalidatePath("/gantt");
+  return { error: null, ok: true };
+}
+
+export async function eliminarFase(fd: FormData): Promise<void> {
+  const id = str(fd, "id");
+  const projectId = str(fd, "project_id");
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from("phases").delete().eq("id", id);
+  revalidatePath(`/proyectos/${projectId}`);
+  revalidatePath("/gantt");
+}

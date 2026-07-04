@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import ClientForm from "@/components/admin/ClientForm";
 import ContractForm from "@/components/admin/ContractForm";
+import CalendarMapForm from "@/components/admin/CalendarMapForm";
 import DeleteButton from "@/components/admin/DeleteButton";
 import { createClient } from "@/lib/supabase/server";
 import { getLatestUf } from "@/lib/uf";
+import { getConnectionStatus, listCalendars } from "@/lib/google";
 import {
   CLIENT_STATUS_LABELS,
   SEGMENT_LABELS,
@@ -24,6 +26,7 @@ import {
   crearContrato,
   eliminarCliente,
   eliminarContrato,
+  guardarCalendarioCliente,
 } from "../actions";
 
 export default async function ClienteDetallePage({
@@ -56,6 +59,16 @@ export default async function ClienteDetallePage({
   const contractList = (contracts ?? []) as Contract[];
   const projectList = (projects ?? []) as Project[];
 
+  const gStatus = await getConnectionStatus();
+  let calendars: { id: string; summary: string; primary: boolean }[] = [];
+  if (gStatus.connected) {
+    try {
+      calendars = await listCalendars();
+    } catch {
+      calendars = [];
+    }
+  }
+
   return (
     <>
       <PageHeader title={cl.name} subtitle={`${SEGMENT_LABELS[cl.segment]} · ficha de cliente`} />
@@ -87,6 +100,27 @@ export default async function ClienteDetallePage({
                   confirm={`¿Eliminar a ${cl.name}? Se borrarán también sus contratos y proyectos. Esta acción no se puede deshacer.`}
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Calendario de Google */}
+          <div className="card">
+            <div className="card-head">
+              <h3>Calendario de Google</h3>
+              {cl.google_calendar_id ? (
+                <span className="badge b-ok">Mapeado</span>
+              ) : (
+                <span className="badge b-idle">Sin mapear</span>
+              )}
+            </div>
+            <div className="card-body">
+              <CalendarMapForm
+                action={guardarCalendarioCliente}
+                clientId={cl.id}
+                current={cl.google_calendar_id}
+                calendars={calendars}
+                connected={gStatus.connected}
+              />
             </div>
           </div>
 
