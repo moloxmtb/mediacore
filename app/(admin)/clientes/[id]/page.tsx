@@ -4,10 +4,18 @@ import PageHeader from "@/components/PageHeader";
 import ClientForm from "@/components/admin/ClientForm";
 import ContractForm from "@/components/admin/ContractForm";
 import CalendarMapForm from "@/components/admin/CalendarMapForm";
+import UserForm from "@/components/admin/UserForm";
 import DeleteButton from "@/components/admin/DeleteButton";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getLatestUf } from "@/lib/uf";
 import { getConnectionStatus, listCalendars } from "@/lib/google";
+import {
+  cambiarRolUsuario,
+  crearUsuario,
+  eliminarUsuario,
+} from "../usuarios-actions";
+import type { ClientRole } from "@/lib/types";
 import {
   CLIENT_STATUS_LABELS,
   SEGMENT_LABELS,
@@ -18,6 +26,7 @@ import {
   projectStatusBadge,
   PROJECT_STATUS_LABELS,
   clientStatusBadge,
+  CLIENT_ROLE_LABELS,
 } from "@/lib/format";
 import type { Client, Contract, Project } from "@/lib/types";
 import {
@@ -71,6 +80,25 @@ export default async function ClienteDetallePage({
     }
   }
 
+  // Usuarios del portal de este cliente (correos vía service_role).
+  const adminClient = createAdminClient();
+  const [{ data: memberProfiles }, { data: userList }] = await Promise.all([
+    adminClient
+      .from("profiles")
+      .select("id, client_role")
+      .eq("client_id", id)
+      .eq("role", "client"),
+    adminClient.auth.admin.listUsers({ perPage: 1000 }),
+  ]);
+  const emailById = new Map(
+    (userList?.users ?? []).map((u) => [u.id, u.email ?? "—"]),
+  );
+  const portalUsers = (memberProfiles ?? []).map((p) => ({
+    id: p.id as string,
+    email: emailById.get(p.id as string) ?? "—",
+    client_role: (p.client_role as ClientRole) ?? "content",
+  }));
+
   return (
     <>
       <PageHeader title={cl.name} subtitle={`${SEGMENT_LABELS[cl.segment]} · ficha de cliente`} />
@@ -102,6 +130,70 @@ export default async function ClienteDetallePage({
                   confirm={`¿Eliminar a ${cl.name}? Se borrarán también sus contratos y proyectos. Esta acción no se puede deshacer.`}
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Usuarios del portal */}
+          <div className="card">
+            <div className="card-head">
+              <h3>Usuarios del portal</h3>
+              <span className="tag">{portalUsers.length}</span>
+            </div>
+            {portalUsers.length ? (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Correo</th>
+                    <th>Rol en el portal</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {portalUsers.map((u) => (
+                    <tr key={u.id}>
+                      <td className="mono">{u.email}</td>
+                      <td>
+                        <form action={cambiarRolUsuario} style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                          <input type="hidden" name="user_id" value={u.id} />
+                          <input type="hidden" name="client_id" value={cl.id} />
+                          <select
+                            name="client_role"
+                            defaultValue={u.client_role}
+                            style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "6px", color: "var(--text)", padding: "6px 8px", fontFamily: "inherit" }}
+                          >
+                            {Object.entries(CLIENT_ROLE_LABELS).map(([v, l]) => (
+                              <option key={v} value={v}>
+                                {l}
+                              </option>
+                            ))}
+                          </select>
+                          <button className="btn btn-sm" type="submit">Guardar</button>
+                        </form>
+                      </td>
+                      <td className="num">
+                        <DeleteButton
+                          action={eliminarUsuario}
+                          hidden={{ user_id: u.id, client_id: cl.id }}
+                          label="Eliminar"
+                          confirm={`¿Eliminar al usuario ${u.email}? Perderá el acceso al portal.`}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="empty">Este cliente aún no tiene usuarios de portal.</div>
+            )}
+            <div className="card-body" style={{ borderTop: "1px solid var(--border-soft)" }}>
+              <details>
+                <summary className="btn btn-sm btn-primary" style={{ width: "fit-content" }}>
+                  + Agregar usuario
+                </summary>
+                <div style={{ padding: "14px 2px 4px" }}>
+                  <UserForm action={crearUsuario} clientId={cl.id} />
+                </div>
+              </details>
             </div>
           </div>
 

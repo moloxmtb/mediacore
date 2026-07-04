@@ -53,7 +53,7 @@ export default async function PortalLayout({
           </div>
         </div>
 
-        <PortalNav />
+        <PortalNav role={session.clientRole} />
 
         <div className="sidebar-who">
           <div

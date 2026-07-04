@@ -18,6 +18,7 @@ export type InstallmentStatus =
   | "vencida"
   | "anulada";
 export type EventSource = "google" | "panel";
+export type ClientRole = "owner" | "finance" | "content";
 
 export type ContentPeriodKind = "mensual" | "quincenal" | "semanal";
 export type ContentStatus =

@@ -253,6 +253,18 @@ Decisiones finales de diseño (aprobadas):
 - **Storage:** bucket privado; imágenes servidas con signed URLs cortas server-side, solo
   para piezas que el usuario ya pasó por RLS. Storage RLS como defensa en profundidad.
 
+Mejoras futuras de esta funcionalidad:
+- **Carruseles (varias imágenes por pieza).** Hoy cada pieza admite una sola imagen. Extender
+  para que una pieza guarde un conjunto ordenado de imágenes (las slides), con un solo copy
+  para todo el carrusel. En el portal, el cliente ve el carrusel completo y lo aprueba/comenta
+  como una pieza. **Decisión del usuario:** comentar el carrusel entero (una sola aprobación /
+  un solo hilo de comentarios por pieza, NO slide por slide). Es acotado y no rehace lo construido.
+- **Desarrollo de carruseles: externo.** **Decisión del usuario:** los carruseles se desarrollan
+  fuera del panel (Canva u otra herramienta). El panel NO será un editor de diseño. Queda
+  pendiente conversar más adelante si la carga del carrusel al panel es manual (subir las
+  imágenes ya hechas) o integrada (p. ej. enlace/importación desde Canva). Por ahora se asume
+  manual: se suben las slides ya diseñadas.
+
 ### 2. Notificaciones por correo
 
 Al crear/actualizar una acción, reunión o hito, notificar por correo al equipo interno
@@ -273,6 +285,29 @@ cliente con distinto nivel de acceso:
   de cliente sí verían parte de lo financiero. Rediseñar con mucho cuidado y volver a
   verificar la separación como en la Fase 6.
 - Requiere: roles por usuario dentro de un cliente, y políticas RLS más finas por rol.
+
+Diseño afinado (decisiones del usuario):
+
+**Tres roles de cliente**, con mundos de acceso separados (contenido / proyectos / financiero):
+
+| Rol | Contenido | Proyectos (Gantt, entregables) | Financiero (contrato, cobros, facturas) |
+|-----|-----------|-------------------------------|------------------------------------------|
+| **Dueño** | ✅ | ✅ | ✅ (todo) |
+| **Finanzas** | ❌ | ❌ | ✅ (contrato, facturado, por pagar, descargar facturas, a futuro pagar) |
+| **Contenido/Proyectos** | ✅ | ✅ | ❌ (equivale al `client` actual) |
+
+- **Administración de usuarios:** SOLO Color Media (admin) crea y asigna los usuarios y su rol,
+  desde el panel. El cliente NO administra a su equipo. No hay sistema de invitaciones ni
+  "admin del cliente" → menos superficie de riesgo.
+- **Finanzas es un rol acotado:** ve únicamente lo financiero + el contrato; no ve proyectos
+  ni contenido.
+- **Implementación:** el rol pasa de estar en `profiles.role` (hoy admin/client) a algo más
+  fino: cada usuario cliente tiene un sub-rol (dueño/finanzas/contenido). Las políticas RLS de
+  las tablas financieras (contracts, installments) deben permitir lectura a dueño y finanzas
+  del cliente correspondiente, y seguir negándola a contenido. Verificar con los tres roles
+  como en la Fase 6.
+- **Base para otras funcionalidades:** notificaciones (a quién avisar) y pago con Flow (quién
+  puede pagar) dependen de este modelo de roles.
 
 ### 4. Botón de pago con Flow (LO MÁS COMPLEJO)
 
@@ -297,6 +332,25 @@ cliente (según su rol).
 **Dependencias / orden sugerido:** la 5 (PDF) es independiente y rápida. La 1 (aprobación)
 es la prioridad del usuario. La 3 (roles) conviene antes que la 2 (correo) y la 4 (Flow),
 porque ambas dependen de saber qué usuarios y roles hay por cliente.
+
+### 6. Identidad visual y de marca
+
+Hacer que el sistema deje de verse genérico y lleve marca (la de Color Media y la de cada
+cliente). Se apoya en el manejo de imágenes/Storage ya construido para la aprobación de contenido.
+
+- **Logo de Color Media en el panel** (branding general del sistema).
+- **Logo del cliente en su portal**, junto al de Color Media (co-branding en la cara del cliente).
+- **Favicon/ícono por empresa:** ícono pequeño de cada cliente donde se lo menciona en el panel
+  (tablas, fichas, listados), para identificación visual rápida.
+- Requiere: campo de logo por cliente (subida desde el panel), logo global de Color Media, y
+  aplicarlos en los lugares correspondientes de panel y portal.
+
+### 7. Nombre del sistema (naming)
+
+Bautizar el sistema con un nombre propio, para invitar a los clientes a entrar a "[nombre]"
+en vez de "el panel". Convierte la herramienta en un producto con identidad. Pendiente:
+definir el nombre (sesión de naming aparte) y aplicarlo en login, títulos, correos y el
+enlace "Acceso clientes" del sitio.
 
 ---
 

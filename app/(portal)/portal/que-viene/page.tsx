@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
+import { requirePortalWorld } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   DELIVERABLE_STATUS_LABELS,
@@ -27,6 +28,7 @@ type DeliverableRow = {
 };
 
 export default async function QueVienePage() {
+  await requirePortalWorld("content");
   const supabase = await createClient();
   const now = new Date().toISOString();
 

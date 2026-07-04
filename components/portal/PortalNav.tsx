@@ -3,11 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import type { ClientRole } from "@/lib/types";
 
-const items: { href: string; label: string; icon: ReactNode }[] = [
+type Item = { href: string; label: string; world: "content" | "finance"; icon: ReactNode };
+
+const items: Item[] = [
   {
     href: "/portal/que-viene",
     label: "Qué viene",
+    world: "content",
     icon: (
       <svg viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="9" />
@@ -18,6 +22,7 @@ const items: { href: string; label: string; icon: ReactNode }[] = [
   {
     href: "/portal/proyectos",
     label: "Proyectos",
+    world: "content",
     icon: (
       <svg viewBox="0 0 24 24">
         <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -27,6 +32,7 @@ const items: { href: string; label: string; icon: ReactNode }[] = [
   {
     href: "/portal/avance",
     label: "Avance",
+    world: "content",
     icon: (
       <svg viewBox="0 0 24 24">
         <line x1="8" y1="6" x2="21" y2="6" />
@@ -38,6 +44,7 @@ const items: { href: string; label: string; icon: ReactNode }[] = [
   {
     href: "/portal/contenido",
     label: "Contenido",
+    world: "content",
     icon: (
       <svg viewBox="0 0 24 24">
         <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -46,14 +53,31 @@ const items: { href: string; label: string; icon: ReactNode }[] = [
       </svg>
     ),
   },
+  {
+    href: "/portal/finanzas",
+    label: "Finanzas",
+    world: "finance",
+    icon: (
+      <svg viewBox="0 0 24 24">
+        <rect x="2" y="5" width="20" height="14" rx="2" />
+        <line x1="2" y1="10" x2="22" y2="10" />
+      </svg>
+    ),
+  },
 ];
 
-export default function PortalNav() {
+export default function PortalNav({ role }: { role: ClientRole | null }) {
   const pathname = usePathname();
+  const canContent = role === "owner" || role === "content";
+  const canFinance = role === "owner" || role === "finance";
+  const visible = items.filter((i) =>
+    i.world === "content" ? canContent : canFinance,
+  );
+
   return (
     <nav className="admin-nav">
       <div className="nav-label">Tu espacio</div>
-      {items.map((item) => {
+      {visible.map((item) => {
         const active =
           pathname === item.href || pathname.startsWith(item.href + "/");
         return (

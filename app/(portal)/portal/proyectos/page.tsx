@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
+import { requirePortalWorld } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   PROJECT_STATUS_LABELS,
@@ -9,6 +10,7 @@ import {
 import type { Project } from "@/lib/types";
 
 export default async function PortalProyectosPage() {
+  await requirePortalWorld("content");
   const supabase = await createClient();
   // RLS: el cliente solo ve sus propios proyectos.
   const { data } = await supabase

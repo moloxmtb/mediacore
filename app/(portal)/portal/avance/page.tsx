@@ -1,5 +1,6 @@
 import PageHeader from "@/components/PageHeader";
 import GanttChart from "@/components/admin/GanttChart";
+import { requirePortalWorld } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { Action, CalendarEvent, Deliverable, Phase } from "@/lib/types";
 
@@ -9,6 +10,7 @@ export default async function PortalAvancePage({
   searchParams: Promise<{ p?: string }>;
 }) {
   const { p } = await searchParams;
+  await requirePortalWorld("content");
   const supabase = await createClient();
 
   // RLS: solo los proyectos del propio cliente.

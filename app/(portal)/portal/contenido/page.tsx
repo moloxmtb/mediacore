@@ -1,5 +1,6 @@
 import PageHeader from "@/components/PageHeader";
 import PedirCambiosForm from "@/components/portal/PedirCambiosForm";
+import { requirePortalWorld } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { signImages } from "@/lib/storage";
 import {
@@ -11,6 +12,7 @@ import type { ContentPeriod, ContentPiece, ContentVersion } from "@/lib/types";
 import { aprobarPeriodo, aprobarPieza, pedirCambios } from "./actions";
 
 export default async function PortalContenidoPage() {
+  await requirePortalWorld("content");
   const supabase = await createClient();
 
   // RLS: solo períodos publicados y piezas no-borrador de su empresa.

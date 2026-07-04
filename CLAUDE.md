@@ -63,6 +63,14 @@ inserta `content_reviews` sobre sus piezas; un trigger `SECURITY DEFINER` mueve 
 (el cliente no tiene UPDATE sobre piezas). Migración `supabase/fase-contenido.sql` (incluye el
 bucket). `scripts/seed-contenido.mjs`. Seguridad verificada (11/11 pruebas RLS).
 
+**Múltiples usuarios y roles por cliente:** sub-rol en `profiles.client_role` (`owner`/`finance`/
+`content`), función `auth_client_role()`. Tres mundos: dueño (todo), finanzas (solo contrato+
+cuotas), contenido (proyectos+contenido, = client de antes). RLS por rol: financiero abierto a
+owner/finance; portal (proyectos/contenido) y Storage de contenido restringidos a owner/content.
+Gestión de usuarios en `/clientes/[id]` (crear/rol/eliminar, `service_role`). Portal por mundos:
+`PortalNav` filtra por rol, `/portal/finanzas` (nueva, lectura), gates `requirePortalWorld` +
+`portalHome`. Migración `supabase/fase-roles.sql`. Verificado por rol (8/8 pruebas RLS + ruteo).
+
 ## Setup local
 1. `npm install`
 2. Copiar `.env.example` a `.env.local` y poner las credenciales de Supabase.

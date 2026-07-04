@@ -1,10 +1,17 @@
 import type {
+  ClientRole,
   ClientSegment,
   ClientStatus,
   Contract,
   DeliverableStatus,
   ProjectStatus,
 } from "./types";
+
+export const CLIENT_ROLE_LABELS: Record<ClientRole, string> = {
+  owner: "Dueño (todo)",
+  finance: "Finanzas (solo financiero)",
+  content: "Contenido / Proyectos",
+};
 
 // ---------- Dinero ----------
 const clp = new Intl.NumberFormat("es-CL", {

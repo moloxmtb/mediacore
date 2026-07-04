@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
+import { requirePortalWorld } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   DELIVERABLE_STATUS_LABELS,
@@ -23,6 +24,7 @@ export default async function PortalProyectoDetalle({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  await requirePortalWorld("content");
   const supabase = await createClient();
 
   // RLS: si el proyecto no es del cliente, project viene null -> notFound.
