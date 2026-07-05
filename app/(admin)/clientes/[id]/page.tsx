@@ -45,6 +45,7 @@ import {
   contractMonthlyNetCLP,
   formatCLP,
   formatDate,
+  formatDateTime,
   projectStatusBadge,
   PROJECT_STATUS_LABELS,
   clientStatusBadge,
@@ -144,6 +145,30 @@ export default async function ClienteDetallePage({
   ]);
   const strategy = (strategyData as ClientStrategy | null) ?? null;
   const planItems = (planData ?? []) as ClientPlanItem[];
+
+  // Próximas reuniones de este cliente + confirmaciones de asistencia.
+  const nowIso = new Date().toISOString();
+  const { data: reunionesData } = await supabase
+    .from("calendar_events")
+    .select("id, title, starts_at")
+    .eq("client_id", id)
+    .eq("kind", "reunion")
+    .gte("starts_at", nowIso)
+    .order("starts_at", { ascending: true })
+    .limit(10);
+  const reuniones = (reunionesData ?? []) as { id: string; title: string; starts_at: string }[];
+  const attByEvent = new Map<string, { email: string; attending: boolean }[]>();
+  if (reuniones.length) {
+    const { data: att } = await supabase
+      .from("event_attendance")
+      .select("event_id, user_id, attending")
+      .in("event_id", reuniones.map((r) => r.id));
+    for (const a of (att ?? []) as { event_id: string; user_id: string; attending: boolean }[]) {
+      const arr = attByEvent.get(a.event_id) ?? [];
+      arr.push({ email: emailById.get(a.user_id) ?? "—", attending: a.attending });
+      attByEvent.set(a.event_id, arr);
+    }
+  }
 
   return (
     <>
@@ -392,6 +417,44 @@ export default async function ClienteDetallePage({
                 Es el <b>alcance</b> de lo contratado, sin montos. Los precios y cuotas viven en Cobros y solo los ven dueño/finanzas.
               </span>
             </div>
+          </div>
+
+          {/* Reuniones y confirmaciones de asistencia */}
+          <div className="card">
+            <div className="card-head">
+              <h3>Reuniones y confirmaciones</h3>
+              <span className="tag">{reuniones.length}</span>
+            </div>
+            {reuniones.length ? (
+              <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                {reuniones.map((r) => {
+                  const conf = attByEvent.get(r.id) ?? [];
+                  const asisten = conf.filter((c) => c.attending);
+                  const noAsisten = conf.filter((c) => !c.attending);
+                  return (
+                    <div key={r.id} style={{ borderBottom: "1px solid var(--border-soft)", paddingBottom: "10px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+                        <span style={{ fontWeight: 500 }}>{r.title}</span>
+                        <span className="mono" style={{ color: "var(--muted)", fontSize: "12px" }}>{formatDateTime(r.starts_at)}</span>
+                      </div>
+                      <div style={{ marginTop: "6px", display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                        {asisten.map((c) => (
+                          <span key={c.email} className="badge b-ok">{c.email} · asiste</span>
+                        ))}
+                        {noAsisten.map((c) => (
+                          <span key={c.email} className="badge b-idle">{c.email} · no podrá</span>
+                        ))}
+                        {conf.length === 0 && (
+                          <span style={{ color: "var(--faint)", fontSize: "12.5px" }}>Sin confirmaciones aún.</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="empty">No hay reuniones próximas para este cliente.</div>
+            )}
           </div>
 
           {/* Calendario de Google */}

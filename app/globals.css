@@ -307,6 +307,12 @@ h3 {
 .alert-accent { background: var(--accent); }
 .alert-warn { background: var(--warn, #d9a441); }
 .alert-bad { background: var(--bad); }
+.alert-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 
 /* Sello de identidad + versión + contacto comercial (pie de ambas caras) */
 .system-footer {

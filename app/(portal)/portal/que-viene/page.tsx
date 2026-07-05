@@ -8,6 +8,7 @@ import {
   formatDateTime,
 } from "@/lib/format";
 import type { DeliverableStatus } from "@/lib/types";
+import { confirmarAsistencia } from "./asistencia-actions";
 
 function todaySantiago(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date());
@@ -24,7 +25,15 @@ function enDias(d: number): string {
   return `en ${d} días`;
 }
 
-type Alert = { tone: string; text: string; href: string; cta: string };
+type Alert = {
+  tone: string;
+  text: string;
+  href?: string;
+  cta?: string;
+  // Para la alerta de reunión: activa los botones de confirmar asistencia.
+  reunionId?: string;
+  attending?: boolean | null;
+};
 
 type EventRow = {
   id: string;
@@ -110,16 +119,22 @@ export default async function QueVienePage() {
     });
   }
 
-  // 3. Próxima reunión en ≤3 días (owner/content, RLS de calendar).
+  // 3. Próxima reunión en ≤3 días (owner/content, RLS de calendar) + confirmar.
   const proxReunion = hitos.find(
     (h) => h.kind === "reunion" && daysUntil(h.starts_at.slice(0, 10), today) <= 3,
   );
   if (proxReunion) {
+    const { data: mine } = await supabase
+      .from("event_attendance")
+      .select("attending")
+      .eq("event_id", proxReunion.id)
+      .eq("user_id", session.userId)
+      .maybeSingle();
     alerts.push({
       tone: "accent",
       text: `Tu próxima reunión es ${enDias(daysUntil(proxReunion.starts_at.slice(0, 10), today))}: ${proxReunion.title}.`,
-      href: "#reuniones",
-      cta: "Ver detalle",
+      reunionId: proxReunion.id,
+      attending: mine ? (mine.attending as boolean) : null,
     });
   }
 
@@ -141,7 +156,28 @@ export default async function QueVienePage() {
                 <li key={i} className="alert-row">
                   <span className={`alert-dot alert-${a.tone}`} />
                   <span className="alert-text">{a.text}</span>
-                  <Link href={a.href} className="btn btn-sm">{a.cta}</Link>
+                  {a.reunionId ? (
+                    <span className="alert-actions">
+                      {a.attending === true && <span className="badge b-ok">Confirmaste asistencia</span>}
+                      {a.attending === false && <span className="badge b-idle">Avisaste que no podrás</span>}
+                      <form action={confirmarAsistencia} style={{ display: "inline" }}>
+                        <input type="hidden" name="event_id" value={a.reunionId} />
+                        <input type="hidden" name="attending" value="si" />
+                        <button className={`btn btn-sm${a.attending === true ? " btn-primary" : ""}`} type="submit">
+                          Asistiré
+                        </button>
+                      </form>
+                      <form action={confirmarAsistencia} style={{ display: "inline" }}>
+                        <input type="hidden" name="event_id" value={a.reunionId} />
+                        <input type="hidden" name="attending" value="no" />
+                        <button className={`btn btn-sm${a.attending === false ? " btn-danger" : ""}`} type="submit">
+                          No podré
+                        </button>
+                      </form>
+                    </span>
+                  ) : (
+                    a.href && <Link href={a.href} className="btn btn-sm">{a.cta}</Link>
+                  )}
                 </li>
               ))}
             </ul>

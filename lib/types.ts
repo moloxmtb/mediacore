@@ -80,6 +80,16 @@ export type CompanyBankInfo = {
   updated_at: string;
 };
 
+export type EventAttendance = {
+  id: string;
+  event_id: string;
+  client_id: string;
+  user_id: string;
+  attending: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ContentPeriodKind = "mensual" | "quincenal" | "semanal";
 export type ContentStatus =
   | "borrador"
