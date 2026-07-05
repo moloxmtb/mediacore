@@ -12,7 +12,8 @@ import { getLatestUf } from "@/lib/uf";
 import { getConnectionStatus, listCalendars } from "@/lib/google";
 import {
   cambiarRolUsuario,
-  crearUsuario,
+  invitarUsuario,
+  reenviarInvitacion,
   eliminarUsuario,
 } from "../usuarios-actions";
 import type { ClientRole } from "@/lib/types";
@@ -171,12 +172,21 @@ export default async function ClienteDetallePage({
                         </form>
                       </td>
                       <td className="num">
-                        <DeleteButton
-                          action={eliminarUsuario}
-                          hidden={{ user_id: u.id, client_id: cl.id }}
-                          label="Eliminar"
-                          confirm={`¿Eliminar al usuario ${u.email}? Perderá el acceso al portal.`}
-                        />
+                        <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", alignItems: "center" }}>
+                          <form action={reenviarInvitacion}>
+                            <input type="hidden" name="email" value={u.email} />
+                            <input type="hidden" name="client_id" value={cl.id} />
+                            <button className="btn btn-sm" type="submit" title="Reenviar enlace para fijar contraseña">
+                              Reenviar invitación
+                            </button>
+                          </form>
+                          <DeleteButton
+                            action={eliminarUsuario}
+                            hidden={{ user_id: u.id, client_id: cl.id }}
+                            label="Eliminar"
+                            confirm={`¿Eliminar al usuario ${u.email}? Perderá el acceso al portal.`}
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -188,10 +198,10 @@ export default async function ClienteDetallePage({
             <div className="card-body" style={{ borderTop: "1px solid var(--border-soft)" }}>
               <details>
                 <summary className="btn btn-sm btn-primary" style={{ width: "fit-content" }}>
-                  + Agregar usuario
+                  + Invitar usuario
                 </summary>
                 <div style={{ padding: "14px 2px 4px" }}>
-                  <UserForm action={crearUsuario} clientId={cl.id} />
+                  <UserForm action={invitarUsuario} clientId={cl.id} />
                 </div>
               </details>
             </div>

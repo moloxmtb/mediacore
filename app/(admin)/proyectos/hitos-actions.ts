@@ -8,8 +8,13 @@ import {
   getConnectionStatus,
   pushEvent,
 } from "@/lib/google";
+import { notifyEvent, type NotifType } from "@/lib/notify";
 
 export type FormState = { error: string | null; ok?: boolean };
+
+function hitoType(kind: string | null): NotifType {
+  return kind === "reunion" ? "reunion" : "hito";
+}
 
 function str(fd: FormData, key: string): string {
   return String(fd.get(key) ?? "").trim();
@@ -103,6 +108,14 @@ export async function crearHito(
   if (error) return { error: "No se pudo crear el hito: " + error.message };
 
   await pushToGoogle(supabase, data.id, h.client_id, h, null);
+  await notifyEvent({
+    type: hitoType(h.kind),
+    clientId: h.client_id,
+    title: h.title,
+    detail: h.description ?? h.title,
+    panelPath: h.project_id ? `/proyectos/${h.project_id}` : "/gantt",
+    portalPath: "/portal/avance",
+  });
   revalidate(h.project_id);
   return { error: null, ok: true };
 }
@@ -118,10 +131,10 @@ export async function actualizarHito(
   if (!h.starts_at) return { error: "La fecha y hora del hito son obligatorias." };
 
   const supabase = await createClient();
-  // Recuperar el google_event_id actual para actualizar (no duplicar) en Google.
+  // Recuperar el google_event_id y la fecha actual (para detectar si se movió).
   const { data: existing } = await supabase
     .from("calendar_events")
-    .select("google_event_id")
+    .select("google_event_id, starts_at")
     .eq("id", id)
     .maybeSingle();
 
@@ -140,6 +153,22 @@ export async function actualizarHito(
   if (error) return { error: "No se pudo actualizar el hito: " + error.message };
 
   await pushToGoogle(supabase, id, h.client_id, h, existing?.google_event_id ?? null);
+
+  // Notificar solo si se MOVIÓ la fecha/hora.
+  const moved =
+    existing?.starts_at != null &&
+    existing.starts_at.slice(0, 16) !== h.starts_at.slice(0, 16);
+  if (moved) {
+    await notifyEvent({
+      type: hitoType(h.kind),
+      clientId: h.client_id,
+      title: h.title,
+      detail: `Se movió la fecha: ${h.title}`,
+      panelPath: h.project_id ? `/proyectos/${h.project_id}` : "/gantt",
+      portalPath: "/portal/avance",
+    });
+  }
+
   revalidate(h.project_id);
   return { error: null, ok: true };
 }

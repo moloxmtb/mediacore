@@ -3,7 +3,12 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /** Rutas accesibles sin sesión. El endpoint de sync se autoriza por dentro
  *  (CRON_SECRET o sesión admin), por eso queda exento del gate. */
-const PUBLIC_PATHS = ["/login", "/api/calendar/sync", "/api/uf/refresh"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/auth/confirm",
+  "/api/calendar/sync",
+  "/api/uf/refresh",
+];
 
 /** Home de cada rol tras autenticarse. */
 const ADMIN_HOME = "/dashboard";
@@ -89,6 +94,10 @@ export async function updateSession(request: NextRequest) {
 
   const role = profile?.role === "admin" ? "admin" : "client";
   const home = role === "admin" ? ADMIN_HOME : CLIENT_HOME;
+
+  // Fijar contraseña: accesible por cualquier usuario autenticado, sin rebote
+  // de rol (el recién invitado aún no tiene su "mundo").
+  if (pathname === "/fijar-clave") return supabaseResponse;
 
   // Ya autenticado en /login o en la raíz → a su home.
   if (pathname === "/login" || pathname === "/") {

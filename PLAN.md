@@ -270,10 +270,33 @@ Mejoras futuras de esta funcionalidad:
 Al crear/actualizar una acción, reunión o hito, notificar por correo al equipo interno
 de Color Media y al equipo del cliente.
 
-- Requiere un servicio de envío (p. ej. Resend, Postmark, SendGrid) — decisión pendiente.
+- **Servicio elegido: Resend.** Encaja con Next.js, plan gratuito permanente de 3.000
+  correos/mes (más que suficiente para el volumen de Color Media). Requiere cuenta en
+  resend.com y verificar el dominio colormedia.cl (registros DNS: SPF, DKIM, DMARC) para
+  poder enviar como @colormedia.cl con buena entregabilidad.
+  - **ESTADO:** cuenta creada, dominio colormedia.cl VERIFICADO en Resend (DNS en HostGator /
+    cPanel Zone Editor; registros DKIM `resend._domainkey`, MX y TXT `send` agregados sin tocar
+    los MX de Google Workspace existentes). Falta pasar la API key (`re_...`) a Claude Code.
+  - **Dirección de envío (from):** `marketing@colormedia.cl`.
+- Es la infraestructura base compartida: habilita también las invitaciones de usuario
+  (funcionalidad 3) — se construyen juntas sobre Resend.
 - Definir con precisión qué eventos disparan correo, para no saturar (probablemente
   configurable por tipo).
-- Se cruza con la funcionalidad 3 (a quién notificar depende de los usuarios del cliente).
+- Se cruza con la funcionalidad 3 (a quién notificar depende de los usuarios/roles del cliente).
+
+Decisiones de diseño (usuario):
+- **Dos usos sobre el mismo correo:** (a) invitaciones de usuario (alta con enlace para fijar
+  contraseña — completa la funcionalidad 3), y (b) notificaciones de eventos.
+- **Eventos que notifican:** todo movimiento — acciones, hitos y reuniones.
+- **Destinatario configurable POR TIPO de evento:** el usuario decide, por cada tipo, si el
+  correo va solo al equipo interno de Color Media o también al cliente. (Recomendación anotada:
+  al cliente, hitos y reuniones; las acciones operativas menudas mejor solo internas o que las
+  vea en el portal, para no saturarlo.)
+- **Ritmo:** un correo por evento, al instante. (Riesgo anotado: alto volumen si se registran
+  muchas acciones/día; mitigado por el control de destinatario por tipo. Agrupar en digest queda
+  como mejora futura si hace falta.)
+- El respeto al rol del cliente aplica: a un cliente solo se le notifica lo de su empresa, y
+  según su rol (p. ej. finanzas no recibiría avisos de contenido).
 
 ### 3. Múltiples usuarios y roles por cliente (CAMBIO ESTRUCTURAL)
 
@@ -299,6 +322,20 @@ Diseño afinado (decisiones del usuario):
 - **Administración de usuarios:** SOLO Color Media (admin) crea y asigna los usuarios y su rol,
   desde el panel. El cliente NO administra a su equipo. No hay sistema de invitaciones ni
   "admin del cliente" → menos superficie de riesgo.
+- **Alta de usuario — DECISIÓN: invitación por correo (magic link).** El usuario se crea con
+  correo + rol (sin contraseña); el sistema le envía un enlace para que él defina su propia
+  contraseña. Más seguro (Color Media nunca conoce la contraseña del cliente) y más profesional.
+  **Dependencia:** requiere el envío de correos, que todavía no existe (misma infraestructura que
+  las notificaciones, funcionalidad 2). Por eso el alta definitiva por invitación queda pendiente
+  hasta montar el correo. Orden sugerido: roles → envío de correo (base) → sobre esa base,
+  invitaciones + notificaciones juntas.
+  - **ESTADO ACTUAL:** Claude Code construyó un alta PROVISORIA con correo + contraseña inicial +
+    rol (el método que ya usaba la app). Sirve para probar con usuarios reales ya. Se reemplaza
+    por la invitación por correo cuando se monte el envío de correos.
+- **ESTADO: estructura de roles CONSTRUIDA y verificada** (commit f8709d9): columna `client_role`
+  (owner/finance/content) con backfill, `auth_client_role()`, RLS de los tres roles, vista
+  `/portal/finanzas`, ruteo por rol. Pruebas 8/8: finanzas no ve proyectos/contenido/imágenes,
+  contenido no ve financiero, dueño ve todo, ninguno ve otro cliente.
 - **Finanzas es un rol acotado:** ve únicamente lo financiero + el contrato; no ve proyectos
   ni contenido.
 - **Implementación:** el rol pasa de estar en `profiles.role` (hoy admin/client) a algo más

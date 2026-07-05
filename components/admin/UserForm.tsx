@@ -23,25 +23,24 @@ export default function UserForm({
           <input name="email" type="email" placeholder="persona@empresa.cl" required />
         </div>
         <div className="field">
-          <label>Contraseña inicial</label>
-          <input name="password" type="text" placeholder="mín. 8 caracteres" required />
+          <label>Rol en el portal</label>
+          <select name="client_role" defaultValue="content">
+            {Object.entries(CLIENT_ROLE_LABELS).map(([v, l]) => (
+              <option key={v} value={v}>
+                {l}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
-      <div className="field">
-        <label>Rol en el portal</label>
-        <select name="client_role" defaultValue="content">
-          {Object.entries(CLIENT_ROLE_LABELS).map(([v, l]) => (
-            <option key={v} value={v}>
-              {l}
-            </option>
-          ))}
-        </select>
-      </div>
+      <span className="hint">
+        Se le enviará un correo con un enlace para que fije su contraseña.
+      </span>
       {state.error && <div className="form-error">{state.error}</div>}
-      {state.ok && <span className="badge-soft">Usuario creado</span>}
+      {state.ok && !state.error && <span className="badge-soft">Invitación enviada</span>}
       <div className="form-actions">
         <button className="btn btn-primary" disabled={pending}>
-          {pending ? "Creando…" : "Crear usuario"}
+          {pending ? "Invitando…" : "Invitar usuario"}
         </button>
       </div>
     </form>

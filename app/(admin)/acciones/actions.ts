@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { notifyEvent } from "@/lib/notify";
 
 export type FormState = { error: string | null; ok?: boolean };
 
@@ -39,6 +40,15 @@ export async function crearAccion(
   const supabase = await createClient();
   const { error } = await supabase.from("actions").insert(a);
   if (error) return { error: "No se pudo registrar la acción: " + error.message };
+
+  await notifyEvent({
+    type: "accion",
+    clientId: a.client_id,
+    title: a.title,
+    detail: a.description ?? a.title,
+    panelPath: a.project_id ? `/proyectos/${a.project_id}` : "/acciones",
+    portalPath: a.project_id ? `/portal/proyectos/${a.project_id}` : "/portal/que-viene",
+  });
 
   if (a.project_id) revalidatePath(`/proyectos/${a.project_id}`);
   revalidatePath("/acciones");

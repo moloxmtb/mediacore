@@ -3,7 +3,8 @@ import PageHeader from "@/components/PageHeader";
 import { createClient } from "@/lib/supabase/server";
 import { getConnectionStatus } from "@/lib/google";
 import { formatDate } from "@/lib/format";
-import { desconectarGoogle, sincronizarAhora } from "./actions";
+import { desconectarGoogle, guardarNotificaciones, sincronizarAhora } from "./actions";
+import { mailConfigured } from "@/lib/mail";
 
 const MESSAGES: Record<string, { text: string; cls: string }> = {
   "connected=1": { text: "Google Calendar conectado.", cls: "b-ok" },
@@ -48,6 +49,20 @@ export default async function IntegracionesPage({
     .order("name", { ascending: true });
   const list = clients ?? [];
   const mapped = list.filter((c) => c.google_calendar_id).length;
+
+  // Config de notificaciones por correo.
+  const [{ data: notifRows }, { data: notifConfig }] = await Promise.all([
+    supabase.from("notification_settings").select("event_type, to_internal, to_client"),
+    supabase.from("notification_config").select("internal_emails").eq("id", 1).maybeSingle(),
+  ]);
+  const notif = new Map(
+    (notifRows ?? []).map((r) => [r.event_type as string, r]),
+  );
+  const NOTIF_LABELS: Record<string, string> = {
+    accion: "Acciones (bitácora)",
+    hito: "Hitos de calendario",
+    reunion: "Reuniones",
+  };
 
   return (
     <>
@@ -159,6 +174,55 @@ export default async function IntegracionesPage({
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Notificaciones por correo */}
+          <div className="card">
+            <div className="card-head">
+              <h3>Notificaciones por correo</h3>
+              {mailConfigured() ? (
+                <span className="badge b-ok">Resend activo</span>
+              ) : (
+                <span className="badge b-warn">Falta RESEND_API_KEY</span>
+              )}
+            </div>
+            <form action={guardarNotificaciones}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Evento</th>
+                    <th style={{ textAlign: "center" }}>Equipo interno</th>
+                    <th style={{ textAlign: "center" }}>Cliente</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(["accion", "hito", "reunion"] as const).map((t) => {
+                    const row = notif.get(t);
+                    return (
+                      <tr key={t}>
+                        <td>{NOTIF_LABELS[t]}</td>
+                        <td style={{ textAlign: "center" }}>
+                          <input type="checkbox" name={`${t}_internal`} defaultChecked={row?.to_internal ?? true} />
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <input type="checkbox" name={`${t}_client`} defaultChecked={row?.to_client ?? false} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div className="field">
+                  <label>Correos internos de Color Media (separados por coma)</label>
+                  <textarea name="internal_emails" defaultValue={notifConfig?.internal_emails ?? ""} placeholder="marketing@colormedia.cl" style={{ minHeight: "56px" }} />
+                  <span className="hint">A estos correos llegan los avisos marcados como "interno". Al cliente le llega solo a sus usuarios dueño/contenido de esa empresa.</span>
+                </div>
+                <div>
+                  <button className="btn btn-primary btn-sm" type="submit">Guardar notificaciones</button>
+                </div>
+              </div>
+            </form>
           </div>
 
           <div className="note">
