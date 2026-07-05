@@ -31,11 +31,16 @@ import {
   guardarPlanItem,
   eliminarPlanItem,
 } from "../contexto-actions";
+import {
+  agendarSolicitud,
+  descartarSolicitud,
+} from "../../../(portal)/portal/calendario/reunion-actions";
 import type {
   ClientContact,
   ClientDetails,
   ClientPlanItem,
   ClientStrategy,
+  MeetingRequest,
 } from "@/lib/types";
 import type { ClientRole } from "@/lib/types";
 import {
@@ -169,6 +174,15 @@ export default async function ClienteDetallePage({
       attByEvent.set(a.event_id, arr);
     }
   }
+
+  // Solicitudes de reunión de este cliente (admin ve todas por RLS).
+  const { data: mrData } = await supabase
+    .from("meeting_requests")
+    .select("*")
+    .eq("client_id", id)
+    .order("created_at", { ascending: false })
+    .limit(10);
+  const meetingReqs = (mrData ?? []) as MeetingRequest[];
 
   return (
     <>
@@ -454,6 +468,46 @@ export default async function ClienteDetallePage({
               </div>
             ) : (
               <div className="empty">No hay reuniones próximas para este cliente.</div>
+            )}
+          </div>
+
+          {/* Solicitudes de reunión */}
+          <div className="card">
+            <div className="card-head">
+              <h3>Solicitudes de reunión</h3>
+              <span className="tag">{meetingReqs.filter((r) => r.status === "pendiente").length} pendientes</span>
+            </div>
+            {meetingReqs.length ? (
+              <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {meetingReqs.map((r) => (
+                  <div key={r.id} style={{ borderBottom: "1px solid var(--border-soft)", paddingBottom: "12px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "flex-start" }}>
+                      <div>
+                        <div style={{ fontWeight: 500 }}>{r.reason}</div>
+                        <div className="meta" style={{ marginTop: "3px" }}>
+                          {emailById.get(r.requested_by) ?? "—"} · urgencia {r.urgency}
+                          {r.preferred_at ? ` · preferida ${formatDateTime(r.preferred_at)}` : ""}
+                        </div>
+                      </div>
+                      <span className={`badge ${r.status === "agendada" ? "b-ok" : r.status === "descartada" ? "b-idle" : "b-warn"}`}>
+                        {r.status === "agendada" ? "Agendada" : r.status === "descartada" ? "Descartada" : "Pendiente"}
+                      </span>
+                    </div>
+                    {r.admin_note && <div style={{ fontSize: "12.5px", color: "var(--muted)", marginTop: "4px" }}>Nota: {r.admin_note}</div>}
+                    {r.status === "pendiente" && (
+                      <form style={{ marginTop: "8px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                        <input type="hidden" name="id" value={r.id} />
+                        <input type="hidden" name="client_id" value={cl.id} />
+                        <input name="admin_note" placeholder="Nota (opcional)" style={{ flex: 1, minWidth: "160px" }} />
+                        <button className="btn btn-sm btn-primary" formAction={agendarSolicitud}>Marcar agendada</button>
+                        <button className="btn btn-sm btn-danger" formAction={descartarSolicitud}>Descartar</button>
+                      </form>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty">Sin solicitudes de reunión.</div>
             )}
           </div>
 

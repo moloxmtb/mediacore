@@ -90,6 +90,22 @@ export type EventAttendance = {
   updated_at: string;
 };
 
+export type MeetingUrgency = "baja" | "media" | "alta";
+export type MeetingRequestStatus = "pendiente" | "agendada" | "descartada";
+
+export type MeetingRequest = {
+  id: string;
+  client_id: string;
+  requested_by: string;
+  reason: string;
+  preferred_at: string | null;
+  urgency: MeetingUrgency;
+  status: MeetingRequestStatus;
+  admin_note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ContentPeriodKind = "mensual" | "quincenal" | "semanal";
 export type ContentStatus =
   | "borrador"

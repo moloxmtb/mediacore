@@ -1,6 +1,7 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getLatestUf } from "@/lib/uf";
 import {
   CLIENT_STATUS_LABELS,
@@ -8,11 +9,16 @@ import {
   clientStatusBadge,
   contractMonthlyNetCLP,
   formatCLP,
+  formatDateTime,
   formatUF,
   PROJECT_STATUS_LABELS,
   projectStatusBadge,
 } from "@/lib/format";
-import type { Client, Contract, Project } from "@/lib/types";
+import {
+  agendarSolicitud,
+  descartarSolicitud,
+} from "../../(portal)/portal/calendario/reunion-actions";
+import type { Client, Contract, MeetingRequest, Project } from "@/lib/types";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -54,6 +60,21 @@ export default async function DashboardPage() {
   const proposals = clientList.filter((c) => c.status === "propuesta").length;
   const activeProjects = projectList.filter((p) => p.status === "activo");
 
+  // Bandeja global de solicitudes de reunión pendientes (todas las empresas).
+  const { data: reqData } = await supabase
+    .from("meeting_requests")
+    .select("*")
+    .eq("status", "pendiente")
+    .order("created_at", { ascending: false })
+    .limit(20);
+  const pendingReqs = (reqData ?? []) as MeetingRequest[];
+  const clientNameById = new Map(clientList.map((c) => [c.id, c.name]));
+  let reqEmailById = new Map<string, string>();
+  if (pendingReqs.length) {
+    const { data: userList } = await createAdminClient().auth.admin.listUsers({ perPage: 1000 });
+    reqEmailById = new Map((userList?.users ?? []).map((u) => [u.id, u.email ?? "—"]));
+  }
+
   return (
     <>
       <PageHeader
@@ -90,6 +111,43 @@ export default async function DashboardPage() {
             <div className="m">clientes por cerrar</div>
           </div>
         </div>
+
+        {pendingReqs.length > 0 && (
+          <div className="card" style={{ marginBottom: "18px" }}>
+            <div className="card-head">
+              <h3>Solicitudes de reunión pendientes</h3>
+              <span className="tag">{pendingReqs.length}</span>
+            </div>
+            <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {pendingReqs.map((r) => (
+                <div key={r.id} style={{ borderBottom: "1px solid var(--border-soft)", paddingBottom: "12px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "flex-start" }}>
+                    <div>
+                      <div style={{ fontWeight: 500 }}>
+                        <Link href={`/clientes/${r.client_id}`} className="row-link">{clientNameById.get(r.client_id) ?? "Cliente"}</Link>
+                        {" — "}{r.reason}
+                      </div>
+                      <div className="meta" style={{ marginTop: "3px" }}>
+                        {reqEmailById.get(r.requested_by) ?? "—"} · urgencia {r.urgency}
+                        {r.preferred_at ? ` · preferida ${formatDateTime(r.preferred_at)}` : ""}
+                      </div>
+                    </div>
+                    <span className={`badge ${r.urgency === "alta" ? "b-bad" : r.urgency === "media" ? "b-warn" : "b-idle"}`}>
+                      {r.urgency}
+                    </span>
+                  </div>
+                  <form style={{ marginTop: "8px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                    <input type="hidden" name="id" value={r.id} />
+                    <input type="hidden" name="client_id" value={r.client_id} />
+                    <input name="admin_note" placeholder="Nota (opcional)" style={{ flex: 1, minWidth: "160px" }} />
+                    <button className="btn btn-sm btn-primary" formAction={agendarSolicitud}>Agendada</button>
+                    <button className="btn btn-sm btn-danger" formAction={descartarSolicitud}>Descartar</button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid-2">
           {/* Clientes y tarifa */}

@@ -615,6 +615,19 @@ Consideraciones de diseño:
   en estado propuesta), próxima reunión (evento kind=reunion cercano), quizás entregables. Definir el set
   y los umbrales (¿cuántos días antes avisa el pago?).
 - Es lectura/cálculo sobre datos que ya existen — probablemente sin migración, o mínima.
+
+Decisiones CONFIRMADAS (a construir antes del deploy, va en v1.00):
+- **Tres alertas de entrada:** (1) pago próximo a vencer — avisa **7 días antes** (cuota facturada impaga,
+  solo dueño/finanzas); (2) contenido por aprobar — apenas haya piezas en estado propuesta (solo roles que
+  ven contenido); (3) próxima reunión — avisa **3 días antes** (evento kind=reunion).
+- **Botón de confirmar asistencia (SÍ, en esta tanda):** en la alerta de reunión, el cliente ve la
+  invitación y confirma asistencia con un botón. La confirmación queda visible para Color Media (quién
+  confirmó / quién no). Escritura acotada del cliente (patrón "voto" como aprobar contenido). Probablemente
+  requiere una tabla/campo para la confirmación → migración chica.
+- **Badges en el nav:** círculo con número junto al ítem correspondiente (ej. Contenido = nº de piezas por
+  aprobar), respetando el rol.
+- Verificar: cada rol solo ve sus alertas/badges; un cliente no ve pendientes de otro; el botón de asistencia
+  solo lo usa quien corresponde y sobre su propia reunión.
 - Decisión pendiente: ¿la reunión con "confirmar asistencia" implica una acción de confirmar (escritura
   del cliente) o solo el aviso? Lo primero sería una mini-funcionalidad extra.
   **DECISIÓN:** sí — el cliente ve la invitación a la reunión en pantalla y confirma asistencia con un
@@ -649,7 +662,58 @@ Decisiones CONFIRMADAS:
   sí 100% automática). Arranca en v1.00.
 - **Dirección de producción del sistema: `core.colormedia.cl`** (subdominio para el deploy — Fase 7).
 
+### 13. Sección "Calendario" en el portal del cliente
+
+Hoy hay confirmación de reuniones (funcionalidad 11) pero NO un lugar claro donde el cliente vea sus
+reuniones y eventos con fecha — están dispersos. Esta sección los unifica y se vuelve el lugar único
+de todo lo que tiene fecha. Detectado como faltante antes del deploy.
+
+Capas (elegir alcance — algunas ya existen, otras son nuevas):
+- **Capa base (mostrar):** vista de calendario en el portal con TODO lo que tiene fecha: reuniones,
+  rodajes, entregas, hitos. Los datos YA existen (calendar_events sincronizados con Google, hitos de la
+  Gantt, entregables con fecha) pero dispersos → reunirlos en una vista. Arriba, una tira de "próximos
+  hitos" LIVIANA (no invocar la maquinaria pesada de la carta Gantt — solo leer fase/fecha).
+- **Capa interactiva (ya existe):** confirmar asistencia a reuniones — reusar el botón/tabla
+  `event_attendance` de la funcionalidad 11, mostrado en contexto del calendario.
+- **Capa nueva (solicitar reunión):** el cliente solicita una reunión a Color Media desde el calendario
+  → le llega la solicitud al admin (aviso por correo, Resend) → el admin agenda. Mini-flujo propio
+  (solicitud → aviso → respuesta). Es escritura del cliente, acotada, con RLS.
+- **Visión "el calendario conecta todo":** aterrizar en qué se conecta exactamente (reuniones, hitos,
+  entregas, rodajes) — no dejar "todo" abierto para no volverlo infinito.
+
+Respeta roles (cada rol ve los eventos de su mundo). Probablemente sin migración para la vista;
+la solicitud de reunión sí necesitaría tabla. Definir alcance para v1.00 vs post-deploy.
+
+**DECISIÓN: alcance COMPLETO antes del deploy (las tres capas, va en v1.00):** vista de calendario con
+todo lo fechado + tira de próximos hitos liviana + confirmar reuniones en contexto + solicitar reunión a
+Color Media (mini-flujo: cliente solicita → aviso al admin por Resend → admin agenda). Respeta roles.
+"Conecta todo" = reuniones, hitos, entregas, rodajes (lo que tiene fecha), no un "todo" infinito.
+
+Decisiones de diseño CONFIRMADAS:
+- **Solicitar reunión:** el cliente incluye motivo + fecha/hora preferida + urgencia. **Cualquier rol**
+  del cliente puede solicitar (pedir reunión es coordinación general, no sensible). Le llega al admin por
+  correo (Resend) y queda registrada; el admin la agenda de verdad (crea el evento). Tabla nueva para las
+  solicitudes.
+- **Dos vistas con interruptor:** (a) mensual clásica (grilla de días) y (b) lista de próximos eventos por
+  fecha. La mensual es la que más trabajo de diseño lleva.
+- **Qué muestra el calendario:** reuniones, hitos, entregas, rodajes (todo lo que tiene fecha), leídos de
+  las fuentes existentes (calendar_events, phases/hitos, deliverables). Tira superior de próximos hitos
+  liviana (no invocar la Gantt pesada).
+- Respeta roles (cada rol ve los eventos de su mundo). Confirmar asistencia reusa `event_attendance` (func. 11).
+
+Decisiones finales (aprobadas, a construir):
+- **Bandeja global de solicitudes** en el dashboard del admin (todas las solicitudes pendientes de todos
+  los clientes en un lugar) + la tarjeta por cliente en cada ficha.
+- **Finanzas NO ve el ítem Calendario** (se le oculta — su rol es solo financiero; la coordinación de
+  reuniones la hacen dueño/contenido). Owner y content sí lo ven.
+- Modelo `meeting_requests` (client_id, requested_by, reason, preferred_at, urgency baja|media|alta,
+  status pendiente|agendada|descartada, admin_note). RLS: cualquier rol del cliente (que vea el calendario)
+  crea su solicitud; solo admin agenda/descarta; cliente no edita tras enviar. Aviso al admin por Resend.
+- Vista `/portal/calendario` con interruptor mensual (grilla) / lista, tira de próximos hitos y botón
+  Solicitar reunión arriba. Sin migración salvo `meeting_requests`.
+
 ---
+
 
 ## Mejoras pendientes (no bloquean, pulir cuando haya tiempo)
 
