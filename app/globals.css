@@ -261,6 +261,53 @@ h3 {
   flex-direction: column;
 }
 
+/* Badge (círculo con número) en los ítems del nav del portal */
+.nav-badge {
+  margin-left: auto;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--bad);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  font-family: var(--font-plex-mono);
+}
+
+/* Lista de alertas accionables ("Requieren tu atención") */
+.alert-list {
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+}
+.alert-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.alert-row:last-child {
+  border-bottom: none;
+}
+.alert-row .alert-text {
+  flex: 1;
+  font-size: 13.5px;
+  color: var(--text);
+}
+.alert-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.alert-accent { background: var(--accent); }
+.alert-warn { background: var(--warn, #d9a441); }
+.alert-bad { background: var(--bad); }
+
 /* Sello de identidad + versión + contacto comercial (pie de ambas caras) */
 .system-footer {
   margin-top: auto;

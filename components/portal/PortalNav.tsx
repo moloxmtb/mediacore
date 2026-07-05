@@ -113,7 +113,13 @@ const items: Item[] = [
   },
 ];
 
-export default function PortalNav({ role }: { role: ClientRole | null }) {
+export default function PortalNav({
+  role,
+  counts = {},
+}: {
+  role: ClientRole | null;
+  counts?: Record<string, number>;
+}) {
   const pathname = usePathname();
   const canContent = role === "owner" || role === "content";
   const canFinance = role === "owner" || role === "finance";
@@ -131,6 +137,7 @@ export default function PortalNav({ role }: { role: ClientRole | null }) {
       {visible.map((item) => {
         const active =
           pathname === item.href || pathname.startsWith(item.href + "/");
+        const badge = counts[item.href] ?? 0;
         return (
           <Link
             key={item.href}
@@ -139,6 +146,7 @@ export default function PortalNav({ role }: { role: ClientRole | null }) {
           >
             {item.icon}
             {item.label}
+            {badge > 0 && <span className="nav-badge">{badge}</span>}
           </Link>
         );
       })}

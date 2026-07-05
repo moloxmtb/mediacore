@@ -81,6 +81,20 @@ export default async function PortalFinanzasPage({
     }
   }
 
+  // Alerta de pago próximo/vencido (≤7 días). Coherente con "Qué viene", para
+  // que finanzas —que no pasa por el home de contenido— también la vea.
+  const proxCuota = cuotas
+    .filter((r) => r.status === "facturada")
+    .sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
+  let pagoAlert: { tone: string; text: string } | null = null;
+  if (proxCuota) {
+    const dias = Math.round(
+      (new Date(proxCuota.due_date + "T00:00:00").getTime() - new Date(t + "T00:00:00").getTime()) / 86400000,
+    );
+    if (dias < 0) pagoAlert = { tone: "b-bad", text: `Tienes un pago vencido (hace ${Math.abs(dias)} día${Math.abs(dias) === 1 ? "" : "s"}).` };
+    else if (dias <= 7) pagoAlert = { tone: "b-warn", text: dias === 0 ? "Tu próximo pago vence hoy." : `Tu próximo pago vence en ${dias} día${dias === 1 ? "" : "s"}.` };
+  }
+
   return (
     <>
       <PageHeader title="Finanzas" subtitle="Tu contrato y tus cuotas" />
@@ -88,6 +102,11 @@ export default async function PortalFinanzasPage({
         {banner && (
           <div style={{ marginBottom: "18px" }}>
             <span className={`badge ${banner.cls}`}>{banner.text}</span>
+          </div>
+        )}
+        {pagoAlert && (
+          <div style={{ marginBottom: "18px" }}>
+            <span className={`badge ${pagoAlert.tone}`}>{pagoAlert.text}</span>
           </div>
         )}
         <div className="stack">

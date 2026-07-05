@@ -1,6 +1,6 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
-import { requirePortalWorld } from "@/lib/auth";
+import { requirePortalWorld, canSeeContent, canSeeFinance } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   DELIVERABLE_STATUS_LABELS,
@@ -8,6 +8,23 @@ import {
   formatDateTime,
 } from "@/lib/format";
 import type { DeliverableStatus } from "@/lib/types";
+
+function todaySantiago(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date());
+}
+function daysUntil(ymd: string, today: string): number {
+  const a = new Date(today + "T00:00:00");
+  const b = new Date(ymd + "T00:00:00");
+  return Math.round((b.getTime() - a.getTime()) / 86400000);
+}
+function enDias(d: number): string {
+  if (d < 0) return `hace ${Math.abs(d)} día${Math.abs(d) === 1 ? "" : "s"}`;
+  if (d === 0) return "hoy";
+  if (d === 1) return "mañana";
+  return `en ${d} días`;
+}
+
+type Alert = { tone: string; text: string; href: string; cta: string };
 
 type EventRow = {
   id: string;
@@ -28,28 +45,83 @@ type DeliverableRow = {
 };
 
 export default async function QueVienePage() {
-  await requirePortalWorld("content");
+  const session = await requirePortalWorld("content");
   const supabase = await createClient();
   const now = new Date().toISOString();
+  const today = todaySantiago();
 
   // RLS filtra a lo del propio cliente y con visible_to_client = true.
-  const [{ data: events }, { data: deliverables }] = await Promise.all([
-    supabase
-      .from("calendar_events")
-      .select("id, title, description, starts_at, kind, project_id, projects(name)")
-      .gte("starts_at", now)
-      .order("starts_at", { ascending: true })
-      .limit(20),
-    supabase
-      .from("deliverables")
-      .select("id, title, result, status, project_id, projects(name)")
-      .neq("status", "aprobado")
-      .order("created_at", { ascending: false })
-      .limit(20),
-  ]);
+  const [{ data: events }, { data: deliverables }, { count: contentPend }, { data: cuotas }] =
+    await Promise.all([
+      supabase
+        .from("calendar_events")
+        .select("id, title, description, starts_at, kind, project_id, projects(name)")
+        .gte("starts_at", now)
+        .order("starts_at", { ascending: true })
+        .limit(20),
+      supabase
+        .from("deliverables")
+        .select("id, title, result, status, project_id, projects(name)")
+        .neq("status", "aprobado")
+        .order("created_at", { ascending: false })
+        .limit(20),
+      // Piezas por aprobar (RLS: owner/content). content = quien maneja contenido.
+      supabase
+        .from("content_pieces")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "propuesta"),
+      // Cuota facturada impaga más próxima (RLS: owner/finance).
+      supabase
+        .from("installments")
+        .select("due_date")
+        .eq("status", "facturada")
+        .order("due_date", { ascending: true })
+        .limit(1),
+    ]);
 
   const hitos = (events ?? []) as unknown as EventRow[];
   const entregables = (deliverables ?? []) as unknown as DeliverableRow[];
+
+  // --- Alertas accionables (cada una gateada por rol vía la RLS de su fuente) ---
+  const alerts: Alert[] = [];
+
+  // 1. Pago próximo a vencer (≤7 días o ya vencida). Solo dueño/finanzas.
+  const nextDue = (cuotas ?? [])[0]?.due_date as string | undefined;
+  if (canSeeFinance(session.clientRole) && nextDue) {
+    const d = daysUntil(nextDue, today);
+    if (d <= 7) {
+      alerts.push({
+        tone: d < 0 ? "bad" : "warn",
+        text: d < 0 ? `Tienes un pago vencido (${enDias(d)}).` : `Tu próximo pago vence ${enDias(d)}.`,
+        href: "/portal/finanzas",
+        cta: "Ver cuentas",
+      });
+    }
+  }
+
+  // 2. Contenido por aprobar. Solo quien ve contenido (owner/content).
+  if (canSeeContent(session.clientRole) && (contentPend ?? 0) > 0) {
+    const n = contentPend ?? 0;
+    alerts.push({
+      tone: "accent",
+      text: `Tienes ${n} pieza${n === 1 ? "" : "s"} de contenido por aprobar.`,
+      href: "/portal/contenido",
+      cta: "Revisar contenido",
+    });
+  }
+
+  // 3. Próxima reunión en ≤3 días (owner/content, RLS de calendar).
+  const proxReunion = hitos.find(
+    (h) => h.kind === "reunion" && daysUntil(h.starts_at.slice(0, 10), today) <= 3,
+  );
+  if (proxReunion) {
+    alerts.push({
+      tone: "accent",
+      text: `Tu próxima reunión es ${enDias(daysUntil(proxReunion.starts_at.slice(0, 10), today))}: ${proxReunion.title}.`,
+      href: "#reuniones",
+      cta: "Ver detalle",
+    });
+  }
 
   return (
     <>
@@ -58,6 +130,23 @@ export default async function QueVienePage() {
         subtitle="Lo próximo en tus proyectos, ordenado en el tiempo"
       />
       <div className="app-content">
+        {alerts.length > 0 && (
+          <div className="card" style={{ marginBottom: "18px" }}>
+            <div className="card-head">
+              <h3>Requieren tu atención</h3>
+              <span className="tag">{alerts.length}</span>
+            </div>
+            <ul className="alert-list">
+              {alerts.map((a, i) => (
+                <li key={i} className="alert-row">
+                  <span className={`alert-dot alert-${a.tone}`} />
+                  <span className="alert-text">{a.text}</span>
+                  <Link href={a.href} className="btn btn-sm">{a.cta}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div className="grid-2">
           {/* Próximos hitos */}
           <div className="card">

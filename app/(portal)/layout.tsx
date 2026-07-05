@@ -27,6 +27,24 @@ export default async function PortalLayout({
     .select("name, accent_color")
     .maybeSingle();
 
+  // Conteos para los badges del nav. La RLS ya limita cada tabla al mundo
+  // correcto (content_pieces: owner/content; installments: owner/finance), así
+  // que un rol que no corresponde recibe 0.
+  const [{ count: contentPend }, { count: financePend }] = await Promise.all([
+    supabase
+      .from("content_pieces")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "propuesta"),
+    supabase
+      .from("installments")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "facturada"),
+  ]);
+  const navCounts: Record<string, number> = {
+    "/portal/contenido": contentPend ?? 0,
+    "/portal/finanzas": financePend ?? 0,
+  };
+
   const companyName: string = client?.name ?? "Tu empresa";
   const contact = session.fullName ?? session.email ?? "Cliente";
   const initials = companyName
@@ -43,7 +61,7 @@ export default async function PortalLayout({
           <Brand size="sm" caption="Portal cliente" />
         </div>
 
-        <PortalNav role={session.clientRole} />
+        <PortalNav role={session.clientRole} counts={navCounts} />
 
         <div className="sidebar-who">
           <div
