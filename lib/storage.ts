@@ -33,4 +33,29 @@ export async function signImage(
   return map[path] ?? null;
 }
 
-export { BUCKET as CONTENT_BUCKET };
+const FACTURAS_BUCKET = "facturas";
+
+/**
+ * Firma URLs (cortas) del bucket privado 'facturas'. Igual que signImages:
+ * los llamadores solo pasan rutas de cuotas que ya pasaron RLS (SELECT de
+ * installments limitado a admin o dueño/finanzas del propio cliente), así que
+ * un cliente nunca recibe la URL de una factura ajena.
+ */
+export async function signInvoices(
+  paths: string[],
+  expiresIn = 120,
+): Promise<Record<string, string>> {
+  const clean = [...new Set(paths.filter(Boolean))];
+  if (!clean.length) return {};
+  const admin = createAdminClient();
+  const { data } = await admin.storage
+    .from(FACTURAS_BUCKET)
+    .createSignedUrls(clean, expiresIn);
+  const map: Record<string, string> = {};
+  for (const item of data ?? []) {
+    if (item.path && item.signedUrl) map[item.path] = item.signedUrl;
+  }
+  return map;
+}
+
+export { BUCKET as CONTENT_BUCKET, FACTURAS_BUCKET };

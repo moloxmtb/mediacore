@@ -20,9 +20,12 @@ import {
   anularCuota,
   actualizarUf,
   eliminarCuota,
+  eliminarFacturaPdf,
   facturarCuota,
   marcarPagada,
+  subirFacturaPdf,
 } from "./actions";
+import { signInvoices } from "@/lib/storage";
 
 type Row = Installment & {
   contracts: { modality: ContractModality } | null;
@@ -47,6 +50,11 @@ export default async function CobrosPage() {
 
   const rows = (data ?? []) as unknown as Row[];
   const t = today();
+
+  // Firma corta de los PDF ya archivados (se archivan por cuota).
+  const pdfUrls = await signInvoices(
+    rows.map((r) => r.invoice_pdf_path).filter((p): p is string => !!p),
+  );
 
   // Paybar: solo cuotas ya facturadas o pagadas cuentan como cobro.
   let pagado = 0;
@@ -230,6 +238,44 @@ export default async function CobrosPage() {
                                 </button>
                               </form>
                             </>
+                          )}
+                          {(r.status === "facturada" || r.status === "pagada") && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-end" }}>
+                              {r.invoice_pdf_path && pdfUrls[r.invoice_pdf_path] && (
+                                <a
+                                  className="btn btn-sm"
+                                  href={pdfUrls[r.invoice_pdf_path]}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  Ver factura PDF
+                                </a>
+                              )}
+                              <details>
+                                <summary className="btn btn-sm">
+                                  {r.invoice_pdf_path ? "Reemplazar PDF" : "Subir factura PDF"}
+                                </summary>
+                                <form
+                                  action={subirFacturaPdf}
+                                  style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "6px" }}
+                                >
+                                  <input type="hidden" name="id" value={r.id} />
+                                  <input type="file" name="pdf" accept="application/pdf" required />
+                                  <button className="btn btn-sm btn-primary" type="submit">
+                                    {r.invoice_pdf_path ? "Reemplazar" : "Subir"}
+                                  </button>
+                                </form>
+                              </details>
+                              {r.invoice_pdf_path && (
+                                <form action={eliminarFacturaPdf}>
+                                  <input type="hidden" name="id" value={r.id} />
+                                  <input type="hidden" name="path" value={r.invoice_pdf_path} />
+                                  <button className="btn btn-sm btn-danger" type="submit">
+                                    Quitar PDF
+                                  </button>
+                                </form>
+                              )}
+                            </div>
                           )}
                         </div>
                       </td>

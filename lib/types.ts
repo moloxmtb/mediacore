@@ -146,6 +146,8 @@ export type Installment = {
   dte_type: number | null;
   dte_number: string | null;
   paid_at: string | null;
+  invoice_pdf_path: string | null;
+  invoice_pdf_uploaded_at: string | null;
   created_at: string;
 };
 

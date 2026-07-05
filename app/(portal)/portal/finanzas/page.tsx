@@ -18,6 +18,7 @@ import {
   ivaUF,
   totalUF,
 } from "@/lib/billing";
+import { signInvoices } from "@/lib/storage";
 import type { Contract, Installment } from "@/lib/types";
 
 function today(): string {
@@ -37,6 +38,11 @@ export default async function PortalFinanzasPage() {
   const contracts = (contractsData ?? []) as Contract[];
   const cuotas = (instData ?? []) as Installment[];
   const t = today();
+
+  // Firma corta de las facturas PDF (RLS ya limitó las cuotas a este cliente).
+  const pdfUrls = await signInvoices(
+    cuotas.map((r) => r.invoice_pdf_path).filter((p): p is string => !!p),
+  );
 
   let pagado = 0, porCobrar = 0, vencido = 0;
   for (const r of cuotas) {
@@ -120,6 +126,7 @@ export default async function PortalFinanzasPage() {
                     <th className="num">Total</th>
                     <th>Vence</th>
                     <th>Estado</th>
+                    <th>Factura</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -159,6 +166,20 @@ export default async function PortalFinanzasPage() {
                           <span className={`badge ${installmentStatusBadge(r.status)}`}>
                             {INSTALLMENT_STATUS_LABELS[r.status]}
                           </span>
+                        </td>
+                        <td>
+                          {r.invoice_pdf_path && pdfUrls[r.invoice_pdf_path] ? (
+                            <a
+                              className="btn btn-sm"
+                              href={pdfUrls[r.invoice_pdf_path]}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              Descargar
+                            </a>
+                          ) : (
+                            <span style={{ color: "var(--faint)" }}>—</span>
+                          )}
                         </td>
                       </tr>
                     );

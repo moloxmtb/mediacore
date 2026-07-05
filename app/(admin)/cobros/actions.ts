@@ -23,6 +23,55 @@ function opt(fd: FormData, key: string): string | null {
   return v === "" ? null : v;
 }
 
+const FACTURAS_BUCKET = "facturas";
+
+/** Archiva (o reemplaza) el PDF del DTE de una cuota. Solo admin (RLS). */
+export async function subirFacturaPdf(fd: FormData): Promise<void> {
+  const id = str(fd, "id");
+  const file = fd.get("pdf") as File | null;
+  if (!id || !file || file.size === 0) return;
+  if (file.type !== "application/pdf") return; // solo PDF
+
+  const supabase = await createClient();
+  const { data: cuota } = await supabase
+    .from("installments")
+    .select("id, client_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!cuota) return;
+
+  const path = `${cuota.client_id}/${cuota.id}.pdf`;
+  const { error: upErr } = await supabase.storage
+    .from(FACTURAS_BUCKET)
+    .upload(path, file, { upsert: true, contentType: "application/pdf" });
+  if (upErr) return;
+
+  await supabase
+    .from("installments")
+    .update({
+      invoice_pdf_path: path,
+      invoice_pdf_uploaded_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  revalidatePath("/cobros");
+  revalidatePath("/portal/finanzas");
+}
+
+/** Quita el PDF de una cuota (borra archivo y limpia el campo). Solo admin. */
+export async function eliminarFacturaPdf(fd: FormData): Promise<void> {
+  const id = str(fd, "id");
+  const path = str(fd, "path");
+  if (!id || !path) return;
+  const supabase = await createClient();
+  await supabase.storage.from(FACTURAS_BUCKET).remove([path]);
+  await supabase
+    .from("installments")
+    .update({ invoice_pdf_path: null, invoice_pdf_uploaded_at: null })
+    .eq("id", id);
+  revalidatePath("/cobros");
+  revalidatePath("/portal/finanzas");
+}
+
 /** Fecha de hoy en zona de Chile (YYYY-MM-DD). */
 function todayCL(): string {
   return new Intl.DateTimeFormat("en-CA", {
