@@ -87,13 +87,9 @@ export async function solicitarReunion(
 }
 
 // ---------- Gestión desde el panel (solo admin, por RLS) ----------
-export async function agendarSolicitud(fd: FormData): Promise<void> {
-  await setEstadoSolicitud(fd, "agendada");
-}
+// "Agendar" (crear el evento sincronizado) vive en calendario/evento-actions.ts
+// (agendarYCrearEvento). Aquí queda solo el descarte.
 export async function descartarSolicitud(fd: FormData): Promise<void> {
-  await setEstadoSolicitud(fd, "descartada");
-}
-async function setEstadoSolicitud(fd: FormData, status: "agendada" | "descartada") {
   const id = String(fd.get("id") ?? "").trim();
   const client_id = String(fd.get("client_id") ?? "").trim();
   const admin_note = String(fd.get("admin_note") ?? "").trim() || null;
@@ -101,7 +97,7 @@ async function setEstadoSolicitud(fd: FormData, status: "agendada" | "descartada
   const supabase = await createClient();
   await supabase
     .from("meeting_requests")
-    .update({ status, admin_note, updated_at: new Date().toISOString() })
+    .update({ status: "descartada", admin_note, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (client_id) revalidatePath(`/clientes/${client_id}`);
   revalidatePath("/dashboard");

@@ -6,7 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   deleteGoogleEvent,
   getConnectionStatus,
-  pushEvent,
+  pushPanelEventToGoogle,
 } from "@/lib/google";
 import { notifyEvent, type NotifType } from "@/lib/notify";
 
@@ -37,21 +37,8 @@ function parseHito(fd: FormData) {
   };
 }
 
-async function clientCalendar(
-  supabase: SupabaseClient,
-  clientId: string,
-): Promise<string | null> {
-  const { data } = await supabase
-    .from("clients")
-    .select("google_calendar_id")
-    .eq("id", clientId)
-    .maybeSingle();
-  return data?.google_calendar_id ?? null;
-}
-
-/** Panel → Google, best-effort: si está conectado y el cliente tiene
- *  calendario, crea/actualiza el evento y guarda su google_event_id. Un fallo
- *  aquí no rompe el guardado local (la sync posterior puede reconciliar). */
+/** Panel → Google, best-effort. Delega en la orquestación compartida de
+ *  lib/google (la misma que usa la creación de eventos desde el calendario). */
 async function pushToGoogle(
   supabase: SupabaseClient,
   eventId: string,
@@ -59,30 +46,13 @@ async function pushToGoogle(
   h: ReturnType<typeof parseHito>,
   existingGoogleId: string | null,
 ) {
-  try {
-    const status = await getConnectionStatus();
-    if (!status.connected) return;
-    const cal = await clientCalendar(supabase, clientId);
-    if (!cal) return;
-    const gid = await pushEvent({
-      google_event_id: existingGoogleId,
-      title: h.title,
-      description: h.description,
-      starts_at: h.starts_at,
-      ends_at: h.ends_at,
-      calendarId: cal,
-    });
-    await supabase
-      .from("calendar_events")
-      .update({
-        google_event_id: gid,
-        google_calendar_id: cal,
-        synced_at: new Date().toISOString(),
-      })
-      .eq("id", eventId);
-  } catch (e) {
-    console.error("Push de hito a Google falló:", e);
-  }
+  await pushPanelEventToGoogle(
+    supabase,
+    eventId,
+    clientId,
+    { title: h.title, description: h.description, starts_at: h.starts_at, ends_at: h.ends_at },
+    existingGoogleId,
+  );
 }
 
 function revalidate(projectId: string | null) {

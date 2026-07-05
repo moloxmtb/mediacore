@@ -31,10 +31,7 @@ import {
   guardarPlanItem,
   eliminarPlanItem,
 } from "../contexto-actions";
-import {
-  agendarSolicitud,
-  descartarSolicitud,
-} from "../../../(portal)/portal/calendario/reunion-actions";
+import AgendarSolicitudForm from "@/components/admin/AgendarSolicitudForm";
 import type {
   ClientContact,
   ClientDetails,
@@ -495,13 +492,9 @@ export default async function ClienteDetallePage({
                     </div>
                     {r.admin_note && <div style={{ fontSize: "12.5px", color: "var(--muted)", marginTop: "4px" }}>Nota: {r.admin_note}</div>}
                     {r.status === "pendiente" && (
-                      <form style={{ marginTop: "8px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-                        <input type="hidden" name="id" value={r.id} />
-                        <input type="hidden" name="client_id" value={cl.id} />
-                        <input name="admin_note" placeholder="Nota (opcional)" style={{ flex: 1, minWidth: "160px" }} />
-                        <button className="btn btn-sm btn-primary" formAction={agendarSolicitud}>Marcar agendada</button>
-                        <button className="btn btn-sm btn-danger" formAction={descartarSolicitud}>Descartar</button>
-                      </form>
+                      <div style={{ marginTop: "8px" }}>
+                        <AgendarSolicitudForm requestId={r.id} clientId={cl.id} clientName={cl.name} preferredAt={r.preferred_at} />
+                      </div>
                     )}
                   </div>
                 ))}

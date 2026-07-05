@@ -1,4 +1,5 @@
 import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decrypt, encrypt } from "@/lib/crypto";
 import type { Client } from "@/lib/types";
@@ -349,6 +350,47 @@ export async function pushEvent(event: {
   if (!res.ok) throw new Error(`push evento: ${res.status} ${await res.text()}`);
   const data = await res.json();
   return data.id as string;
+}
+
+/**
+ * Orquestación reutilizable "panel → Google" (best-effort): si Google está
+ * conectado y el cliente tiene calendario mapeado, crea/actualiza el evento y
+ * guarda su google_event_id + synced_at para no duplicar en la próxima sync.
+ * Un fallo aquí NO rompe el guardado local. La usan la creación de hitos y la
+ * creación de eventos/reuniones desde el calendario del admin.
+ */
+export async function pushPanelEventToGoogle(
+  supabase: SupabaseClient,
+  eventId: string,
+  clientId: string,
+  ev: { title: string; description: string | null; starts_at: string; ends_at: string | null },
+  existingGoogleId: string | null,
+): Promise<void> {
+  try {
+    const status = await getConnectionStatus();
+    if (!status.connected) return;
+    const { data } = await supabase
+      .from("clients")
+      .select("google_calendar_id")
+      .eq("id", clientId)
+      .maybeSingle();
+    const cal = data?.google_calendar_id as string | null | undefined;
+    if (!cal) return;
+    const gid = await pushEvent({
+      google_event_id: existingGoogleId,
+      title: ev.title,
+      description: ev.description,
+      starts_at: ev.starts_at,
+      ends_at: ev.ends_at,
+      calendarId: cal,
+    });
+    await supabase
+      .from("calendar_events")
+      .update({ google_event_id: gid, google_calendar_id: cal, synced_at: new Date().toISOString() })
+      .eq("id", eventId);
+  } catch (e) {
+    console.error("Push de evento a Google falló:", e);
+  }
 }
 
 /** Panel → Google: elimina el evento. */

@@ -14,10 +14,7 @@ import {
   PROJECT_STATUS_LABELS,
   projectStatusBadge,
 } from "@/lib/format";
-import {
-  agendarSolicitud,
-  descartarSolicitud,
-} from "../../(portal)/portal/calendario/reunion-actions";
+import AgendarSolicitudForm from "@/components/admin/AgendarSolicitudForm";
 import type { Client, Contract, MeetingRequest, Project } from "@/lib/types";
 
 export default async function DashboardPage() {
@@ -136,13 +133,9 @@ export default async function DashboardPage() {
                       {r.urgency}
                     </span>
                   </div>
-                  <form style={{ marginTop: "8px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-                    <input type="hidden" name="id" value={r.id} />
-                    <input type="hidden" name="client_id" value={r.client_id} />
-                    <input name="admin_note" placeholder="Nota (opcional)" style={{ flex: 1, minWidth: "160px" }} />
-                    <button className="btn btn-sm btn-primary" formAction={agendarSolicitud}>Agendada</button>
-                    <button className="btn btn-sm btn-danger" formAction={descartarSolicitud}>Descartar</button>
-                  </form>
+                  <div style={{ marginTop: "8px" }}>
+                    <AgendarSolicitudForm requestId={r.id} clientId={r.client_id} clientName={clientNameById.get(r.client_id) ?? "el cliente"} preferredAt={r.preferred_at} />
+                  </div>
                 </div>
               ))}
             </div>

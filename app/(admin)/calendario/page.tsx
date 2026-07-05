@@ -2,11 +2,9 @@ import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatDate, formatDateTime } from "@/lib/format";
-import {
-  agendarSolicitud,
-  descartarSolicitud,
-} from "../../(portal)/portal/calendario/reunion-actions";
+import { formatDate } from "@/lib/format";
+import NuevoEventoForm from "@/components/admin/NuevoEventoForm";
+import AgendarSolicitudForm from "@/components/admin/AgendarSolicitudForm";
 import type { MeetingRequest } from "@/lib/types";
 
 function todaySantiago(): string {
@@ -54,6 +52,7 @@ export default async function AdminCalendarioPage({
   const mesParam = /^\d{4}-\d{2}$/.test(sp.mes ?? "") ? (sp.mes as string) : `${ty}-${pad(tm)}`;
   const [Y, M] = mesParam.split("-").map(Number);
   const filtro = sp.cliente ?? "";
+  const addDate = /^\d{4}-\d{2}-\d{2}$/.test(sp.add ?? "") ? (sp.add as string) : "";
 
   const rangeStart = `${Math.min(Y, ty)}-01-01`;
   const rangeEnd = `${Math.max(Y, ty) + 1}-01-01`;
@@ -185,13 +184,24 @@ export default async function AdminCalendarioPage({
             ))}
           </div>
 
-          {/* Interruptor de vista */}
-          <div className="page-actions" style={{ justifyContent: "space-between", alignItems: "center" }}>
+          {/* Interruptor de vista + agregar evento */}
+          <div className="page-actions" style={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
             <div className="seg">
               <Link href={qp({ vista: "mes" })} className={`seg-btn${vista === "mes" ? " active" : ""}`}>Mensual</Link>
               <Link href={qp({ vista: "lista" })} className={`seg-btn${vista === "lista" ? " active" : ""}`}>Lista</Link>
             </div>
-            <span className="tag mono">{shown.length} eventos{filtro ? ` · ${nameOf(filtro)}` : ""}</span>
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              <span className="tag mono">{shown.length} eventos{filtro ? ` · ${nameOf(filtro)}` : ""}</span>
+              <details open={!!addDate}>
+                <summary className="btn btn-sm btn-primary" style={{ width: "fit-content" }}>Agregar evento</summary>
+                <div className="card" style={{ marginTop: "10px" }}>
+                  <div className="card-head"><h3>Nuevo evento{addDate ? ` · ${formatDate(addDate)}` : ""}</h3></div>
+                  <div className="card-body">
+                    <NuevoEventoForm clients={clients} defaultDate={addDate || undefined} />
+                  </div>
+                </div>
+              </details>
+            </div>
           </div>
 
           {vista === "mes" ? (
@@ -210,7 +220,7 @@ export default async function AdminCalendarioPage({
                   const dayItems = byDay.get(c.date) ?? [];
                   return (
                     <div key={c.date} className={`cal-cell${c.inMonth ? "" : " out"}${c.date === today ? " cal-today" : ""}`}>
-                      <div className="cal-daynum">{c.day}</div>
+                      <Link href={qp({ add: c.date })} className="cal-daynum cal-daynum-link" title="Agregar evento este día">{c.day}</Link>
                       {dayItems.slice(0, 4).map((it) => (
                         <Link
                           key={it.key}
@@ -249,12 +259,7 @@ export default async function AdminCalendarioPage({
                             </div>
                           </div>
                           {it.request && (
-                            <form style={{ display: "flex", gap: "6px" }}>
-                              <input type="hidden" name="id" value={it.request.id} />
-                              <input type="hidden" name="client_id" value={it.clientId} />
-                              <button className="btn btn-sm btn-primary" formAction={agendarSolicitud}>Agendar</button>
-                              <button className="btn btn-sm btn-danger" formAction={descartarSolicitud}>Descartar</button>
-                            </form>
+                            <AgendarSolicitudForm requestId={it.request.id} clientId={it.clientId} clientName={it.clientName} preferredAt={it.request.preferred_at} />
                           )}
                         </div>
                       ))}
@@ -279,12 +284,7 @@ export default async function AdminCalendarioPage({
                       <div style={{ fontSize: "13.5px", fontWeight: 500 }}>{r.reason}</div>
                       <div className="meta">{nameOf(r.client_id)} · {reqEmailById.get(r.requested_by) ?? "—"} · urgencia {r.urgency}</div>
                     </div>
-                    <form style={{ display: "flex", gap: "6px" }}>
-                      <input type="hidden" name="id" value={r.id} />
-                      <input type="hidden" name="client_id" value={r.client_id} />
-                      <button className="btn btn-sm btn-primary" formAction={agendarSolicitud}>Agendar</button>
-                      <button className="btn btn-sm btn-danger" formAction={descartarSolicitud}>Descartar</button>
-                    </form>
+                    <AgendarSolicitudForm requestId={r.id} clientId={r.client_id} clientName={nameOf(r.client_id)} preferredAt={r.preferred_at} />
                   </div>
                 ))}
               </div>

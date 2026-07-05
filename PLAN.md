@@ -742,6 +742,37 @@ Decisiones finales (aprobadas, a construir tras el calendario del cliente):
 - Sección propia "Calendario" en el menú del panel admin. Reusa el patrón del calendario del cliente (func. 13)
   y las fuentes de fecha existentes (calendar_events, deliverables, hitos, meeting_requests). Sin migración propia.
 
+### 15. Crear eventos desde el calendario de administración
+
+Cierra la asimetría de la func. 14: hoy el admin VE todo en su calendario consolidado pero no puede CREAR
+desde ahí (es de solo lectura). El cliente solicita reunión, el admin la ve, pero no agrega directo. Esta
+funcionalidad hace del calendario admin una herramienta de trabajo, no solo de consulta.
+
+- **Crear desde el calendario:** clic en un día o botón "agregar" → crear una reunión / evento (rodaje, etc.)
+  directamente en el calendario, eligiendo el cliente.
+- **Sincronización con Google (CLAVE):** los eventos ya se sincronizan con Google Calendar (un calendario por
+  cliente). Crear una reunión desde aquí debe usar ESA maquinaria existente, para que aparezca también en el
+  Google Calendar del cliente. No reinventar — conectar el "agregar" con el mecanismo de creación+sync que ya existe.
+- **Distinción por tipo (definir alcance):**
+  - Reuniones y eventos sueltos (rodaje, etc.): naturales de crear desde el calendario → se sincronizan con Google.
+  - Hitos: pertenecen a la Gantt de un proyecto (tienen proyecto padre, orden). Crear un hito "suelto" es más
+    delicado — decidir si desde el calendario se enganchan a un proyecto existente, o si eso se sigue en la Gantt.
+  - Entregas: también cuelgan de un proyecto.
+- **Agendar una solicitud → crear el evento:** conecta con func. 13/14 — al agendar una solicitud de reunión,
+  se crea el evento real (con sync a Google) en el hueco elegido.
+
+Decisiones pendientes: ¿qué tipos se crean desde el calendario (solo reuniones/eventos, o también hitos/entregas
+enganchados a proyecto)? ¿Se puede agendar una solicitud pendiente convirtiéndola directo en evento?
+
+Decisiones finales (aprobadas):
+- **Desde el calendario se crean REUNIONES y EVENTOS sueltos** (rodajes, etc.), eligiendo cliente, con sync a
+  Google usando la maquinaria existente. **Hitos y entregas NO se crean desde el calendario** — se siguen
+  creando en la ficha del proyecto (contexto de Gantt, bien enganchados). Igual aparecen dibujados en el
+  calendario. (Evita descuadrar la planificación con hitos "sueltos".)
+- **Agendar solicitud → crea el evento:** al agendar una solicitud de reunión pendiente, se convierte directo
+  en evento real (con sync a Google) en el hueco elegido. Cierra el círculo cliente pide → admin agenda con un clic.
+- Puede haber un enlace desde el calendario a la ficha del proyecto para agregar hitos/entregas allá.
+
 ---
 
 
