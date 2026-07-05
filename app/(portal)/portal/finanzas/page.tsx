@@ -19,25 +19,53 @@ import {
   totalUF,
 } from "@/lib/billing";
 import { signInvoices } from "@/lib/storage";
-import type { Contract, Installment } from "@/lib/types";
+import { flowConfigured } from "@/lib/flow";
+import { iniciarPagoFlow, verificarPagoFlow } from "./pago-actions";
+import type { Contract, Installment, InstallmentPayment } from "@/lib/types";
 
 function today(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date());
 }
 
-export default async function PortalFinanzasPage() {
+const PAGO_BANNER: Record<string, { text: string; cls: string }> = {
+  ok: { text: "Pago confirmado por Flow. La cuota quedó pagada.", cls: "b-ok" },
+  rechazado: { text: "El pago fue rechazado. La cuota sigue pendiente; puedes reintentar.", cls: "b-bad" },
+  cancelado: { text: "El pago se canceló. La cuota sigue pendiente.", cls: "b-warn" },
+  pendiente: { text: "El pago quedó en proceso. Puedes usar “Verificar pago” en un momento.", cls: "b-warn" },
+  verificado: { text: "Estado del pago actualizado con Flow.", cls: "b-idle" },
+  noconfig: { text: "El pago en línea no está configurado todavía.", cls: "b-warn" },
+  noestado: { text: "Solo se pueden pagar cuotas ya facturadas.", cls: "b-warn" },
+  error: { text: "No se pudo iniciar el pago. Inténtalo de nuevo.", cls: "b-bad" },
+};
+
+export default async function PortalFinanzasPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   await requirePortalWorld("finance");
   const supabase = await createClient();
 
+  const sp = await searchParams;
+  const banner = sp.pago ? PAGO_BANNER[sp.pago] : null;
+
   // RLS ya limita a lo del propio cliente y solo owner/finance llega aquí.
-  const [{ data: contractsData }, { data: instData }, uf] = await Promise.all([
+  const [{ data: contractsData }, { data: instData }, { data: payData }, uf] = await Promise.all([
     supabase.from("contracts").select("*").order("start_date", { ascending: false }),
     supabase.from("installments").select("*").order("due_date", { ascending: true }),
+    supabase.from("installment_payments").select("*").order("created_at", { ascending: false }),
     getLatestUf(),
   ]);
   const contracts = (contractsData ?? []) as Contract[];
   const cuotas = (instData ?? []) as Installment[];
   const t = today();
+
+  // Último intento de pago por cuota (para mostrar "en proceso" / "verificar").
+  const lastPayByInst = new Map<string, InstallmentPayment>();
+  for (const p of (payData ?? []) as InstallmentPayment[]) {
+    if (!lastPayByInst.has(p.installment_id)) lastPayByInst.set(p.installment_id, p);
+  }
+  const flowOn = flowConfigured();
 
   // Firma corta de las facturas PDF (RLS ya limitó las cuotas a este cliente).
   const pdfUrls = await signInvoices(
@@ -57,6 +85,11 @@ export default async function PortalFinanzasPage() {
     <>
       <PageHeader title="Finanzas" subtitle="Tu contrato y tus cuotas" />
       <div className="app-content">
+        {banner && (
+          <div style={{ marginBottom: "18px" }}>
+            <span className={`badge ${banner.cls}`}>{banner.text}</span>
+          </div>
+        )}
         <div className="stack">
           {/* Contrato */}
           <div className="card">
@@ -127,6 +160,7 @@ export default async function PortalFinanzasPage() {
                     <th>Vence</th>
                     <th>Estado</th>
                     <th>Factura</th>
+                    <th>Pago</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -180,6 +214,37 @@ export default async function PortalFinanzasPage() {
                           ) : (
                             <span style={{ color: "var(--faint)" }}>—</span>
                           )}
+                        </td>
+                        <td>
+                          {(() => {
+                            const pay = lastPayByInst.get(r.id);
+                            if (r.status === "pagada") {
+                              return <span style={{ color: "var(--muted)" }}>Pagada</span>;
+                            }
+                            if (r.status !== "facturada" || !flowOn) {
+                              return <span style={{ color: "var(--faint)" }}>—</span>;
+                            }
+                            const pendiente = pay && (pay.status === "pending" || pay.status === "created");
+                            return (
+                              <div style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-start" }}>
+                                <form action={iniciarPagoFlow}>
+                                  <input type="hidden" name="installment_id" value={r.id} />
+                                  <button className="btn btn-sm btn-primary" type="submit">
+                                    {pendiente ? "Reintentar pago" : "Pagar"}
+                                  </button>
+                                </form>
+                                {pendiente && (
+                                  <form action={verificarPagoFlow}>
+                                    <input type="hidden" name="installment_id" value={r.id} />
+                                    <button className="btn btn-sm" type="submit">Verificar pago</button>
+                                  </form>
+                                )}
+                                {pay?.status === "rejected" && (
+                                  <span className="badge b-bad">último: rechazado</span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
                       </tr>
                     );

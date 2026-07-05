@@ -151,6 +151,30 @@ export type Installment = {
   created_at: string;
 };
 
+export type InstallmentPaymentStatus =
+  | "created"
+  | "pending"
+  | "paid"
+  | "rejected"
+  | "canceled"
+  | "error";
+
+export type InstallmentPayment = {
+  id: string;
+  installment_id: string;
+  client_id: string;
+  commerce_order: string;
+  flow_token: string | null;
+  flow_order: string | null;
+  amount: number;
+  status: InstallmentPaymentStatus;
+  payer_email: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  paid_at: string | null;
+};
+
 export type Project = {
   id: string;
   client_id: string;

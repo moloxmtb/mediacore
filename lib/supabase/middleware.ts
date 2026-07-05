@@ -8,6 +8,9 @@ const PUBLIC_PATHS = [
   "/auth/confirm",
   "/api/calendar/sync",
   "/api/uf/refresh",
+  // Callbacks de Flow: llegan sin sesión (server-a-server y retorno del
+  // navegador). Se autoprotegen: solo confían en getStatus firmado de Flow.
+  "/api/flow",
 ];
 
 /** Home de cada rol tras autenticarse. */
