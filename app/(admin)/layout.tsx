@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import AdminNav from "@/components/admin/AdminNav";
+import Brand from "@/components/Brand";
 import { getSessionProfile } from "@/lib/auth";
 
 /**
@@ -26,20 +27,8 @@ export default async function AdminLayout({
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="sidebar-brand">
-          <div className="brand-bars" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-          <div className="brand-txt">
-            <div className="name">Color Media</div>
-            <div className="sub">Panel interno</div>
-          </div>
+        <div className="sidebar-brand" style={{ padding: "20px 18px" }}>
+          <Brand size="sm" caption="Panel interno" />
         </div>
 
         <AdminNav />

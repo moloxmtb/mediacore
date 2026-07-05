@@ -21,8 +21,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Panel interno — Color Media",
-  description: "Panel de gestión de clientes de Color Media (Vértice SpA)",
+  title: "MEDIACORE — Color Media",
+  description: "MEDIACORE · panel de gestión de clientes de Color Media (Vértice SpA)",
 };
 
 export default function RootLayout({

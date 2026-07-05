@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import PortalNav from "@/components/portal/PortalNav";
+import Brand from "@/components/Brand";
 import { getSessionProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -37,20 +38,8 @@ export default async function PortalLayout({
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="sidebar-brand">
-          <div className="brand-bars" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-          <div className="brand-txt">
-            <div className="name">Color Media</div>
-            <div className="sub">Portal cliente</div>
-          </div>
+        <div className="sidebar-brand" style={{ padding: "20px 18px" }}>
+          <Brand size="sm" caption="Portal cliente" />
         </div>
 
         <PortalNav role={session.clientRole} />

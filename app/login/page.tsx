@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Brand from "@/components/Brand";
 import { login, type LoginState } from "./actions";
 
 const initialState: LoginState = { error: null };
@@ -29,39 +30,8 @@ export default function LoginPage() {
         }}
       >
         {/* Cabecera de marca */}
-        <div style={{ display: "flex", alignItems: "stretch" }}>
-          <div className="brand-bars" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-          <div style={{ padding: "22px 22px 18px" }}>
-            <div
-              style={{
-                fontFamily: "var(--font-grotesk)",
-                fontWeight: 700,
-                fontSize: "18px",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              Color Media
-            </div>
-            <div
-              style={{
-                color: "var(--faint)",
-                fontSize: "11px",
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                marginTop: "3px",
-              }}
-            >
-              Panel interno
-            </div>
-          </div>
+        <div style={{ padding: "26px 26px 8px" }}>
+          <Brand size="lg" caption="by color media" />
         </div>
 
         <form

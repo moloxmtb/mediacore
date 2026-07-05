@@ -24,6 +24,9 @@
   --bad-dim: rgba(225, 91, 91, 0.14);
   --shadow: 0 1px 0 rgba(255, 255, 255, 0.02), 0 8px 24px rgba(0, 0, 0, 0.35);
   --r: 10px;
+  /* Marca MEDIACORE */
+  --brand-steel: #7d9bb0;
+  --brand-orange: #f8552e;
 }
 
 @theme inline {
@@ -94,6 +97,44 @@ h3 {
 .brand-bars span:nth-child(5) { background: #c957b8; }
 .brand-bars span:nth-child(6) { background: #d95757; }
 .brand-bars span:nth-child(7) { background: #5573d9; }
+
+/* ---------- Logotipo MEDIACORE ---------- */
+.mc-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mc-logo svg {
+  flex-shrink: 0;
+  display: block;
+}
+.mc-word {
+  font-family: var(--font-grotesk), sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--text);
+}
+.mc-word .core {
+  color: var(--brand-steel);
+}
+.mc-caption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.mc-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--brand-orange);
+  flex-shrink: 0;
+}
 
 /* ============================================================
    Shell del panel (sidebar + header + contenido)

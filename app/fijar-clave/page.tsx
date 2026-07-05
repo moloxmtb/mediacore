@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Brand from "@/components/Brand";
 import { fijarClave, type FormState } from "./actions";
 
 const initial: FormState = { error: null };
@@ -11,14 +12,8 @@ export default function FijarClavePage() {
   return (
     <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: "24px" }}>
       <div style={{ width: "100%", maxWidth: "380px", background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", boxShadow: "var(--shadow)", overflow: "hidden" }}>
-        <div style={{ display: "flex", alignItems: "stretch" }}>
-          <div className="brand-bars" aria-hidden="true">
-            <span /><span /><span /><span /><span /><span /><span />
-          </div>
-          <div style={{ padding: "22px 22px 18px" }}>
-            <div style={{ fontFamily: "var(--font-grotesk)", fontWeight: 700, fontSize: "18px", letterSpacing: "-0.02em" }}>Color Media</div>
-            <div style={{ color: "var(--faint)", fontSize: "11px", letterSpacing: "0.14em", textTransform: "uppercase", marginTop: "3px" }}>Fija tu contraseña</div>
-          </div>
+        <div style={{ padding: "26px 26px 8px" }}>
+          <Brand size="lg" caption="fija tu contraseña" />
         </div>
 
         <form action={formAction} style={{ padding: "8px 26px 28px", display: "flex", flexDirection: "column", gap: "16px" }}>
