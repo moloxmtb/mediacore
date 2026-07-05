@@ -209,7 +209,7 @@ export default async function AdminCalendarioPage({
                 {cells.map((c) => {
                   const dayItems = byDay.get(c.date) ?? [];
                   return (
-                    <div key={c.date} className={`cal-cell${c.inMonth ? "" : " out"}${c.date === today ? " today" : ""}`}>
+                    <div key={c.date} className={`cal-cell${c.inMonth ? "" : " out"}${c.date === today ? " cal-today" : ""}`}>
                       <div className="cal-daynum">{c.day}</div>
                       {dayItems.slice(0, 4).map((it) => (
                         <Link

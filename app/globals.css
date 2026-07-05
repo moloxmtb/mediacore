@@ -409,7 +409,7 @@ h3 {
   gap: 3px;
 }
 .cal-cell.out { opacity: 0.4; }
-.cal-cell.today .cal-daynum {
+.cal-cell.cal-today .cal-daynum {
   background: var(--accent);
   color: #0c1013;
 }

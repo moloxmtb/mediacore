@@ -238,7 +238,7 @@ export default async function CalendarioPage({
                 {cells.map((c) => {
                   const dayItems = byDay.get(c.date) ?? [];
                   return (
-                    <div key={c.date} className={`cal-cell${c.inMonth ? "" : " out"}${c.date === today ? " today" : ""}`}>
+                    <div key={c.date} className={`cal-cell${c.inMonth ? "" : " out"}${c.date === today ? " cal-today" : ""}`}>
                       <div className="cal-daynum">{c.day}</div>
                       {dayItems.slice(0, 3).map((it) => (
                         <div key={it.key} className={`cal-pill cal-${it.type}`} title={it.title}>
