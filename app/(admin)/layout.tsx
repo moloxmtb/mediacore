@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import AdminNav from "@/components/admin/AdminNav";
 import Brand from "@/components/Brand";
+import SystemFooter from "@/components/SystemFooter";
 import { getSessionProfile } from "@/lib/auth";
 
 /**
@@ -42,7 +43,10 @@ export default async function AdminLayout({
         </div>
       </aside>
 
-      <main className="app-main">{children}</main>
+      <main className="app-main">
+        {children}
+        <SystemFooter />
+      </main>
     </div>
   );
 }

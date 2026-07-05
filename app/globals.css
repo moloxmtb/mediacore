@@ -260,6 +260,38 @@ h3 {
   display: flex;
   flex-direction: column;
 }
+
+/* Sello de identidad + versión + contacto comercial (pie de ambas caras) */
+.system-footer {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 20px;
+  padding: 14px 28px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 11.5px;
+  color: var(--faint);
+}
+.system-footer strong {
+  color: var(--muted);
+  font-weight: 600;
+}
+.system-footer .sf-version {
+  font-family: var(--font-plex-mono);
+  color: var(--muted);
+}
+.system-footer .sf-date {
+  color: var(--faint);
+}
+.system-footer .sf-contact a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.system-footer .sf-contact a:hover {
+  text-decoration: underline;
+}
 .app-header {
   display: flex;
   align-items: center;

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import PortalNav from "@/components/portal/PortalNav";
 import Brand from "@/components/Brand";
+import SystemFooter from "@/components/SystemFooter";
 import { getSessionProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -62,7 +63,10 @@ export default async function PortalLayout({
         </div>
       </aside>
 
-      <main className="app-main">{children}</main>
+      <main className="app-main">
+        {children}
+        <SystemFooter />
+      </main>
     </div>
   );
 }

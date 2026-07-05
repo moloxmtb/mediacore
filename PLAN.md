@@ -179,24 +179,29 @@ Todo se expresa en **UF neto + IVA**. El IVA en Chile es 19%.
 
 ## Acceso de clientes y despliegue (Fase 7)
 
-El panel vive en su propio subdominio bajo la marca, p. ej. `panel.colormedia.cl`
-o `clientes.colormedia.cl` (nombre por definir). El sitio institucional
-`colormedia.cl` (WordPress, ya existente) suma un enlace visible **"Acceso
-clientes"** que redirige al login del panel. Sitio y panel quedan independientes:
-la web es la vitrina pública, el panel es la herramienta privada tras el login.
+El panel vive en su propio subdominio bajo la marca: **`core.colormedia.cl`** (DEFINIDO). El sitio
+institucional `colormedia.cl` (WordPress, ya existente) suma un enlace visible **"Acceso
+clientes"** que redirige al login del sistema. Sitio y sistema quedan independientes:
+la web es la vitrina pública, Media Core es la herramienta privada tras el login.
 
 Checklist de despliegue (pasa de local a producción):
 
-- Subdominio elegido, apuntado al proyecto en Vercel (DNS).
-- Enlace "Acceso clientes" agregado en WordPress (`colormedia.cl`) → apunta al subdominio.
+- **`core.colormedia.cl`** apuntado al proyecto en Vercel (DNS en HostGator/cPanel Zone Editor,
+  igual que los registros de Resend — agregar el registro que Vercel indique, sin tocar lo existente).
+- Enlace "Acceso clientes" agregado en WordPress (`colormedia.cl`) → apunta a `core.colormedia.cl`.
 - Variables de entorno cargadas en Vercel (las mismas del `.env.local`).
 - **Redirect URI de Google:** sumar la versión de producción
-  `https://SUBDOMINIO/api/auth/google/callback` en el OAuth Client de Google Cloud
+  `https://core.colormedia.cl/api/auth/google/callback` en el OAuth Client de Google Cloud
   (mantener también el de localhost para desarrollo).
+- **Flow a producción:** cambiar FLOW_API_KEY/FLOW_SECRET_KEY a las de producción, FLOW_API_URL a
+  `https://www.flow.cl/api`, y APP_URL a `https://core.colormedia.cl` (ya no túnel). El código no cambia.
+  Con esto Flow queda cobrando de verdad.
 - Cron de UF y de sincronización de calendario configurados en Vercel.
 - Repaso final de RLS con la anon key. Definir respaldo de la base.
+- Aplicar migraciones en la base de producción (o usar el mismo proyecto Supabase).
 
 ---
+
 
 ## Nuevas funcionalidades (post Fase 6, a construir antes de publicar)
 
@@ -363,7 +368,7 @@ Diseño afinado (decisiones del usuario):
 
 ### 4. Botón de pago con Flow (LO MÁS COMPLEJO)
 
-Pago en línea de cada cuota/mes vía Flow (pasarela chilena).
+Pago en línea de cada cuota/mes vía Flow (pasarela chilena). LA MÁS COMPLEJA: mueve dinero real.
 
 - Convierte el panel en plataforma transaccional: integración con Flow, seguridad de
   pagos, confirmación/conciliación de qué se pagó, manejo de errores de transacción,
@@ -372,14 +377,90 @@ Pago en línea de cada cuota/mes vía Flow (pasarela chilena).
   (quién puede pagar).
 - Construir al final del bloque, sobre lo demás ya estable.
 
+Decisiones de diseño (CONFIRMADAS):
+- **Flujo:** en el portal (vista financiera), cada cuota pendiente tiene botón "Pagar". El cliente
+  va a la página segura de Flow (no ingresa tarjeta en Media Core), paga, y al volver la cuota se
+  marca pagada AUTOMÁTICAMENTE por confirmación de Flow (no a mano).
+- **Quién paga:** solo dueño y finanzas (hereda la RLS financiera). Contenido no ve nada de esto.
+- **Convive con el marcado manual:** los clientes que transfieren por fuera se siguen marcando a mano
+  (como hoy); los que pagan por el botón se marcan solos. Ambos modos coexisten.
+- **Cuenta Flow:** el usuario YA la tiene. Necesita Api Key + Secret Key (perfil Flow → seguridad).
+  Hay llaves de sandbox (pruebas) y de producción.
+
+**Plan de trabajo (CRÍTICO — mueve dinero):**
+- Construir y verificar TODO primero en el **ambiente de pruebas (sandbox)** de Flow: botón → Flow →
+  pago simulado → cuota pagada; y los casos de fallo (pago rechazado → cuota NO se marca; pago a medias;
+  timeout). Solo al estar redondo, cambiar a llaves de producción (cobros reales).
+- Confirmación robusta: Flow envía callback (responder HTTP 200 en <15s) + consultar getStatus por API.
+  Nunca marcar pagada una cuota sin confirmación real de Flow. Guardar el token/orden de Flow por cuota.
+- Comisión Flow (informativa, la paga Color Media): ~2,89% + IVA (abono 3 días) o 3,19% + IVA (1 día).
+  Sin costo fijo ni mantención.
+- Secret Key solo server-side (nunca al navegador), como todas las llaves sensibles.
+
+**Detalles técnicos de Flow (de la doc oficial, verificada):**
+- **Dos ambientes separados, cada uno con SUS llaves:**
+  - Sandbox (pruebas, sin dinero): base URL `https://sandbox.flow.cl/api`; llaves desde
+    `https://sandbox.flow.cl/app/web/misDatos.php`.
+  - Producción (real): base URL `https://www.flow.cl/api`; llaves desde
+    `https://www.flow.cl/app/web/misDatos.php`. (Las llaves de la captura del usuario son de PRODUCCIÓN.)
+  - El cambio sandbox→producción es reemplazar llaves + base URL.
+- **Flujo de pago:** `payment/create` (POST, firmado con HMAC-SHA256 usando secretKey) → responde `url` +
+  `token` → redirigir al pagador a `url + "?token=" + token` → paga en Flow → Flow hace POST a
+  `urlConfirmation` con el token → el comercio llama `payment/getStatus` con ese token para saber el
+  resultado real (status 1 = pagado) y responde HTTP 200. También hay `urlReturn` para devolver al pagador
+  a Media Core. **La cuota se marca pagada SOLO si getStatus confirma el pago.**
+- **Firma:** todos los params se ordenan alfabéticamente, se concatenan nombre+valor, y se firman con
+  HMAC-SHA256 usando la secretKey; el hash va en el parámetro `s`. (Claude Code implementa esto server-side.)
+- **Tarjetas de prueba sandbox (Chile):** tarjeta crédito `4051885600446623`, CVV `123`, fecha cualquiera;
+  banco simulado RUT `11111111-1`, clave `123`. Sirve para simular pago exitoso. Para Servipag/Multicaja/
+  Mach/Cryptocompra hay simuladores con botón "aceptar". (Permite probar éxito y rechazo sin dinero real.)
+- Montos en CLP (la cuota ya tiene su total en pesos congelado). Flow mínimo ~$350 CLP.
+
+**Plan aprobado (Claude Code):** modelo `installment_payments` (1 fila por intento: token/orden Flow,
+amount, status created|pending|paid|rejected|canceled|error), la cuota sigue siendo la fuente de verdad
+del estado 'pagada'. Confirmación por triple validación (getStatus=2 + monto coincide + orden coincide),
+idempotente, servidor-a-servidor firmada. Nunca marca pagada por la redirección sola. Callbacks públicos
+(`/api/flow/confirm`, `/api/flow/return`) no confían en su input, solo usan el token para preguntar a Flow.
+- **DECISIÓN de prueba de callback:** montar TÚNEL (ngrok/cloudflared) para probar el aviso automático
+  server-a-server completo en sandbox (no solo el "Verificar pago"). Prueba el flujo tal como será en prod.
+- Casos a probar en sandbox: happy path, rechazado, cancelado, idempotencia (doble callback = 1 marca),
+  monto manipulado (no marca, registra error), roles (contenido no ve/paga, no pagar cuota de otro),
+  callback ausente, ya pagada (bloqueado), coexistencia con marcado manual.
+- **APROBADO por el usuario. Construir SOLO en sandbox. Pasar a producción recién tras verificar todo.**
+
+**ESTADO: CONSTRUIDO Y VERIFICADO END-TO-END EN SANDBOX** (commit 882b081). Los tres pagos reales
+(exitoso/rechazado/cancelado) probados contra sandbox.flow.cl con túnel cloudflared: la cuota se marca
+pagada SOLO cuando Flow confirma (getStatus=2); ni rechazo ni abandono la tocan. Callback automático
+server-a-server funcionando. Tabla final: happy path, idempotencia, rechazado, cancelado, callback
+ausente, urlReturn, monto manipulado, ya pagada, contenido no ve/paga, no paga cuota de otro, idempotencia
+BD, coexistencia con marcado manual — todos ✅. El round-trip real destapó y corrigió 2 bugs (RLS de
+iniciarPagoFlow sin UPDATE → service_role; middleware rebotaba /api/flow/* a login → agregados a rutas
+públicas, se autoprotegen con getStatus firmado).
+- **PENDIENTE: paso a producción** (cuando el usuario lo decida). Cambiar en `.env.local`:
+  FLOW_API_KEY/FLOW_SECRET_KEY a los de PRODUCCIÓN (los de la captura del usuario) + FLOW_API_URL=
+  `https://www.flow.cl/api` + APP_URL al dominio público real del deploy (no un túnel). El código NO cambia.
+  Se hace junto con / después del despliegue (Fase 7), cuando haya un APP_URL público estable.
+
 ### 5. Subir PDF de factura (LA MÁS SIMPLE)
 
 Adjuntar a cada cuota el PDF del DTE emitido en SII/Nubox, visible y descargable por el
-cliente (según su rol).
+cliente (según su rol). Es un archivador, NO un facturador: el panel solo guarda/muestra el
+PDF que el admin ya generó fuera.
 
 - Encaja con el diseño actual (el panel registra el cobro, no emite el DTE).
-- Requiere: storage de archivos (Supabase Storage), campo en la cuota, y control de
-  visibilidad por rol de cliente.
+- Requiere: storage de archivos (Supabase Storage — ya en uso por contenido), campo en la cuota
+  (installment), y control de visibilidad por rol de cliente.
+
+Decisiones de diseño (CONFIRMADAS):
+- **Quién sube:** solo el admin, desde el panel, adjuntando a cada cuota (installment). El cliente
+  no sube, solo descarga.
+- **Quién descarga (cliente):** solo dueño y finanzas (mismo criterio que el resto de lo financiero).
+  Contenido NO lo ve. Hereda la RLS financiera existente.
+- **Un PDF por cuota** (no varios archivos).
+- **Dónde aparece:** en cobros del panel (junto a cada cuota, botón subir/reemplazar) y en la vista
+  financiera del portal (dueño/finanzas, botón descargar en cada cuota facturada).
+- Storage: bucket privado, signed URL corta para descarga, solo tras pasar RLS. El PDF nunca es
+  accesible por contenido ni por otro cliente.
 
 **Dependencias / orden sugerido:** la 5 (PDF) es independiente y rápida. La 1 (aprobación)
 es la prioridad del usuario. La 3 (roles) conviene antes que la 2 (correo) y la 4 (Flow),
@@ -435,6 +516,46 @@ el Customer Experience: el cliente entra y recuerda de qué se trata el trabajo.
 Confirmado: estrategia y plan son por-cliente y solo admin edita (cliente solo ve, los 3 roles); datos
 bancarios son globales y fijos.
 
+### 10. Generador de firmas de correo por cliente
+
+Producto para clientes: Color Media diseña una plantilla de firma corporativa con la identidad del
+cliente, y desde el panel del cliente se administran los funcionarios (como datos), se generan sus
+firmas y se les envían por correo para que cada uno la copie en su cliente de correo. Según el plan.
+
+**ENFOQUE MEJORADO (decisión del usuario) — los funcionarios NO son usuarios del sistema:**
+- Un usuario del cliente con permiso (dueño, y por definir si contenido/finanzas) administra una lista
+  de funcionarios (nombre, cargo, contacto — los datos que la firma necesita).
+- Con un botón, genera las firmas (todas o una) y el sistema las ENVÍA por correo (Resend) a cada
+  funcionario, lista para copiar/pegar. El funcionario nunca entra a Media Core — solo recibe su correo.
+- Esto ELIMINA la tensión de seguridad de la versión anterior: no se crean usuarios funcionario, no se
+  cambia el modelo "solo admin/roles crean accesos", no hay alta masiva de usuarios. Se apoya en el
+  directorio de la ficha (funcionalidad 9) + envío de correo (funcionalidad 2), ambos ya construidos.
+- El directorio de funcionarios de la ficha cobra propósito nuevo: de ahí salen las firmas.
+
+Decisiones pendientes de pulir con el usuario:
+- ¿Quién del cliente administra funcionarios y genera firmas: solo dueño, o también contenido/finanzas?
+- **Funcionarios = el directorio de la ficha (funcionalidad 9)** (DECISIÓN): se reutiliza ese directorio,
+  sumándole los campos que la firma necesite (p. ej. teléfono directo, cargo tal como va en la firma).
+  No se duplican listas.
+- **Carga masiva por planilla (DECISIÓN):** plantilla .xlsx descargable → el cliente/CM la llena (o la
+  empresa desde su planilla de RRHH) → se importa y crea todos los funcionarios del directorio de golpe.
+  Ideal para empresas grandes. Mismo patrón "descargar plantilla → llenar → importar" que el importador
+  de fases (ver mejoras pendientes) — familia de importadores; construir uno enseña el otro.
+- **Plantilla de firma:** ¿Color Media la diseña a medida por cliente, o hay formatos base que se
+  personalizan con logo/color? (define el volumen de trabajo). HTML de correo robusto (tablas inline)
+  para Gmail/Outlook/Apple Mail — mismo terreno que las plantillas de correo con marca.
+- ¿"Según el plan": el generador se activa por cliente según lo contratado?
+
+Decisiones finales de UI (aprobadas):
+- **Estrategia con formato real:** el bloque de texto libre se guarda como Markdown y se renderiza
+  (negritas, listas, títulos, links) con react-markdown.
+- **Portal: TRES ítems separados en el nav** (no una página agrupada): "Estrategia", "Tu plan" (el plan
+  por alcance) y "Datos de pago" (los datos bancarios). Visibles a los 3 roles, solo lectura.
+- Modelo (Claude Code): `client_strategy` (1:1, objetivo/publico/mensajes_clave/cuerpo), `client_plan_items`
+  (1:N, name/description/status activo|pendiente/sort_order), `company_bank_info` (singleton id=1, patrón
+  de config global). Panel: tarjetas en `/clientes/[id]` (estrategia y plan) y en `/integraciones` (datos
+  bancarios). RLS: SELECT admin o propio cliente; WRITE solo admin; bancarios SELECT cualquier autenticado.
+
 ### 9. Ficha completa de datos del cliente (autogestionada)
 
 Una ficha con los antecedentes completos de cada empresa cliente, que el propio cliente llena y
@@ -473,9 +594,69 @@ Modelo aprobado (Claude Code) — a construir:
 - Portal: página nueva **"Mi empresa"** (`/portal/ficha`), visible a los 3 roles; dueño/finanzas editan,
   contenido solo lee.
 
+### 11. Alertas accionables y badges en el portal del cliente
+
+Sistema de atención proactiva en el portal: que el cliente vea de un vistazo qué necesita su atención.
+Es la versión visual, dentro del portal, de las notificaciones por correo (funcionalidad 2) — el correo
+lo trae, las alertas lo guían una vez dentro. Refuerza fuerte el Customer Experience.
+
+Dos partes complementarias:
+- **Alertas accionables en "Qué viene"** (el home del portal): mensajes concretos con llamado a la acción.
+  Ejemplos: "Tu próximo pago vence en X días", "Tienes 4 piezas de contenido por aprobar", "Tu próxima
+  reunión es en 3 días — confirma asistencia". No es info pasiva; dice qué hacer y linkea a la sección.
+- **Badges en el menú** (círculo rojo con número): indicador visual junto a cada ítem del nav con
+  pendientes. Ej. "Contenido (4)" = 4 piezas por aprobar. Lenguaje universal (como WhatsApp/mail).
+
+Consideraciones de diseño:
+- **Respetar roles:** cada rol ve solo las alertas/badges de su mundo. La alerta de pago que vence solo
+  la ven dueño/finanzas (financiero); el badge de contenido por aprobar, quien maneja contenido. Coherente
+  con la RLS existente.
+- Fuentes de cada alerta: pago que vence (cuota facturada impaga próxima), contenido por aprobar (piezas
+  en estado propuesta), próxima reunión (evento kind=reunion cercano), quizás entregables. Definir el set
+  y los umbrales (¿cuántos días antes avisa el pago?).
+- Es lectura/cálculo sobre datos que ya existen — probablemente sin migración, o mínima.
+- Decisión pendiente: ¿la reunión con "confirmar asistencia" implica una acción de confirmar (escritura
+  del cliente) o solo el aviso? Lo primero sería una mini-funcionalidad extra.
+  **DECISIÓN:** sí — el cliente ve la invitación a la reunión en pantalla y confirma asistencia con un
+  botón (escritura acotada del cliente, como aprobar contenido). La confirmación debería quedar visible
+  para Color Media (quién confirmó, quién no). Mini-funcionalidad extra sobre las alertas.
+
+### 12. Sello de identidad, versión del sistema y contacto comercial
+
+Marca visible del sistema en ambas caras (panel admin y portal cliente). Es toque de identidad + una
+vitrina comercial (cada cliente ve que Color Media desarrolla sistemas).
+
+- **Sello:** en un pie de página o esquina discreta, visible en panel y portal: "Media Core · desarrollado
+  por Color Media" + versión actual.
+- **Versión visible:** mostrar la versión del sistema, arranca en **v1.00**.
+- **Versionado (convención):** decimales para cambios menores (v1.00 → v1.01 → v1.14…); el entero sube en
+  cambios mayores y resetea el decimal (v1.14 → v2.00). Definir dónde vive el número de versión (constante
+  en el código, actualizable en cada deploy) para que sea fácil de subir.
+- **Contacto comercial:** señalar que para un desarrollo de sistema a la medida pueden escribir a
+  hola@colormedia.cl. En el pie del portal del cliente (vitrina) y/o del panel.
+- Se cruza con la identidad visual (funcionalidad 6) y el nombre Media Core (funcionalidad 7): idealmente
+  se aplica junto, en una pasada de branding. Es simple (texto + constante de versión), sin migración.
+
+Decisiones a confirmar: ¿el contacto comercial va solo en el portal del cliente (vitrina) o también en el
+panel? ¿La versión se actualiza a mano en cada deploy o se quiere algo automático?
+
+Decisiones CONFIRMADAS:
+- **Contacto comercial en AMBOS:** pie del panel y del portal ("¿Quieres un sistema a la medida?
+  hola@colormedia.cl").
+- **Versión:** el número (subir decimal/entero) lo fija el usuario — requiere criterio humano (solo él sabe
+  si un cambio es menor o mayor). Pero se define en UN SOLO lugar (constante/config) y el sistema la MUESTRA
+  automáticamente en todas las pantallas (panel + portal), junto con la fecha de última actualización (esta
+  sí 100% automática). Arranca en v1.00.
+- **Dirección de producción del sistema: `core.colormedia.cl`** (subdominio para el deploy — Fase 7).
+
 ---
 
 ## Mejoras pendientes (no bloquean, pulir cuando haya tiempo)
+
+- **Login: submit antes de hidratar.** Si el formulario de login se envía antes de que la página
+  termine de cargar (hidratar), hace un GET y se queda en /login (hay que reintentar). No afecta a
+  un usuario que tipea a velocidad humana (la página ya cargó), pero es una aspereza en lo primero
+  que toca cualquiera. Pulir: deshabilitar el botón hasta hidratar, o un submit que no se pierda.
 
 - **Importador de fases** (Camino A). Ver `importador-fases.md`. Cargar fases de un
   proyecto desde un bloque estructurado en vez de tipearlas a mano.
