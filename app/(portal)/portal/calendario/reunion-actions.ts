@@ -105,4 +105,5 @@ async function setEstadoSolicitud(fd: FormData, status: "agendada" | "descartada
     .eq("id", id);
   if (client_id) revalidatePath(`/clientes/${client_id}`);
   revalidatePath("/dashboard");
+  revalidatePath("/calendario");
 }

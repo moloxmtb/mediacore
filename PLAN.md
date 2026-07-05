@@ -712,6 +712,36 @@ Decisiones finales (aprobadas, a construir):
 - Vista `/portal/calendario` con interruptor mensual (grilla) / lista, tira de próximos hitos y botón
   Solicitar reunión arriba. Sin migración salvo `meeting_requests`.
 
+### 14. Calendario consolidado del panel de administración
+
+**DECISIÓN: va en la v1.00 (antes del deploy), después de terminar el calendario del cliente (func. 13).**
+
+Contraparte del calendario del cliente (func. 13), pero para Color Media: una vista que consolida los
+eventos de TODOS los clientes en un solo lugar. Es la vista más valiosa para el operador — su panorama
+para coordinar varios clientes a la vez. Detectado como asimetría: el cliente tendrá su calendario, el
+admin necesita el consolidado.
+
+- **Vista consolidada:** todos los eventos con fecha de todos los clientes (reuniones, rodajes, entregas,
+  hitos) en una sola grilla/lista. Responde "¿qué tengo esta semana entre todos los clientes?", detecta
+  choques (dos rodajes el mismo día), etc.
+- **Distinguir de quién es cada evento** (lo que el calendario del cliente NO necesita): color por cliente
+  y/o filtro para ver un cliente a la vez. Clave para no perderse entre eventos de varios clientes.
+- **Integrar solicitudes de reunión** (func. 13): las solicitudes pendientes aparecen aquí también, para
+  agendar viendo los huecos libres. Cierra el círculo: cliente pide desde su calendario → admin ve y agenda
+  desde el suyo.
+- **Consideración:** relación con Google Calendar — el admin ya tiene los calendarios de Google sincronizados.
+  Este calendario debe agregar valor sobre eso (contexto del cliente a un clic, solicitudes integradas, todo
+  dentro de Media Core) y no solo duplicar lo que Google ya muestra. Tenerlo presente al diseñar.
+- Reusa las fuentes de fecha ya existentes (sin duplicar); probablemente sin migración propia.
+
+Decisiones finales (aprobadas, a construir tras el calendario del cliente):
+- **Distinguir clientes:** color por cliente + filtro para ver uno solo.
+- **Solicitudes de reunión dibujadas en el calendario** (en su fecha preferida), para agendarlas viendo los
+  huecos libres — cierra el círculo cliente pide → admin ve en su fecha y agenda. Además de la bandeja del dashboard.
+- **Dos vistas con interruptor:** mensual (grilla) y lista, igual que el del cliente (consistencia).
+- Sección propia "Calendario" en el menú del panel admin. Reusa el patrón del calendario del cliente (func. 13)
+  y las fuentes de fecha existentes (calendar_events, deliverables, hitos, meeting_requests). Sin migración propia.
+
 ---
 
 
