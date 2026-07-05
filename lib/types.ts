@@ -20,6 +20,32 @@ export type InstallmentStatus =
 export type EventSource = "google" | "panel";
 export type ClientRole = "owner" | "finance" | "content";
 
+export type ClientDetails = {
+  client_id: string;
+  razon_social: string | null;
+  rut: string | null;
+  giro: string | null;
+  direccion: string | null;
+  comuna: string | null;
+  ciudad: string | null;
+  region: string | null;
+  horarios: string | null;
+  notas: string | null;
+  updated_at: string;
+  updated_by: string | null;
+};
+
+export type ClientContact = {
+  id: string;
+  client_id: string;
+  name: string;
+  role: string | null;
+  phone: string | null;
+  email: string | null;
+  sort_order: number;
+  created_at: string;
+};
+
 export type ContentPeriodKind = "mensual" | "quincenal" | "semanal";
 export type ContentStatus =
   | "borrador"

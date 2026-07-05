@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import type { ClientRole } from "@/lib/types";
 
-type Item = { href: string; label: string; world: "content" | "finance"; icon: ReactNode };
+type Item = { href: string; label: string; world: "content" | "finance" | "any"; icon: ReactNode };
 
 const items: Item[] = [
   {
@@ -64,6 +64,18 @@ const items: Item[] = [
       </svg>
     ),
   },
+  {
+    href: "/portal/ficha",
+    label: "Mi empresa",
+    world: "any",
+    icon: (
+      <svg viewBox="0 0 24 24">
+        <path d="M3 21h18" />
+        <path d="M5 21V7l7-4 7 4v14" />
+        <path d="M9 9h1M9 13h1M14 9h1M14 13h1" />
+      </svg>
+    ),
+  },
 ];
 
 export default function PortalNav({ role }: { role: ClientRole | null }) {
@@ -71,7 +83,11 @@ export default function PortalNav({ role }: { role: ClientRole | null }) {
   const canContent = role === "owner" || role === "content";
   const canFinance = role === "owner" || role === "finance";
   const visible = items.filter((i) =>
-    i.world === "content" ? canContent : canFinance,
+    i.world === "any"
+      ? true
+      : i.world === "content"
+        ? canContent
+        : canFinance,
   );
 
   return (

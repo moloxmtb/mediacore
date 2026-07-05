@@ -298,6 +298,21 @@ Decisiones de diseño (usuario):
 - El respeto al rol del cliente aplica: a un cliente solo se le notifica lo de su empresa, y
   según su rol (p. ej. finanzas no recibiría avisos de contenido).
 
+Plan aprobado (Claude Code) — a construir:
+- `lib/mail.ts` (envoltorio Resend, best-effort: si el correo falla, se registra y NO rompe la
+  acción) y `lib/notify.ts` (lógica evento → destinatarios → enviar).
+- **Invitaciones:** alta por `auth.admin.generateLink({type:'invite'})` → enlace a `/fijar-clave`
+  donde el usuario define su contraseña. Plantilla enviada por Resend. "Reenviar invitación"
+  disponible. Reemplaza el alta provisoria con contraseña.
+- **Config por tipo:** tabla `notification_settings` (event_type: accion|hito|reunion; to_internal;
+  to_client) editable desde una tarjeta en `/integraciones`, más un campo de correos internos de
+  Color Media (definible en el panel — el usuario lo llenará después).
+- **Eventos y defaults:** acción → solo interno (el cliente la ve en el portal); hito y reunión →
+  interno + cliente. Avisar al crear; hitos/reuniones también al mover de fecha. NO se disparan
+  correos por eventos que entran desde Google Calendar (evita tormentas de correo).
+- Respeta roles: al cliente solo lo de su empresa y según rol (finanzas no recibe contenido).
+- Migración chica en Supabase (`notification_settings`).
+
 ### 3. Múltiples usuarios y roles por cliente (CAMBIO ESTRUCTURAL)
 
 Hoy hay un rol `client` único que no ve nada financiero. Ampliar a varios usuarios por
@@ -379,15 +394,62 @@ cliente). Se apoya en el manejo de imágenes/Storage ya construido para la aprob
 - **Logo del cliente en su portal**, junto al de Color Media (co-branding en la cara del cliente).
 - **Favicon/ícono por empresa:** ícono pequeño de cada cliente donde se lo menciona en el panel
   (tablas, fichas, listados), para identificación visual rápida.
+- **Plantillas de correo con marca:** los correos automáticos (invitación, notificaciones) son
+  otra superficie de marca. La invitación es el PRIMER correo que recibe el cliente del sistema.
+  Al construir el correo (funcionalidad 2), Claude Code hace plantillas simples y funcionales;
+  el diseño con identidad (logo, colores, tono, firma) se trabaja aquí, junto con el resto de la
+  identidad, para que quede coherente de una vez. Nivel objetivo: intermedio (marca cuidada, sin
+  sobrediseñar).
 - Requiere: campo de logo por cliente (subida desde el panel), logo global de Color Media, y
-  aplicarlos en los lugares correspondientes de panel y portal.
+  aplicarlos en los lugares correspondientes de panel, portal y correos.
 
 ### 7. Nombre del sistema (naming)
 
-Bautizar el sistema con un nombre propio, para invitar a los clientes a entrar a "[nombre]"
-en vez de "el panel". Convierte la herramienta en un producto con identidad. Pendiente:
-definir el nombre (sesión de naming aparte) y aplicarlo en login, títulos, correos y el
-enlace "Acceso clientes" del sitio.
+**NOMBRE ELEGIDO: MEDIA CORE.** Sistema interno (no un producto que se vende). Nombre técnico,
+hereda la marca sin depender de ella ("Media" de Color Media + "Core" = núcleo/centro de la
+operación). Aplicarlo en: login, títulos del panel y portal, plantillas de correo (remitente/firma),
+favicon, y el enlace "Acceso clientes" del sitio (p. ej. "entra a Media Core").
+
+### 8. Secciones de contexto de la relación (ayuda-memoria para el cliente)
+
+Tres secciones nuevas, orientadas a que el cliente entienda la relación (no operativas). Refuerzan
+el Customer Experience: el cliente entra y recuerda de qué se trata el trabajo. Todas en ambas caras
+(admin las llena, cliente las ve en su portal).
+
+- **Estrategia.** Espacio con el enfoque estratégico que Color Media definió para ese cliente: de qué
+  se trata el trabajo y hacia dónde apunta. Es la narrativa/sentido, no las tareas. Contenido único
+  por cliente (lo llena el admin en la ficha del cliente; el cliente ve la suya en su portal).
+- **Plan contratado (por ALCANCE, no por precio).** Muestra qué INCLUYE el plan del cliente —los ítems
+  que se abordan: estrategia, desarrollo de avatar, plan de contenidos, etc.— SIN cifras. Deliberadamente
+  separado de lo financiero (que vive en cobros y solo lo ven owner/finance). Aquí todos los roles del
+  cliente ven el alcance de lo que contrataron, sin ver montos. Contenido por cliente.
+- **Datos bancarios de Color Media.** Sección de referencia con los datos de transferencia de la empresa,
+  para que el cliente agregue a Color Media como proveedor en su banco. Datos FIJOS (los mismos para todos
+  los clientes; se configuran una vez, no por cliente). Puramente informativo.
+
+(Pendiente confirmar con el usuario: estrategia y plan son por-cliente; datos bancarios son fijos y globales.)
+
+### 9. Ficha completa de datos del cliente (autogestionada)
+
+Una ficha con los antecedentes completos de cada empresa cliente, que el propio cliente llena y
+mantiene desde su portal. Hoy el cliente es solo nombre + proyectos + cobros; falta el lugar con
+sus datos. Le da al cliente una acción de escritura sobre SUS datos (como aprobar contenido).
+
+Contenido:
+- **Datos de empresa:** razón social, RUT, giro.
+- **Domicilio** y **horarios de funcionamiento**.
+- **Contactos / funcionarios:** lista (varias personas), cada una con nombre, cargo/rol, teléfono,
+  correo. Es el "directorio" operativo del cliente — con quién hablar para qué. Diseñar como lista
+  ampliable, no campos sueltos.
+
+Decisiones de diseño (CONFIRMADAS):
+- **Quién edita:** editable por ambos lados — el cliente la llena/mantiene desde el portal, y el
+  admin también puede ver/editar/completar desde el panel.
+- **Qué rol del cliente edita:** dueño y finanzas pueden editar; contenido la ve pero no la modifica.
+- **Contactos/funcionarios = directorio informativo**, SEPARADO de los accesos al sistema. Agregar
+  personas al directorio NO les da acceso al portal; el acceso se sigue manejando con usuarios/roles
+  (funcionalidad 3). No mezclar.
+- RLS: cada cliente solo su propia ficha; respeta roles (contenido solo lectura).
 
 ---
 

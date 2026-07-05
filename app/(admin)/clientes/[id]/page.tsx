@@ -5,6 +5,8 @@ import ClientForm from "@/components/admin/ClientForm";
 import ContractForm from "@/components/admin/ContractForm";
 import CalendarMapForm from "@/components/admin/CalendarMapForm";
 import UserForm from "@/components/admin/UserForm";
+import FichaForm from "@/components/admin/FichaForm";
+import ContactoForm from "@/components/admin/ContactoForm";
 import DeleteButton from "@/components/admin/DeleteButton";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -16,6 +18,12 @@ import {
   reenviarInvitacion,
   eliminarUsuario,
 } from "../usuarios-actions";
+import {
+  guardarFicha,
+  guardarContacto,
+  eliminarContacto,
+} from "../ficha-actions";
+import type { ClientContact, ClientDetails } from "@/lib/types";
 import type { ClientRole } from "@/lib/types";
 import {
   CLIENT_STATUS_LABELS,
@@ -99,6 +107,18 @@ export default async function ClienteDetallePage({
     email: emailById.get(p.id as string) ?? "—",
     client_role: (p.client_role as ClientRole) ?? "content",
   }));
+
+  const [{ data: fichaData }, { data: contactsData }] = await Promise.all([
+    supabase.from("client_details").select("*").eq("client_id", id).maybeSingle(),
+    supabase
+      .from("client_contacts")
+      .select("*")
+      .eq("client_id", id)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true }),
+  ]);
+  const ficha = (fichaData as ClientDetails | null) ?? null;
+  const contactos = (contactsData ?? []) as ClientContact[];
 
   return (
     <>
@@ -204,6 +224,73 @@ export default async function ClienteDetallePage({
                   <UserForm action={invitarUsuario} clientId={cl.id} />
                 </div>
               </details>
+            </div>
+          </div>
+
+          {/* Ficha de la empresa */}
+          <div className="card">
+            <div className="card-head">
+              <h3>Ficha de la empresa</h3>
+              {ficha?.updated_at && (
+                <span className="tag mono">act. {formatDate(ficha.updated_at.slice(0, 10))}</span>
+              )}
+            </div>
+            <div className="card-body">
+              <FichaForm action={guardarFicha} clientId={cl.id} details={ficha} />
+            </div>
+          </div>
+
+          {/* Contactos / funcionarios */}
+          <div className="card">
+            <div className="card-head">
+              <h3>Contactos / funcionarios</h3>
+              <span className="tag">{contactos.length}</span>
+            </div>
+            {contactos.length ? (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Cargo</th>
+                    <th>Teléfono</th>
+                    <th>Correo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {contactos.map((c) => (
+                    <tr key={c.id}>
+                      <td>{c.name}</td>
+                      <td style={{ color: "var(--muted)" }}>{c.role ?? "—"}</td>
+                      <td className="mono" style={{ color: "var(--muted)" }}>{c.phone ?? "—"}</td>
+                      <td className="mono" style={{ color: "var(--muted)" }}>{c.email ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="empty">Aún no hay contactos en el directorio.</div>
+            )}
+            <div className="card-body" style={{ borderTop: "1px solid var(--border-soft)", display: "flex", flexDirection: "column", gap: "10px" }}>
+              {contactos.map((c) => (
+                <details key={c.id}>
+                  <summary className="btn btn-sm">Editar · {c.name}</summary>
+                  <div style={{ padding: "14px 2px 4px" }}>
+                    <ContactoForm action={guardarContacto} clientId={cl.id} contact={c} submitLabel="Guardar contacto" />
+                    <div style={{ marginTop: "12px" }}>
+                      <DeleteButton action={eliminarContacto} hidden={{ id: c.id, client_id: cl.id }} label="Eliminar contacto" confirm={`¿Eliminar a ${c.name} del directorio?`} />
+                    </div>
+                  </div>
+                </details>
+              ))}
+              <details>
+                <summary className="btn btn-sm btn-primary" style={{ width: "fit-content" }}>+ Agregar contacto</summary>
+                <div style={{ padding: "14px 2px 4px" }}>
+                  <ContactoForm action={guardarContacto} clientId={cl.id} submitLabel="Crear contacto" />
+                </div>
+              </details>
+              <span className="hint">
+                Directorio informativo. Agregar a alguien aquí <b>no</b> le da acceso al portal — el acceso se maneja en “Usuarios del portal”.
+              </span>
             </div>
           </div>
 

@@ -1026,6 +1026,37 @@ tbody tr:hover {
   letter-spacing: 0.02em;
 }
 
+.hint {
+  font-size: 12px;
+  color: var(--faint);
+  line-height: 1.5;
+}
+
+/* Lista clave/valor (ficha en solo lectura) */
+.kv {
+  display: flex;
+  flex-direction: column;
+}
+.kv-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 16px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.kv-row:last-child {
+  border-bottom: none;
+}
+.kv-k {
+  color: var(--muted);
+  font-size: 13px;
+}
+.kv-v {
+  color: var(--text);
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
