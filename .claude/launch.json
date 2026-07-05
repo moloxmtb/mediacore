@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "panel-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-lc", "cd /Users/ismaelpoblete/panel-colormedia && npm run dev"],
       "port": 3000
     }
   ]

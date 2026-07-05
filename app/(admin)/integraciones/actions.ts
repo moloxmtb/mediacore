@@ -41,3 +41,27 @@ export async function guardarNotificaciones(fd: FormData): Promise<void> {
     .eq("id", 1);
   revalidatePath("/integraciones");
 }
+
+function optStr(fd: FormData, k: string): string | null {
+  const v = String(fd.get(k) ?? "").trim();
+  return v === "" ? null : v;
+}
+
+export async function guardarDatosBancarios(fd: FormData): Promise<void> {
+  const supabase = await createClient();
+  await supabase
+    .from("company_bank_info")
+    .update({
+      razon_social: optStr(fd, "razon_social"),
+      rut: optStr(fd, "rut"),
+      banco: optStr(fd, "banco"),
+      tipo_cuenta: optStr(fd, "tipo_cuenta"),
+      numero_cuenta: optStr(fd, "numero_cuenta"),
+      email: optStr(fd, "email"),
+      notas: optStr(fd, "notas"),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", 1);
+  revalidatePath("/integraciones");
+  revalidatePath("/portal/datos-pago");
+}

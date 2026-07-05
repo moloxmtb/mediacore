@@ -3,7 +3,13 @@ import PageHeader from "@/components/PageHeader";
 import { createClient } from "@/lib/supabase/server";
 import { getConnectionStatus } from "@/lib/google";
 import { formatDate } from "@/lib/format";
-import { desconectarGoogle, guardarNotificaciones, sincronizarAhora } from "./actions";
+import {
+  desconectarGoogle,
+  guardarDatosBancarios,
+  guardarNotificaciones,
+  sincronizarAhora,
+} from "./actions";
+import type { CompanyBankInfo } from "@/lib/types";
 import { mailConfigured } from "@/lib/mail";
 
 const MESSAGES: Record<string, { text: string; cls: string }> = {
@@ -58,6 +64,13 @@ export default async function IntegracionesPage({
   const notif = new Map(
     (notifRows ?? []).map((r) => [r.event_type as string, r]),
   );
+
+  const { data: bankRow } = await supabase
+    .from("company_bank_info")
+    .select("*")
+    .eq("id", 1)
+    .maybeSingle();
+  const bank = (bankRow as CompanyBankInfo | null) ?? null;
   const NOTIF_LABELS: Record<string, string> = {
     accion: "Acciones (bitácora)",
     hito: "Hitos de calendario",
@@ -221,6 +234,56 @@ export default async function IntegracionesPage({
                 <div>
                   <button className="btn btn-primary btn-sm" type="submit">Guardar notificaciones</button>
                 </div>
+              </div>
+            </form>
+          </div>
+
+          {/* Datos bancarios de Color Media (global) */}
+          <div className="card">
+            <div className="card-head">
+              <h3>Datos bancarios de Color Media</h3>
+              <span className="tag">Global · lo ven todos los clientes</span>
+            </div>
+            <form action={guardarDatosBancarios}>
+              <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div className="form-row">
+                  <div className="field">
+                    <label>Razón social</label>
+                    <input name="razon_social" defaultValue={bank?.razon_social ?? ""} placeholder="Vértice SpA" />
+                  </div>
+                  <div className="field">
+                    <label>RUT</label>
+                    <input name="rut" defaultValue={bank?.rut ?? ""} placeholder="77.123.456-7" />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="field">
+                    <label>Banco</label>
+                    <input name="banco" defaultValue={bank?.banco ?? ""} placeholder="Banco de Chile" />
+                  </div>
+                  <div className="field">
+                    <label>Tipo de cuenta</label>
+                    <input name="tipo_cuenta" defaultValue={bank?.tipo_cuenta ?? ""} placeholder="Cuenta corriente" />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="field">
+                    <label>Número de cuenta</label>
+                    <input name="numero_cuenta" defaultValue={bank?.numero_cuenta ?? ""} />
+                  </div>
+                  <div className="field">
+                    <label>Correo de confirmación</label>
+                    <input name="email" type="email" defaultValue={bank?.email ?? ""} placeholder="pagos@colormedia.cl" />
+                  </div>
+                </div>
+                <div className="field">
+                  <label>Notas / glosa</label>
+                  <textarea name="notas" defaultValue={bank?.notas ?? ""} placeholder="Instrucciones para la transferencia" style={{ minHeight: "56px" }} />
+                </div>
+                <div>
+                  <button className="btn btn-primary btn-sm" type="submit">Guardar datos bancarios</button>
+                </div>
+                <span className="hint">Son los datos de Color Media, iguales para todos los clientes. Cada cliente los ve en su portal (solo lectura) para transferir o agregarte como proveedor.</span>
               </div>
             </form>
           </div>

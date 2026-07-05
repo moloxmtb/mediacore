@@ -7,6 +7,9 @@ import CalendarMapForm from "@/components/admin/CalendarMapForm";
 import UserForm from "@/components/admin/UserForm";
 import FichaForm from "@/components/admin/FichaForm";
 import ContactoForm from "@/components/admin/ContactoForm";
+import EstrategiaForm from "@/components/admin/EstrategiaForm";
+import PlanItemForm from "@/components/admin/PlanItemForm";
+import Markdown from "@/components/Markdown";
 import DeleteButton from "@/components/admin/DeleteButton";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -23,7 +26,17 @@ import {
   guardarContacto,
   eliminarContacto,
 } from "../ficha-actions";
-import type { ClientContact, ClientDetails } from "@/lib/types";
+import {
+  guardarEstrategia,
+  guardarPlanItem,
+  eliminarPlanItem,
+} from "../contexto-actions";
+import type {
+  ClientContact,
+  ClientDetails,
+  ClientPlanItem,
+  ClientStrategy,
+} from "@/lib/types";
 import type { ClientRole } from "@/lib/types";
 import {
   CLIENT_STATUS_LABELS,
@@ -119,6 +132,18 @@ export default async function ClienteDetallePage({
   ]);
   const ficha = (fichaData as ClientDetails | null) ?? null;
   const contactos = (contactsData ?? []) as ClientContact[];
+
+  const [{ data: strategyData }, { data: planData }] = await Promise.all([
+    supabase.from("client_strategy").select("*").eq("client_id", id).maybeSingle(),
+    supabase
+      .from("client_plan_items")
+      .select("*")
+      .eq("client_id", id)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true }),
+  ]);
+  const strategy = (strategyData as ClientStrategy | null) ?? null;
+  const planItems = (planData ?? []) as ClientPlanItem[];
 
   return (
     <>
@@ -290,6 +315,81 @@ export default async function ClienteDetallePage({
               </details>
               <span className="hint">
                 Directorio informativo. Agregar a alguien aquí <b>no</b> le da acceso al portal — el acceso se maneja en “Usuarios del portal”.
+              </span>
+            </div>
+          </div>
+
+          {/* Estrategia */}
+          <div className="card">
+            <div className="card-head">
+              <h3>Estrategia</h3>
+              {strategy?.updated_at && (
+                <span className="tag mono">act. {formatDate(strategy.updated_at.slice(0, 10))}</span>
+              )}
+            </div>
+            <div className="card-body">
+              <EstrategiaForm action={guardarEstrategia} clientId={cl.id} strategy={strategy} />
+              {strategy?.cuerpo?.trim() && (
+                <div style={{ marginTop: "16px", borderTop: "1px solid var(--border-soft)", paddingTop: "14px" }}>
+                  <span className="hint">Vista previa de la narrativa</span>
+                  <Markdown>{strategy.cuerpo}</Markdown>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Plan contratado (alcance) */}
+          <div className="card">
+            <div className="card-head">
+              <h3>Plan contratado (alcance)</h3>
+              <span className="tag">{planItems.length}</span>
+            </div>
+            {planItems.length ? (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Ítem</th>
+                    <th>Descripción</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {planItems.map((it) => (
+                    <tr key={it.id}>
+                      <td>{it.name}</td>
+                      <td style={{ color: "var(--muted)" }}>{it.description ?? "—"}</td>
+                      <td>
+                        <span className={`badge ${it.status === "activo" ? "b-ok" : "b-idle"}`}>
+                          {it.status === "activo" ? "Activo" : "Pendiente"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="empty">Aún no hay ítems de plan.</div>
+            )}
+            <div className="card-body" style={{ borderTop: "1px solid var(--border-soft)", display: "flex", flexDirection: "column", gap: "10px" }}>
+              {planItems.map((it) => (
+                <details key={it.id}>
+                  <summary className="btn btn-sm">Editar · {it.name}</summary>
+                  <div style={{ padding: "14px 2px 4px" }}>
+                    <PlanItemForm action={guardarPlanItem} clientId={cl.id} item={it} submitLabel="Guardar ítem" />
+                    <div style={{ marginTop: "12px" }}>
+                      <DeleteButton action={eliminarPlanItem} hidden={{ id: it.id, client_id: cl.id }} label="Eliminar ítem" confirm={`¿Eliminar “${it.name}” del plan?`} />
+                    </div>
+                  </div>
+                </details>
+              ))}
+              <details>
+                <summary className="btn btn-sm btn-primary" style={{ width: "fit-content" }}>+ Agregar ítem</summary>
+                <div style={{ padding: "14px 2px 4px" }}>
+                  <PlanItemForm action={guardarPlanItem} clientId={cl.id} submitLabel="Crear ítem" />
+                </div>
+              </details>
+              <span className="hint">
+                Es el <b>alcance</b> de lo contratado, sin montos. Los precios y cuotas viven en Cobros y solo los ven dueño/finanzas.
               </span>
             </div>
           </div>

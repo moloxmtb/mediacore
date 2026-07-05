@@ -46,6 +46,40 @@ export type ClientContact = {
   created_at: string;
 };
 
+export type ClientStrategy = {
+  client_id: string;
+  objetivo: string | null;
+  publico: string | null;
+  mensajes_clave: string | null;
+  cuerpo: string | null;
+  updated_at: string;
+  updated_by: string | null;
+};
+
+export type PlanItemStatus = "activo" | "pendiente";
+
+export type ClientPlanItem = {
+  id: string;
+  client_id: string;
+  name: string;
+  description: string | null;
+  status: PlanItemStatus;
+  sort_order: number;
+  created_at: string;
+};
+
+export type CompanyBankInfo = {
+  id: number;
+  razon_social: string | null;
+  rut: string | null;
+  banco: string | null;
+  tipo_cuenta: string | null;
+  numero_cuenta: string | null;
+  email: string | null;
+  notas: string | null;
+  updated_at: string;
+};
+
 export type ContentPeriodKind = "mensual" | "quincenal" | "semanal";
 export type ContentStatus =
   | "borrador"

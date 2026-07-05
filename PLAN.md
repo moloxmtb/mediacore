@@ -419,15 +419,21 @@ el Customer Experience: el cliente entra y recuerda de qué se trata el trabajo.
 - **Estrategia.** Espacio con el enfoque estratégico que Color Media definió para ese cliente: de qué
   se trata el trabajo y hacia dónde apunta. Es la narrativa/sentido, no las tareas. Contenido único
   por cliente (lo llena el admin en la ficha del cliente; el cliente ve la suya en su portal).
+  **DECISIÓN:** combina campos definidos (objetivo, público, mensajes clave) + un bloque de texto libre
+  con formato. Solo el admin edita; el cliente (los 3 roles) solo ve.
 - **Plan contratado (por ALCANCE, no por precio).** Muestra qué INCLUYE el plan del cliente —los ítems
   que se abordan: estrategia, desarrollo de avatar, plan de contenidos, etc.— SIN cifras. Deliberadamente
   separado de lo financiero (que vive en cobros y solo lo ven owner/finance). Aquí todos los roles del
   cliente ven el alcance de lo que contrataron, sin ver montos. Contenido por cliente.
+  **DECISIÓN:** cada ítem = nombre + descripción + estado (activo/pendiente) → así el cliente ve qué se
+  trabaja ahora y qué viene. Solo el admin edita; el cliente (los 3 roles) solo ve.
 - **Datos bancarios de Color Media.** Sección de referencia con los datos de transferencia de la empresa,
   para que el cliente agregue a Color Media como proveedor en su banco. Datos FIJOS (los mismos para todos
-  los clientes; se configuran una vez, no por cliente). Puramente informativo.
+  los clientes; se configuran una vez, no por cliente). Puramente informativo. **DECISIÓN:** global (una
+  sola configuración para todos); visible a los 3 roles del cliente; solo el admin lo configura.
 
-(Pendiente confirmar con el usuario: estrategia y plan son por-cliente; datos bancarios son fijos y globales.)
+Confirmado: estrategia y plan son por-cliente y solo admin edita (cliente solo ve, los 3 roles); datos
+bancarios son globales y fijos.
 
 ### 9. Ficha completa de datos del cliente (autogestionada)
 
@@ -450,6 +456,22 @@ Decisiones de diseño (CONFIRMADAS):
   personas al directorio NO les da acceso al portal; el acceso se sigue manejando con usuarios/roles
   (funcionalidad 3). No mezclar.
 - RLS: cada cliente solo su propia ficha; respeta roles (contenido solo lectura).
+
+Modelo aprobado (Claude Code) — a construir:
+- Dos tablas nuevas, separadas de `clients` (que sigue admin-only): `client_details` (ficha 1:1) y
+  `client_contacts` (directorio 1:N, ampliable).
+- `client_details`: razon_social, rut, giro, dirección/comuna/ciudad/region (domicilio ESTRUCTURADO),
+  horarios (TEXTO LIBRE), notas, updated_at/by.
+- **RUT se mueve a la ficha** (mantenible por el cliente, con backfill del actual). El admin lo sigue
+  viendo/usando desde el panel para cobros.
+- **razon_social** (legal, "Nocciola SpA") es distinta de `clients.name` (display, "Café Nocciola").
+- `client_contacts`: name, role, phone, email, sort_order. Directorio informativo puro (sin relación
+  con auth.users/profiles).
+- RLS: lectura = admin o cualquier rol del propio cliente (los 3 ven); escritura = admin o dueño/finanzas
+  del propio cliente (contenido solo lee).
+- Panel: en `/clientes/[id]`, tarjetas "Ficha de la empresa" + "Contactos/funcionarios".
+- Portal: página nueva **"Mi empresa"** (`/portal/ficha`), visible a los 3 roles; dueño/finanzas editan,
+  contenido solo lee.
 
 ---
 
