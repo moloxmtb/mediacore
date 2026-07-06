@@ -950,24 +950,36 @@ vestigial (se dropea después). Sin datos reales (tablas de contenido vacías). 
   un FK, los embeds de PostgREST hay que desambiguarlos siempre — revisar si el patrón aparece en otras
   consultas. Un bug silencioso que un smoke test visual apurado no habría cazado.
 
-**FASE 3 — Portal cliente (DISEÑO CERRADO 2026-07-06, por construir). Decisiones tomadas:**
+**FASE 3 — Portal cliente (✅ HECHA y verificada end-to-end 2026-07-06). Decisiones tomadas:**
 Es la más acotada: NO toca modelo ni crea lógica de aprobación (usa `content_reviews` + trigger
 `apply_client_review` existentes). Es presentación + interfaz de voto sobre la vista de medios múltiples.
-- **Grilla de miniaturas uniformes** (cuadrito parejo, recortadas) para ver TODO el conjunto de una — mejor
-  que carrusel deslizable para aprobar (el cliente no puede decir "no vi esa"). Videos en la grilla:
-  thumbnail del video (que YouTube/Vimeo entregan) + ícono play encima (un embed no se recorta como imagen).
-- **Lightbox** al tocar cualquier miniatura: se abre GRANDE, cada medio en su FORMATO REAL completo
-  (vertical/horizontal), con flechas para navegar. Imagen a tamaño completo, video = reproductor real.
-  Resuelve el "no se lee en miniatura". El recorte de la grilla es solo cosmético del índice.
-- **Voto: Aprobar / Pedir cambios con campo de comentario OPCIONAL** (disponible, no obligatorio — sin
-  fricción al aprobar, permite explicar al pedir cambios). Sobre el sistema de votos existente.
-- **Historial de versiones navegable pero SECUNDARIO:** enlace discreto "ver versiones anteriores"; la
-  versión ACTUAL es siempre el foco y la única votable. Versiones viejas = SOLO LECTURA (no se puede aprobar
-  una v1 si ya se va en v3). La opción B de Fase 2 (medios físicos por versión en rutas v1/, v2/...) es lo
-  que hace el historial realmente navegable — cada versión conserva su conjunto intacto.
-- NOTA lightbox: Ismael NO había probado el sistema con contenido real (tablas vacías). Con Fase 2 ya puede
-  subir una pieza real → al construir Fase 3 verá por primera vez el comportamiento real y confirmará si las
-  miniaturas se ven bien. El lightbox se construye igual (estándar de previsualización para aprobar).
+- **Grilla de miniaturas uniformes** (cuadrito parejo, recortadas cover) para ver TODO el conjunto de una.
+  Videos en la grilla: thumbnail (YouTube estático `img.youtube.com/vi/{id}/hqdefault.jpg`; Vimeo por oEmbed
+  server-side cacheado 24h, con FALLBACK a cuadrito+play si el fetch falla) + ícono play encima.
+- **Lightbox PROPIO** (~110 líneas, no librería — el caso mixto imagen+iframe es donde las librerías se
+  ponen frágiles): al tocar, se abre grande, cada medio en su PROPORCIÓN REAL completa (contain, no cover),
+  imagen a tamaño completo, video = iframe real de YouTube/Vimeo. Flechas ‹›, cierre X/click afuera/Esc,
+  bloqueo de scroll. VERIFICADO con imágenes no cuadradas: vertical 500×900 (ratio 0.556 intacto) y
+  horizontal 1600×600 (escala al tope 1100px conservando ratio 2.667). El mecanismo: width/height auto +
+  max-width/max-height, el navegador escala preservando ratio. Fix real que atrapó el smoke test: el
+  lightbox colapsaba a 0×0 con `max-width:100%` sobre flex de ancho automático → corregido a límites vw/vh.
+- **Voto: Aprobar / Pedir cambios con comentario OPCIONAL en AMBOS** (se relajó el `if(!comment)` que antes
+  obligaba en Pedir cambios; se agregó campo opcional a Aprobar). Solo interfaz — sigue siendo fila en
+  `content_reviews`, trigger/enum/estados intactos. Verificado en base: aprobar con comentario → persiste
+  comentario + trigger a `aprobada_cliente`; pedir cambios sin comentario → `comment=null` + trigger a
+  `cambios_solicitados`.
+- **Historial navegable SECUNDARIO:** control discreto "ver versiones anteriores"; versión actual es el foco
+  y la única votable; versiones viejas en SOLO LECTURA (grilla+lightbox, sin voto). La opción B de Fase 2
+  (medios físicos por versión) es lo que lo hace navegable. La RLS existente ya cubría leer versiones/medios
+  pasados del cliente — no hubo que tocar seguridad.
+- Archivos: nuevos `lib/video-thumbs.ts`, `Lightbox.tsx`, `VoteBar.tsx`, `ContentPieceViewer.tsx`;
+  modificados `page.tsx` (lee `content_media` de todas las versiones, deja de usar `image_path`), `actions.ts`
+  (comentario opcional), `lib/video.ts`, `globals.css`; borrado `PedirCambiosForm.tsx`.
+
+**✅ FUNCIONALIDAD DE CONTENIDO MULTI-MEDIOS COMPLETA (3 fases).** Pendiente: prueba de Ismael con contenido
+REAL en producción (subir pieza con sus imágenes + video, verla del lado cliente) — Ismael eligió commitear
+ya y probar en producción después (la feature aún no la ve ningún cliente). Y dropear `image_path` vestigial
+en commit aislado cuando la prueba real confirme que nada lo usa.
 
 ⚠️ Cuidado para Code: medios cuelgan de la versión; con opción B (copia física por versión) cada versión es
 autónoma → borrar una versión borra solo sus archivos, no puede afectar otra.
