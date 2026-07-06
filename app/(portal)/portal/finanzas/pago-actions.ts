@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionProfile, canSeeFinance } from "@/lib/auth";
+import { appUrl } from "@/lib/app-url";
 import {
   createPayment,
   applyFlowOutcome,
@@ -64,7 +65,7 @@ export async function iniciarPagoFlow(fd: FormData): Promise<void> {
   // solo deja al cliente INSERT/SELECT sus pagos, no UPDATE.
   const admin = createAdminClient();
 
-  const base = process.env.APP_URL ?? "http://localhost:3000";
+  const base = appUrl();
   let flow: { url: string; token: string; flowOrder: string };
   try {
     flow = await createPayment({

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionProfile } from "@/lib/auth";
 import { sendEmail } from "@/lib/mail";
+import { appUrl } from "@/lib/app-url";
 
 export type FormState = { error: string | null; ok?: boolean };
 
@@ -58,7 +59,7 @@ export async function solicitarReunion(
       const when = preferred_at
         ? new Date(preferred_at).toLocaleString("es-CL", { dateStyle: "long", timeStyle: "short" })
         : "sin preferencia";
-      const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+      const base = appUrl();
       await sendEmail({
         to,
         subject: `Solicitud de reunión · ${cli?.name ?? "Cliente"} (urgencia ${URGENCY_LABEL[urgency]})`,
@@ -72,7 +73,7 @@ export async function solicitarReunion(
               <b>Preferida:</b> ${when}<br/>
               <b>Motivo:</b> ${reason.replace(/</g, "&lt;")}
             </div>
-            <a href="${appUrl}/clientes/${session.clientId}" style="display:inline-block;margin-top:16px;background:#3dbdcb;color:#0c1013;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;font-size:14px">Ver en el panel</a>
+            <a href="${base}/clientes/${session.clientId}" style="display:inline-block;margin-top:16px;background:#3dbdcb;color:#0c1013;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;font-size:14px">Ver en el panel</a>
           </div>
         </div>`,
       });

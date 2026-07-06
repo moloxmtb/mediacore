@@ -1,10 +1,9 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/mail";
+import { appUrl } from "@/lib/app-url";
 
 export type NotifType = "accion" | "hito" | "reunion";
-
-const APP_URL = process.env.APP_URL ?? "http://localhost:3000";
 
 function parseEmails(raw: string | null | undefined): string[] {
   if (!raw) return [];
@@ -80,8 +79,9 @@ export async function notifyEvent(opts: {
   const label = opts.type === "accion" ? "Nueva acción" : opts.type === "reunion" ? "Nueva reunión" : "Nuevo hito";
   const subject = `${label}${opts.clientName ? " · " + opts.clientName : ""}: ${opts.title}`;
 
-  const panelHref = APP_URL + (opts.panelPath ?? "/");
-  const portalHref = APP_URL + (opts.portalPath ?? "/portal");
+  const base = appUrl();
+  const panelHref = base + (opts.panelPath ?? "/");
+  const portalHref = base + (opts.portalPath ?? "/portal");
 
   for (const to of internal) {
     await sendEmail({ to, subject, html: wrap(subject, opts.detail, { href: panelHref, label: "Ver en el panel" }) });

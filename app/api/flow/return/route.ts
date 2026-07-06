@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { applyFlowOutcome } from "@/lib/flow";
+import { appUrl } from "@/lib/app-url";
 
 // urlReturn de Flow: aquí aterriza el NAVEGADOR al volver de la pasarela. Es solo
 // UX, pero por defensa vuelve a conciliar con getStatus (idempotente) por si el
@@ -16,7 +17,7 @@ async function handle(req: Request): Promise<Response> {
     token = new URL(req.url).searchParams.get("token")?.trim() ?? "";
   }
 
-  const base = process.env.APP_URL ?? "http://localhost:3000";
+  const base = appUrl();
   let outcome = "pendiente";
   if (token) {
     try {

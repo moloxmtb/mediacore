@@ -4,11 +4,11 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/mail";
+import { appUrl } from "@/lib/app-url";
 import type { ClientRole } from "@/lib/types";
 
 export type FormState = { error: string | null; ok?: boolean };
 const ROLES: ClientRole[] = ["owner", "finance", "content"];
-const APP_URL = process.env.APP_URL ?? "http://localhost:3000";
 
 function str(fd: FormData, k: string) {
   return String(fd.get(k) ?? "").trim();
@@ -25,7 +25,7 @@ async function isAdmin(): Promise<boolean> {
 }
 
 function confirmLink(hashedToken: string, type: "invite" | "recovery"): string {
-  return `${APP_URL}/auth/confirm?token_hash=${hashedToken}&type=${type}&next=${encodeURIComponent("/fijar-clave")}`;
+  return `${appUrl()}/auth/confirm?token_hash=${hashedToken}&type=${type}&next=${encodeURIComponent("/fijar-clave")}`;
 }
 
 function inviteHtml(link: string): string {
