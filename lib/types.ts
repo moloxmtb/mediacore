@@ -31,6 +31,7 @@ export type ClientDetails = {
   region: string | null;
   horarios: string | null;
   notas: string | null;
+  logo_path: string | null;
   updated_at: string;
   updated_by: string | null;
 };

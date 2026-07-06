@@ -6,6 +6,7 @@ import ContractForm from "@/components/admin/ContractForm";
 import CalendarMapForm from "@/components/admin/CalendarMapForm";
 import UserForm from "@/components/admin/UserForm";
 import FichaForm from "@/components/admin/FichaForm";
+import LogoForm from "@/components/admin/LogoForm";
 import ContactoForm from "@/components/admin/ContactoForm";
 import EstrategiaForm from "@/components/admin/EstrategiaForm";
 import PlanItemForm from "@/components/admin/PlanItemForm";
@@ -135,6 +136,9 @@ export default async function ClienteDetallePage({
   ]);
   const ficha = (fichaData as ClientDetails | null) ?? null;
   const contactos = (contactsData ?? []) as ClientContact[];
+  const logoUrl = ficha?.logo_path
+    ? supabase.storage.from("logos").getPublicUrl(ficha.logo_path).data.publicUrl
+    : null;
 
   const [{ data: strategyData }, { data: planData }] = await Promise.all([
     supabase.from("client_strategy").select("*").eq("client_id", id).maybeSingle(),
@@ -297,6 +301,12 @@ export default async function ClienteDetallePage({
               )}
             </div>
             <div className="card-body">
+              <div style={{ marginBottom: "18px", borderBottom: "1px solid var(--border-soft)", paddingBottom: "18px" }}>
+                <label style={{ display: "block", marginBottom: "10px", fontSize: "13px", color: "var(--muted)" }}>
+                  Logo de la empresa
+                </label>
+                <LogoForm clientId={cl.id} logoUrl={logoUrl} />
+              </div>
               <FichaForm action={guardarFicha} clientId={cl.id} details={ficha} />
             </div>
           </div>

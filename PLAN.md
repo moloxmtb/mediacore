@@ -887,13 +887,31 @@ Dos manuales buscables por palabra clave, integrados como páginas dentro de Med
 Cinco funcionalidades pedidas por Ismael. NINGUNA construida aún. Cada una lleva mi lectura de
 arquitecto y las decisiones a cerrar ANTES de que Code toque nada.
 
-**1. Nombre + logo de empresa en el sidebar del portal cliente.**
-Que el cliente logueado vea el nombre de su empresa y su logo en el sidebar, como señal de pertenencia.
-- Nombre: ya existe en `client_details`, traerlo al sidebar del portal.
-- **Logo: lo sube ISMAEL desde el panel admin (ficha del cliente), NO el cliente.** Simplifica: sin
-  validación del lado del cliente, Ismael cura el logo. RLS: escritura solo admin, lectura del cliente
-  dueño. Guardar en Storage (bucket nuevo; decidir público vs signed URL). El portal solo lee y muestra.
-- Dificultad: baja (nombre) + media (logo).
+**1. Nombre + logo de empresa en el sidebar del portal cliente — ✅ HECHA y verificada (2026-07-06).**
+Señal de pertenencia ("este acceso es de mi empresa"). Decisiones tomadas y construidas:
+- **Sidebar del portal:** logo ARRIBA + nombre DEBAJO cuando hay logo; SOLO el nombre cuando no hay logo (sin
+  hueco ni placeholder — el bloque se colapsa a solo texto). El nombre está SIEMPRE presente; el logo es
+  acompañante opcional.
+- **Fuente del nombre: `clients.name` (marca corta, ej. "Nocciola"), NO `client_details.razon_social`** (que
+  es el nombre legal "Nocciola SpA", queda para lo legal). `clients.name` siempre está poblado. El diagnóstico
+  reveló que el sidebar YA usaba `clients.name` — se mantuvo.
+- **El logo respeta su PROPORCIÓN REAL** (`object-fit: contain`) dentro de una caja de `max-height: 56px` — un
+  logo horizontal se ve como banda, uno cuadrado como cuadrado, ninguno rompe el layout. Verificado con logo
+  horizontal (800×200, ratio 4:1) y cuadrado (400×400, 1:1): misma caja respeta ambas proporciones.
+- **El nombre de empresa se QUITÓ del bloque de abajo** (`.sidebar-who`): arriba la identidad de la empresa
+  (logo+nombre), abajo SOLO la persona logueada. Sin duplicar el nombre.
+- **Subida desde el ADMIN** (ficha del cliente, componente `LogoForm` separado de `FichaForm`): Ismael sube el
+  archivo YA LISTO, SIN editor de recorte. Valida solo imagen (mime image/*) + ≤2MB; guía suave sin rechazar
+  por formato. Reemplazar (UUID nuevo por subida para evitar caché CDN obsoleta) y quitar.
+- **Storage: bucket PÚBLICO `logos`** (lectura TO PUBLIC — carga sin sesión, ideal para marca; escritura solo
+  admin via RLS `is_admin()`). `getPublicUrl` sin expiración. Migración `supabase/fase-logo.sql` (aditiva:
+  columna `logo_path` en `client_details` + bucket + policies), corrida y verificada.
+- **RLS verificada:** admin sube OK, portal no-admin BLOQUEADO, lectura pública sin sesión HTTP 200.
+- Archivos: nuevos `LogoForm.tsx`, `fase-logo.sql`; modificados `ficha-actions.ts` (subirLogo/quitarLogo),
+  admin `[id]/page.tsx`, portal `layout.tsx`, `lib/types.ts`, `globals.css`.
+- Nota de método: la subida no se ejercitó por el selector de archivos real del navegador (los navegadores lo
+  bloquean por script) — se replicó por sesión admin autenticada, misma RLS+storage+update. Validación de
+  mime/peso revisada por código.
 
 **2. Video en la previsualización de contenido — DISEÑO CERRADO (2026-07-06), listo para construir.**
 Creció de "agregar video" a "rediseñar la pieza para soportar múltiples medios ordenados de tipo mixto".
