@@ -441,6 +441,28 @@ públicas, se autoprotegen con getStatus firmado).
   `https://www.flow.cl/api` + APP_URL al dominio público real del deploy (no un túnel). El código NO cambia.
   Se hace junto con / después del despliegue (Fase 7), cuando haya un APP_URL público estable.
 
+⚠️ **PROBLEMA ABIERTO (2026-07-06) — CAUSA RAÍZ ENCONTRADA, FALTA CONFIRMAR:** Los pagos de prueba
+(órdenes 8283820/8283829/8283882/8283889/8283910, todas serie sandbox 82838xx-82839xx, + 8282894) fueron
+TODOS a sandbox. `/api/flow/health` decía `isSandbox: false` (producción) pero los pagos iban a sandbox.
+**CAUSA (diagnosticada por Claude Code):** NO es el código (hay una sola fuente de URL: `FLOW_API_URL ??
+sandbox` en `lib/flow.ts:16`, usada por createPayment, getStatus y health por igual; el checkout lo devuelve
+Flow en `flow.url`, mismo entorno que createPayment — imposible separar orden y checkout). La contradicción
+viene de Vercel/Next: la página de pago (`/portal/finanzas`) y su Server Action "Pagar" quedaron **clavadas
+al deployment VIEJO** (que aún tenía FLOW_API_URL=sandbox) porque se abrió antes de que propagara el deploy
+de producción. El health es un GET nuevo → va al deploy nuevo (producción) → dice false. La acción Pagar
+corría en el build viejo (sandbox). **NINGÚN dinero real se movió — plata de prueba. El rechazo de la tarjeta
+de débito real encaja: el checkout de sandbox de Webpay/Khipu no acepta tarjetas reales.** NO hay $1.000
+que reembolsar (nunca fue real).
+**CONFIRMAR (sin tocar código):** en `core.colormedia.cl` → finanzas → recarga en duro (Cmd+Shift+R, para
+botar el HTML viejo) → verificar en Vercel que el deployment Production/Current sea el último (posterior al
+cambio de FLOW_API_URL) → hacer un pago chico → debe crear orden con número de SERIE DE PRODUCCIÓN y aparecer
+en el panel de producción de Flow (no sandbox), y descontarse de la cartola real.
+**SALVAGUARDA a construir (Claude Code la ofreció, aprobada en concepto):** registrar en cada
+`installment_payments` el host de Flow usado (sandbox/prod) para trazabilidad; y que el sistema RECHACE crear
+un pago si en producción la URL resulta sandbox (evita que caiga en sandbox silenciosamente). Construir tras
+confirmar la recarga en duro.
+**HASTA CONFIRMAR CON DINERO REAL: NO exponer el pago en línea a clientes (marcar a mano).**
+
 ### 5. Subir PDF de factura (LA MÁS SIMPLE)
 
 Adjuntar a cada cuota el PDF del DTE emitido en SII/Nubox, visible y descargable por el
@@ -794,7 +816,46 @@ Dos manuales buscables por palabra clave, integrados como páginas dentro de Med
 ---
 
 
+## Notas de producción / despliegue
+
+- **Vercel: variables de entorno solo afectan a deployments NUEVOS.** Cambiar una env var no toca los
+  deployments existentes; hay que redeplegar para que aplique.
+- **Gotcha de Server Actions "clavados" al deployment (incidente Flow sandbox→prod, jul-2026).** Se pasó
+  Flow a producción en Vercel (`FLOW_API_URL=https://www.flow.cl/api` + llaves prod) y se redeplegó. El
+  endpoint de diagnóstico `/api/flow/health` (GET fresco → último deployment) reportaba `isSandbox:false`,
+  PERO los pagos seguían cayendo en **sandbox**. Causa: en Next/Vercel, la acción "Pagar" (Server Action)
+  queda atada al deployment que **renderizó** la página de finanzas. Si la pestaña se cargó antes del
+  redeploy y se clickea "Pagar" sin recarga en duro, la acción se ejecuta en el **deployment viejo**
+  (todavía con env sandbox), aunque un GET nuevo al health pegue en el de producción. Evidencia: todos los
+  `flow_order` quedaron en una sola secuencia de sandbox, y la tarjeta real fue rechazada (los checkout de
+  sandbox de Webpay/Khipu no aceptan tarjetas reales). **No era el código** (hay un único interruptor
+  `FLOW_API_URL` que leen createPayment, getStatus y el health). **Mitigación operativa:** tras cambiar env,
+  recargar en duro (Cmd+Shift+R) la página antes de disparar acciones. Y ver la salvaguarda de más abajo.
+- **`/api/flow/health?secret=<CRON_SECRET>`**: endpoint de diagnóstico que reporta el host/entorno de Flow
+  que el runtime está usando (sin exponer llaves).
+
 ## Mejoras pendientes (no bloquean, pulir cuando haya tiempo)
+
+- **Salvaguarda de entorno de Flow (a construir, plan aprobado por Claude Code).** Para que la fuga
+  sandbox↔prod nunca vuelva a pasar en silencio: (a) registrar en cada `installment_payments` el entorno
+  de Flow usado (`flow_env` = `sandbox`/`produccion`), seteado al crear el pago; (b) que `createPayment`
+  **rechace** crear el pago si `VERCEL_ENV==='production'` y la URL resuelve a sandbox (lanza, no crea la
+  orden, marca el intento `error`, loguea fuerte y muestra un banner sobrio al cliente). Solo bloquea en
+  producción; en preview/local con sandbox sigue normal. Protege deployments futuros.
+
+- **Zona horaria: la app no ancla `America/Santiago` ni al mostrar ni al ingresar (diagnosticado, sin
+  arreglar).** La base guarda bien en UTC (`timestamptz`), pero: (1) los formateadores de hora
+  (`lib/format.ts` `formatDate`/`formatDateTime`, y los `toLocaleTimeString` sueltos en los calendarios y
+  el correo de solicitud) **no pasan `timeZone`** → usan la TZ del entorno: **UTC en Vercel** (server
+  components), TZ del navegador en client, TZ del Mac en local (por eso "se veía bien" local). (2) Al
+  **crear** eventos/reuniones/hitos, el `datetime-local` se guarda **sin convertir** → Postgres lo
+  interpreta como UTC, así que la hora tipeada (pensada como Chile) queda corrida 3-4 h respecto al
+  instante real y respecto a Google. (3) La grilla mensual ubica cada evento por `starts_at.slice(0,10)`
+  (fecha UTC, no de Santiago) → eventos cerca de medianoche caen en el día equivocado. Lo TZ-aware que SÍ
+  está bien: los helpers `todaySantiago()`, el prefill de `AgendarSolicitudForm` y la constante `TZ` de
+  Google. **Arreglo (dos lados juntos):** forzar `America/Santiago` en todo el formateo visible, e
+  interpretar el `datetime-local` como hora de Chile al guardar (y usar la fecha de Santiago para la
+  grilla). Verificar que panel, Google y hora real de Chile queden iguales.
 
 - **Login: submit antes de hidratar.** Si el formulario de login se envía antes de que la página
   termine de cargar (hidratar), hace un GET y se queda en /login (hay que reintentar). No afecta a
