@@ -35,6 +35,7 @@ const PAGO_BANNER: Record<string, { text: string; cls: string }> = {
   verificado: { text: "Estado del pago actualizado con Flow.", cls: "b-idle" },
   noconfig: { text: "El pago en línea no está configurado todavía.", cls: "b-warn" },
   noestado: { text: "Solo se pueden pagar cuotas ya facturadas.", cls: "b-warn" },
+  config: { text: "El pago en línea no está disponible por ahora. Escríbenos por WhatsApp al +569 9330 4736 y lo dejamos resuelto al tiro.", cls: "b-warn" },
   error: { text: "No se pudo iniciar el pago. Inténtalo de nuevo.", cls: "b-bad" },
 };
 

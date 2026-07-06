@@ -196,6 +196,7 @@ export type InstallmentPayment = {
   status: InstallmentPaymentStatus;
   payer_email: string | null;
   created_by: string | null;
+  flow_env: string | null; // host crudo de Flow usado al crear el pago (trazabilidad)
   created_at: string;
   updated_at: string;
   paid_at: string | null;

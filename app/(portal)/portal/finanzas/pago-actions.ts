@@ -5,7 +5,13 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionProfile, canSeeFinance } from "@/lib/auth";
-import { createPayment, applyFlowOutcome, flowConfigured } from "@/lib/flow";
+import {
+  createPayment,
+  applyFlowOutcome,
+  flowConfigured,
+  flowApiUrl,
+  FlowEnvUnsafeError,
+} from "@/lib/flow";
 
 /**
  * Inicia el pago de una cuota con Flow y redirige al cliente a la pasarela.
@@ -69,11 +75,19 @@ export async function iniciarPagoFlow(fd: FormData): Promise<void> {
       urlConfirmation: `${base}/api/flow/confirm`,
       urlReturn: `${base}/api/flow/return`,
     });
-  } catch {
+  } catch (e) {
     await admin
       .from("installment_payments")
       .update({ status: "error", updated_at: new Date().toISOString() })
       .eq("id", pay.id);
+    if (e instanceof FlowEnvUnsafeError) {
+      // Salvaguarda: producción apuntando a sandbox. No se creó la orden.
+      console.error(
+        "[flow] BLOQUEADO: deployment de producción con FLOW_API_URL de sandbox; pago NO creado.",
+        { commerceOrder, apiUrl: flowApiUrl() },
+      );
+      redirect("/portal/finanzas?pago=config");
+    }
     redirect("/portal/finanzas?pago=error");
   }
 
@@ -82,6 +96,7 @@ export async function iniciarPagoFlow(fd: FormData): Promise<void> {
     .update({
       flow_token: flow.token,
       flow_order: flow.flowOrder,
+      flow_env: flowApiUrl(), // host crudo efectivamente usado
       status: "pending",
       updated_at: new Date().toISOString(),
     })

@@ -25,6 +25,38 @@ export function flowIsSandbox(): boolean {
   return API_URL.includes("sandbox.flow.cl");
 }
 
+/** URL/host de Flow efectivamente en uso (para trazabilidad forense: el hecho,
+ *  no una interpretación). */
+export function flowApiUrl(): string {
+  return API_URL;
+}
+
+/** Etiqueta derivada, solo para mostrar en UI cuando se necesite. La base guarda
+ *  el host crudo (flowApiUrl), no esta etiqueta. */
+export function flowEnvLabel(): "sandbox" | "produccion" {
+  return flowIsSandbox() ? "sandbox" : "produccion";
+}
+
+/** Error específico de "producción con URL sandbox", para distinguirlo de un
+ *  fallo genérico de red en quien llame a createPayment. */
+export class FlowEnvUnsafeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "FlowEnvUnsafeError";
+  }
+}
+
+/** Salvaguarda: en un deployment de PRODUCCIÓN, jamás crear un pago contra
+ *  sandbox. Lanza para abortar antes de tocar la red. En preview/local con
+ *  sandbox no bloquea (sandbox ahí es lo correcto). */
+export function assertFlowEnvSafe(): void {
+  if (process.env.VERCEL_ENV === "production" && flowIsSandbox()) {
+    throw new FlowEnvUnsafeError(
+      "Flow en producción apuntando a sandbox: pago rechazado por seguridad.",
+    );
+  }
+}
+
 /** Info NO sensible del entorno de Flow, para diagnóstico. Nunca devuelve las
  *  llaves completas: solo el host y los últimos 4 del apiKey. */
 export function flowRuntimeInfo() {
@@ -64,6 +96,9 @@ export async function createPayment(input: {
   urlConfirmation: string;
   urlReturn: string;
 }): Promise<{ url: string; token: string; flowOrder: string }> {
+  // Salvaguarda: nunca crear un pago contra sandbox desde producción.
+  assertFlowEnvSafe();
+
   const params: Record<string, string> = {
     apiKey: API_KEY,
     commerceOrder: input.commerceOrder,
