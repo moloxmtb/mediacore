@@ -497,6 +497,255 @@ a.cal-daynum-link:hover {
   .cal-cell .cal-daynum { font-size: 12px; }
 }
 
+/* ---------- Centro de ayuda (manuales integrados, tema Media Core) ---------- */
+/* Botón "?" del encabezado */
+.help-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  display: inline-grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.help-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.help-center {
+  max-width: 800px;
+}
+.help-center .wrap {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Buscador (la función central, conservada) */
+.help-search {
+  position: relative;
+  margin-bottom: 12px;
+}
+.help-search .search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  stroke: var(--muted);
+  fill: none;
+  stroke-width: 2;
+  pointer-events: none;
+}
+.help-search input {
+  width: 100%;
+  font-size: 15px;
+  font-family: inherit;
+  padding: 13px 16px 13px 42px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  outline: none;
+}
+.help-search input:focus {
+  border-color: var(--accent);
+}
+.help-center .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 20px;
+}
+.help-center .chip {
+  font-size: 12.5px;
+  padding: 5px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 20px;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  font-family: inherit;
+}
+.help-center .chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Leyenda de roles (manual del cliente) */
+.help-center .roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 0 0 8px;
+}
+.help-center .role-key {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.help-center .roles .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.help-center .dot.owner { background: #a98bff; }
+.help-center .dot.finance { background: #5bd39a; }
+.help-center .dot.content { background: #e0a35c; }
+
+/* Secciones y temas */
+.help-center .section {
+  padding: 22px 0 2px;
+}
+.help-center .section-title {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  font-weight: 600;
+}
+.help-center .section-title .num {
+  color: var(--accent);
+  margin-right: 6px;
+  font-family: var(--font-plex-mono);
+}
+.help-center details.topic {
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+.help-center details.topic[open] {
+  border-color: var(--accent);
+}
+.help-center details.topic summary {
+  padding: 15px 18px;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  font-weight: 500;
+  font-size: 14.5px;
+  color: var(--text);
+}
+.help-center details.topic summary::-webkit-details-marker { display: none; }
+.help-center .summary-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+.help-center .q-mark {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+.help-center .chevron {
+  width: 18px;
+  height: 18px;
+  stroke: var(--muted);
+  fill: none;
+  stroke-width: 2;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.help-center details.topic[open] .chevron { transform: rotate(180deg); }
+.help-center .topic-body {
+  padding: 0 18px 18px 54px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.help-center .topic-body p { margin-bottom: 10px; }
+.help-center .topic-body p:last-child { margin-bottom: 0; }
+.help-center .topic-body strong { color: var(--text); font-weight: 600; }
+.help-center .topic-body ol,
+.help-center .topic-body ul { margin: 0 0 10px 18px; }
+.help-center .topic-body li { margin-bottom: 5px; }
+
+/* Etiquetas de rol por tema */
+.help-center .role-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.help-center .role-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 12px;
+}
+.help-center .role-tag.owner { background: rgba(124, 77, 255, 0.16); color: #a98bff; }
+.help-center .role-tag.finance { background: rgba(30, 122, 77, 0.2); color: #5bd39a; }
+.help-center .role-tag.content { background: rgba(194, 94, 0, 0.2); color: #e0a35c; }
+
+/* Notas de cuidado (manual del admin) */
+.help-center .warn {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: var(--warn-dim);
+  border: 1px solid rgba(224, 166, 60, 0.3);
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.help-center .warn svg {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  stroke: var(--warn);
+  fill: none;
+  stroke-width: 2;
+  margin-top: 2px;
+}
+.help-center .warn strong { color: var(--warn); }
+
+/* Sin resultados + contacto */
+.help-center #noresults {
+  display: none;
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+}
+.help-center #noresults strong { color: var(--text); display: block; font-size: 16px; margin-bottom: 6px; }
+.help-center .contact {
+  margin-top: 32px;
+  padding: 24px;
+  background: var(--accent-dim);
+  border-radius: 10px;
+  text-align: center;
+}
+.help-center .contact h3 { font-size: 17px; margin-bottom: 8px; color: var(--text); }
+.help-center .contact p { color: var(--muted); font-size: 14px; margin-bottom: 4px; }
+.help-center .contact a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.help-center .contact a:hover { text-decoration: underline; }
+
+.help-center mark { background: var(--warn); color: #0c1013; padding: 0 1px; border-radius: 2px; }
+.help-center .hidden { display: none !important; }
+
 /* Sello de identidad + versión + contacto comercial (pie de ambas caras) */
 .system-footer {
   margin-top: auto;

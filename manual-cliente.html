@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Centro de ayuda · Media Core</title>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --ink-soft: #55534e;
+    --line: #e4e1da;
+    --line-soft: #efece5;
+    --paper: #faf8f4;
+    --card: #ffffff;
+    --accent: #2b6d5f;
+    --accent-soft: #e8f0ed;
+    --owner: #7c4dff;
+    --finance: #1e7a4d;
+    --content: #c25e00;
+    --radius: 12px;
+    --maxw: 820px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 20px; }
+
+  /* Header */
+  header {
+    padding: 56px 0 32px;
+    border-bottom: 1px solid var(--line);
+  }
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  h1 {
+    font-size: clamp(28px, 5vw, 40px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 12px;
+  }
+  .lede {
+    font-size: 17px;
+    color: var(--ink-soft);
+    max-width: 620px;
+  }
+
+  /* Search */
+  .search-block {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--paper);
+    padding: 20px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .search-inner { position: relative; }
+  #search {
+    width: 100%;
+    font-size: 16px;
+    font-family: inherit;
+    padding: 15px 18px 15px 46px;
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--card);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  #search:focus { border-color: var(--accent); }
+  .search-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px; height: 18px;
+    stroke: var(--ink-soft);
+    fill: none;
+    stroke-width: 2;
+    pointer-events: none;
+  }
+  .search-hint {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 10px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+  .chip {
+    font-size: 13px;
+    padding: 5px 12px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: var(--card);
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Role legend */
+  .roles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 20px 0 4px;
+  }
+  .role-key {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .dot.owner { background: var(--owner); }
+  .dot.finance { background: var(--finance); }
+  .dot.content { background: var(--content); }
+
+  /* Sections */
+  main { padding: 8px 0 80px; }
+  .section { padding: 28px 0 4px; }
+  .section-title {
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  /* Topic cards */
+  details.topic {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    margin-top: 12px;
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  details.topic[open] { border-color: var(--accent); }
+  details.topic summary {
+    padding: 18px 20px;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    font-weight: 600;
+    font-size: 16px;
+  }
+  details.topic summary::-webkit-details-marker { display: none; }
+  .summary-left { display: flex; align-items: center; gap: 12px; flex: 1; }
+  .q-mark {
+    flex-shrink: 0;
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: grid;
+    place-items: center;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .chevron {
+    width: 18px; height: 18px;
+    stroke: var(--ink-soft);
+    fill: none; stroke-width: 2;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+  details.topic[open] .chevron { transform: rotate(180deg); }
+  .topic-body {
+    padding: 0 20px 20px 58px;
+    color: var(--ink-soft);
+    font-size: 15px;
+  }
+  .topic-body p { margin-bottom: 12px; }
+  .topic-body p:last-child { margin-bottom: 0; }
+  .topic-body strong { color: var(--ink); font-weight: 600; }
+  .topic-body ol, .topic-body ul { margin: 0 0 12px 20px; }
+  .topic-body li { margin-bottom: 6px; }
+  .role-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .role-tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 12px;
+    letter-spacing: 0.02em;
+  }
+  .role-tag.owner { background: #f0eaff; color: var(--owner); }
+  .role-tag.finance { background: #e5f3ec; color: var(--finance); }
+  .role-tag.content { background: #fbede0; color: var(--content); }
+
+  /* No results */
+  #noresults {
+    display: none;
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--ink-soft);
+  }
+  #noresults strong { color: var(--ink); display: block; font-size: 17px; margin-bottom: 6px; }
+
+  /* Contact */
+  .contact {
+    margin-top: 40px;
+    padding: 28px;
+    background: var(--accent-soft);
+    border-radius: var(--radius);
+    text-align: center;
+  }
+  .contact h3 { font-size: 18px; margin-bottom: 8px; }
+  .contact p { color: var(--ink-soft); font-size: 15px; margin-bottom: 4px; }
+  .contact a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .contact a:hover { text-decoration: underline; }
+
+  footer {
+    padding: 32px 0;
+    border-top: 1px solid var(--line);
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+
+  .hidden { display: none !important; }
+  mark { background: #fff2ac; color: inherit; padding: 0 1px; border-radius: 2px; }
+
+  @media (max-width: 560px) {
+    .topic-body { padding-left: 20px; }
+    header { padding-top: 36px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Centro de ayuda</div>
+    <h1>¿En qué te ayudamos?</h1>
+    <p class="lede">Todo lo que necesitas saber para usar tu portal. Busca tu duda por palabra clave o explora los temas más abajo.</p>
+  </div>
+</header>
+
+<div class="search-block">
+  <div class="wrap">
+    <div class="search-inner">
+      <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+      <input type="text" id="search" placeholder="Escribe tu duda… (pago, contraseña, reunión, contenido…)" autocomplete="off">
+    </div>
+    <div class="chips" id="chips">
+      <button class="chip">contraseña</button>
+      <button class="chip">pago</button>
+      <button class="chip">aprobar contenido</button>
+      <button class="chip">reunión</button>
+      <button class="chip">factura</button>
+      <button class="chip">roles</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="roles">
+    <div class="role-key"><span class="dot owner"></span> Dueño · ve y hace todo</div>
+    <div class="role-key"><span class="dot finance"></span> Finanzas · lo económico</div>
+    <div class="role-key"><span class="dot content"></span> Contenido · proyectos y piezas</div>
+  </div>
+</div>
+
+<main>
+  <div class="wrap" id="topics">
+
+    <!-- PRIMEROS PASOS -->
+    <section class="section" data-section>
+      <div class="section-title">Primeros pasos</div>
+
+      <details class="topic" data-keywords="entrar ingresar acceder login iniciar sesion cuenta invitacion correo email primera vez">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Cómo entro por primera vez</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>Color Media te crea tu acceso y te llega un <strong>correo de invitación</strong>. Ábrelo y haz clic en el enlace: ahí eliges tu propia contraseña, la que tú quieras. Nadie más la conoce, ni siquiera nosotros.</p>
+          <p>Una vez que la defines, entras directo a tu portal. Desde la próxima vez, ingresas con tu correo y esa contraseña.</p>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="contraseña clave olvide recuperar cambiar resetear password no recuerdo">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Olvidé mi contraseña o quiero cambiarla</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>Si olvidaste tu contraseña, escríbenos y te enviamos un nuevo enlace para que definas una otra vez. Es el mismo proceso que la primera vez: un correo con un enlace donde eliges tu clave.</p>
+          <p>Por seguridad, nosotros nunca vemos tu contraseña, así que no podemos "recordártela" — solo darte un enlace para crear una nueva.</p>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="que veo secciones menu portal navegar donde esta pantalla inicio que viene">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Qué veo cuando entro</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>Lo primero es <strong>"Qué viene"</strong>: un resumen de lo que necesita tu atención —un pago próximo, contenido esperando tu aprobación, una reunión cercana—.</p>
+          <p>En el menú lateral tienes el resto de las secciones: tus proyectos y avance, el contenido por aprobar, el calendario, tu información de la empresa y la parte económica. Lo que ves depende de tu rol (más sobre eso abajo).</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- TU ROL -->
+    <section class="section" data-section>
+      <div class="section-title">Tu rol y qué puedes ver</div>
+
+      <details class="topic" data-keywords="roles permisos dueño finanzas contenido diferencia acceso quien ve que puedo hacer tipos usuario">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Los tres roles: qué ve cada uno</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>Cada persona de tu empresa tiene un rol, y ese rol decide qué secciones ve. Hay tres:</p>
+          <ul>
+            <li><strong>Dueño:</strong> ve y hace todo —proyectos, contenido, calendario, y toda la parte económica (contratos, cuotas, facturas)—.</li>
+            <li><strong>Finanzas:</strong> ve solo lo económico —el contrato, lo facturado, lo que está por pagar y las facturas para descargar—. No ve proyectos ni contenido.</li>
+            <li><strong>Contenido:</strong> ve los proyectos, el avance, el calendario y aprueba las piezas de contenido. No ve nada económico.</li>
+          </ul>
+          <p>Si crees que tu rol no es el correcto, escríbenos y lo ajustamos.</p>
+          <div class="role-tags"><span class="role-tag owner">Dueño</span><span class="role-tag finance">Finanzas</span><span class="role-tag content">Contenido</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="no veo seccion falta menu no aparece pago contenido oculto por que no">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>No veo una sección que esperaba ver</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>Lo más probable es que sea por tu rol. Por ejemplo, si eres <strong>Finanzas</strong>, no verás la sección de contenido ni el calendario; si eres <strong>Contenido</strong>, no verás la parte económica.</p>
+          <p>Eso es a propósito: cada rol ve solo lo suyo. Si necesitas acceso a algo más, la persona dueña de la cuenta o nosotros podemos revisar tu rol.</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- CONTENIDO -->
+    <section class="section" data-section>
+      <div class="section-title">Aprobar contenido</div>
+
+      <details class="topic" data-keywords="aprobar contenido pieza aceptar visto bueno publicar aprobacion como apruebo">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Cómo apruebo una pieza de contenido</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>En la sección <strong>Contenido</strong> ves las piezas que preparamos para el período (imagen y texto). En cada una tienes un botón para <strong>aprobar</strong> si te gusta como está.</p>
+          <p>Cuando apruebas, nos llega el visto bueno y la pieza queda lista. Si un período tiene varias piezas, puedes aprobarlas una por una o todas juntas.</p>
+          <div class="role-tags"><span class="role-tag owner">Dueño</span><span class="role-tag content">Contenido</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="cambios correccion comentar pedir ajustes no me gusta modificar contenido rechazar">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Quiero pedir cambios en una pieza</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>En vez de aprobar, deja un <strong>comentario</strong> en la pieza explicando qué te gustaría cambiar. Nos llega tu comentario y preparamos una versión corregida.</p>
+          <p>Cuando subimos la nueva versión, la ves y puedes aprobarla o volver a comentar. El historial queda guardado, así que siempre puedes mirar las versiones anteriores.</p>
+          <div class="role-tags"><span class="role-tag owner">Dueño</span><span class="role-tag content">Contenido</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="carrusel varias imagenes slides multiple fotos pieza">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Una pieza tiene varias imágenes (carrusel)</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>Cuando una pieza es un carrusel (varias imágenes), la revisas completa y la apruebas o comentas como una sola pieza. Tu comentario aplica al carrusel entero.</p>
+          <div class="role-tags"><span class="role-tag owner">Dueño</span><span class="role-tag content">Contenido</span></div>
+        </div>
+      </details>
+    </section>
+
+    <!-- PROYECTOS Y CALENDARIO -->
+    <section class="section" data-section>
+      <div class="section-title">Proyectos, avance y calendario</div>
+
+      <details class="topic" data-keywords="proyecto avance gantt fases progreso como va estado trabajo entregables">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Ver el avance de mi proyecto</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>En <strong>Avance</strong> ves tu proyecto en una línea de tiempo con sus fases y qué tan avanzada está cada una. Al tocar una fase, ves su detalle: qué incluye y qué se ha entregado.</p>
+          <div class="role-tags"><span class="role-tag owner">Dueño</span><span class="role-tag content">Contenido</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="calendario reuniones eventos fechas hitos rodaje entregas ver agenda">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Qué muestra el calendario</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>El <strong>Calendario</strong> reúne todo lo que tiene fecha: reuniones, días de rodaje, entregas e hitos. Puedes verlo en formato mensual o como una lista de lo que viene.</p>
+          <p>Desde ahí también confirmas tu asistencia a las reuniones y puedes solicitarnos una nueva.</p>
+          <div class="role-tags"><span class="role-tag owner">Dueño</span><span class="role-tag content">Contenido</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="confirmar asistencia reunion aceptar invitacion voy asistire">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Confirmar asistencia a una reunión</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>Cuando hay una reunión próxima, la ves en tu calendario y en "Qué viene" con dos botones: <strong>confirmar</strong> que asistes o avisar que no podrás. Al confirmar, nos llega tu respuesta.</p>
+          <div class="role-tags"><span class="role-tag owner">Dueño</span><span class="role-tag content">Contenido</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="solicitar pedir reunion agendar nueva juntarnos cita coordinar">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Pedir una reunión a Color Media</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>En el calendario tienes el botón <strong>Solicitar reunión</strong>. Cuéntanos el motivo, tu fecha u hora preferida y qué tan urgente es. Nos llega tu solicitud y coordinamos la reunión contigo.</p>
+          <p>Cualquier persona de tu empresa con acceso puede pedir una reunión.</p>
+          <div class="role-tags"><span class="role-tag owner">Dueño</span><span class="role-tag finance">Finanzas</span><span class="role-tag content">Contenido</span></div>
+        </div>
+      </details>
+    </section>
+
+    <!-- ECONOMICO -->
+    <section class="section" data-section>
+      <div class="section-title">Pagos y facturas</div>
+
+      <details class="topic" data-keywords="pago pagar cuota mensualidad flow tarjeta boton como pago economico vence">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Cómo pago una cuota</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>En tu sección económica, cada cuota pendiente tiene un botón <strong>Pagar</strong>. Al tocarlo, te llevamos a una página segura de pago donde eliges tu medio (tarjeta, transferencia, etc.). Tus datos de tarjeta nunca pasan por el portal.</p>
+          <p>Cuando el pago se confirma, la cuota queda marcada como pagada automáticamente. Si prefieres transferir por fuera, también puedes; en ese caso nosotros marcamos el pago cuando lo recibimos.</p>
+          <div class="role-tags"><span class="role-tag owner">Dueño</span><span class="role-tag finance">Finanzas</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="factura descargar pdf documento boleta comprobante bajar">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Descargar una factura</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>Cuando una cuota está facturada, aparece un botón para <strong>descargar</strong> el documento en PDF. Lo subimos nosotros una vez emitido.</p>
+          <div class="role-tags"><span class="role-tag owner">Dueño</span><span class="role-tag finance">Finanzas</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="datos pago transferencia banco cuenta rut proveedor donde transferir">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Ver los datos para transferir</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>En <strong>Datos de pago</strong> encuentras nuestros datos bancarios para transferir o para agregarnos como proveedor en tu banco. Son los mismos siempre.</p>
+          <div class="role-tags"><span class="role-tag owner">Dueño</span><span class="role-tag finance">Finanzas</span><span class="role-tag content">Contenido</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="uf valor monto cuanto precio cambia indexado peso">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Por qué mi cuota está en UF</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>Algunos planes se acuerdan en UF. En ese caso, verás el valor en UF y su equivalente en pesos. El monto en pesos se calcula con el valor de la UF del día en que se factura, y desde ahí queda fijo para esa cuota.</p>
+          <div class="role-tags"><span class="role-tag owner">Dueño</span><span class="role-tag finance">Finanzas</span></div>
+        </div>
+      </details>
+    </section>
+
+    <!-- MI EMPRESA -->
+    <section class="section" data-section>
+      <div class="section-title">Mi empresa</div>
+
+      <details class="topic" data-keywords="ficha empresa datos razon social rut direccion horarios editar llenar mi empresa actualizar">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Llenar o editar los datos de mi empresa</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>En <strong>Mi empresa</strong> completas los datos de tu empresa: razón social, RUT, giro, dirección, horarios y tus contactos. Esto nos ayuda a tener todo en orden.</p>
+          <p>Pueden editarla el <strong>dueño</strong> y <strong>finanzas</strong>. El rol de contenido la ve pero no la edita.</p>
+          <div class="role-tags"><span class="role-tag owner">Dueño</span><span class="role-tag finance">Finanzas</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="contactos funcionarios directorio personas equipo agregar quien">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Agregar contactos de mi equipo</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>Dentro de "Mi empresa" puedes armar un directorio con las personas de tu equipo (nombre, cargo, contacto). Es solo informativo, para que sepamos con quién hablar de cada tema.</p>
+          <p>Agregar a alguien al directorio <strong>no</strong> le da acceso al portal —eso es aparte—.</p>
+          <div class="role-tags"><span class="role-tag owner">Dueño</span><span class="role-tag finance">Finanzas</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="estrategia plan contratado que incluye servicios objetivo trabajo alcance">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Ver mi estrategia y mi plan</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>En <strong>Estrategia</strong> ves el enfoque que definimos para tu marca. En <strong>Tu plan</strong> ves qué incluye lo que contrataste (los servicios que abordamos), con lo que está en curso y lo que viene.</p>
+          <div class="role-tags"><span class="role-tag owner">Dueño</span><span class="role-tag finance">Finanzas</span><span class="role-tag content">Contenido</span></div>
+        </div>
+      </details>
+    </section>
+
+    <!-- PROBLEMAS -->
+    <section class="section" data-section>
+      <div class="section-title">Si algo no funciona</div>
+
+      <details class="topic" data-keywords="no carga error pantalla blanca lento problema falla no anda bug">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>El portal no carga o se ve raro</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>Primero, prueba <strong>recargar la página</strong> por completo. Si sigue raro, cierra sesión y vuelve a entrar, o prueba desde otro navegador.</p>
+          <p>Si el problema continúa, escríbenos contándonos qué pasó y desde qué dispositivo, y lo revisamos.</p>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="no me deja entrar login pegado vuelve rebota no avanza inicio sesion">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>Escribo mis datos y no me deja entrar</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>Si al ingresar vuelve a la pantalla de acceso sin avanzar, espera un par de segundos a que la página cargue del todo antes de escribir tus datos, y prueba de nuevo.</p>
+          <p>Si dice que tu contraseña es incorrecta, usa la opción de recuperar acceso o escríbenos para enviarte un enlace nuevo.</p>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="datos privacidad seguro quien ve otros clientes ven mis datos confidencial">
+        <summary>
+          <span class="summary-left"><span class="q-mark">?</span><span>¿Otros clientes pueden ver mis datos?</span></span>
+          <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="topic-body">
+          <p>No. Cada empresa ve únicamente lo suyo. Ningún otro cliente puede ver tus proyectos, tu contenido, tus datos ni tu información económica. Y dentro de tu empresa, cada persona ve solo lo que su rol permite.</p>
+        </div>
+      </details>
+    </section>
+
+    <div id="noresults">
+      <strong>No encontramos nada con esa palabra.</strong>
+      Prueba con otra, o escríbenos y te ayudamos directamente.
+    </div>
+
+    <div class="contact">
+      <h3>¿No encontraste lo que buscabas?</h3>
+      <p>Escríbenos y te ayudamos con gusto.</p>
+      <p><a href="mailto:hola@colormedia.cl">hola@colormedia.cl</a></p>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">Media Core · Centro de ayuda · desarrollado por Color Media</div>
+</footer>
+
+<script>
+  const search = document.getElementById('search');
+  const topics = Array.from(document.querySelectorAll('.topic'));
+  const sections = Array.from(document.querySelectorAll('[data-section]'));
+  const noresults = document.getElementById('noresults');
+  const chips = document.getElementById('chips');
+
+  function normalize(s) {
+    return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  function clearMarks(el) {
+    el.querySelectorAll('mark').forEach(m => {
+      m.replaceWith(document.createTextNode(m.textContent));
+    });
+    el.normalize();
+  }
+
+  function highlight(el, term) {
+    if (!term) return;
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    const nterm = normalize(term);
+    nodes.forEach(node => {
+      const text = node.nodeValue;
+      const ntext = normalize(text);
+      let idx = ntext.indexOf(nterm);
+      if (idx === -1) return;
+      const frag = document.createDocumentFragment();
+      let last = 0;
+      while (idx !== -1) {
+        frag.appendChild(document.createTextNode(text.slice(last, idx)));
+        const mark = document.createElement('mark');
+        mark.textContent = text.slice(idx, idx + term.length);
+        frag.appendChild(mark);
+        last = idx + term.length;
+        idx = ntext.indexOf(nterm, last);
+      }
+      frag.appendChild(document.createTextNode(text.slice(last)));
+      node.parentNode.replaceChild(frag, node);
+    });
+  }
+
+  function run(q) {
+    const query = normalize(q.trim());
+    let anyVisible = false;
+
+    topics.forEach(t => {
+      const summaryText = normalize(t.querySelector('summary').textContent);
+      const bodyText = normalize(t.querySelector('.topic-body').textContent);
+      const keywords = normalize(t.dataset.keywords || '');
+      const match = !query || summaryText.includes(query) || bodyText.includes(query) || keywords.includes(query);
+
+      clearMarks(t.querySelector('summary'));
+      clearMarks(t.querySelector('.topic-body'));
+
+      if (match) {
+        t.classList.remove('hidden');
+        anyVisible = true;
+        if (query) {
+          t.open = true;
+          highlight(t.querySelector('summary .summary-left span:last-child'), q.trim());
+          highlight(t.querySelector('.topic-body'), q.trim());
+        } else {
+          t.open = false;
+        }
+      } else {
+        t.classList.add('hidden');
+        t.open = false;
+      }
+    });
+
+    // Hide empty sections
+    sections.forEach(sec => {
+      const visibleInSection = sec.querySelectorAll('.topic:not(.hidden)').length;
+      sec.classList.toggle('hidden', visibleInSection === 0);
+    });
+
+    noresults.style.display = anyVisible ? 'none' : 'block';
+  }
+
+  search.addEventListener('input', e => run(e.target.value));
+
+  chips.addEventListener('click', e => {
+    if (e.target.classList.contains('chip')) {
+      search.value = e.target.textContent;
+      run(e.target.textContent);
+      search.focus();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
+</script>
+
+</body>
+</html>

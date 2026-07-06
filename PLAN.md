@@ -773,6 +773,24 @@ Decisiones finales (aprobadas):
   en evento real (con sync a Google) en el hueco elegido. Cierra el círculo cliente pide → admin agenda con un clic.
 - Puede haber un enlace desde el calendario a la ficha del proyecto para agregar hitos/entregas allá.
 
+### 16. Centros de ayuda (manuales integrados)
+
+Dos manuales buscables por palabra clave, integrados como páginas dentro de Media Core:
+- **Manual del cliente** (`/portal/ayuda`): tono cercano tuteando, cubre todo el portal con explicación de
+  los 3 roles, diseño neutro/limpio. Base de contenido ya redactada (HTML entregado por Claude en chat:
+  22 temas, buscador en vivo con palabras clave, etiquetas de rol por tema).
+- **Manual del administrador** (`/ayuda` o similar): guía práctica paso a paso de cada tarea del panel,
+  sección técnica aparte (migraciones, servicios, deploy, respaldos), con notas de cuidado en lo delicado
+  (borrar cuotas, roles, cobros, portapapeles). Base ya redactada (HTML entregado: 26 tareas, 9 notas de
+  cuidado, buscador en vivo).
+- **Acceso: ícono "?" arriba a la derecha** en el encabezado de ambas caras (portal y panel), NO en el
+  sidebar izquierdo (ese es para secciones de trabajo). Convención universal de ayuda.
+- **DECISIÓN:** integrados como páginas del sistema (no archivo suelto), adaptando el HTML base al diseño
+  de Media Core. Claude Code toma el contenido de los HTML entregados y los monta como rutas.
+- Nota: revisar el contenido con el usuario antes de montar (los pasos se escribieron desde cómo se construyó
+  cada función; ajustar si algún paso no calza con la pantalla real). Algunos temas (pago Flow, deploy) asumen
+  el estado post-despliegue.
+
 ---
 
 

@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual del administrador · Media Core</title>
+<style>
+  :root {
+    --ink: #16181d;
+    --ink-soft: #565b66;
+    --line: #e2e4e9;
+    --line-soft: #eef0f3;
+    --paper: #f7f8fa;
+    --card: #ffffff;
+    --accent: #3a4be0;
+    --accent-soft: #eceffd;
+    --warn: #b3541e;
+    --warn-soft: #fbefe6;
+    --warn-line: #f0d3bd;
+    --tech: #0f766e;
+    --tech-soft: #e6f3f1;
+    --radius: 12px;
+    --maxw: 860px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 20px; }
+
+  header {
+    padding: 56px 0 30px;
+    border-bottom: 1px solid var(--line);
+  }
+  .eyebrow {
+    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700; margin-bottom: 12px;
+  }
+  h1 {
+    font-size: clamp(28px, 5vw, 40px); font-weight: 700;
+    letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 12px;
+  }
+  .lede { font-size: 17px; color: var(--ink-soft); max-width: 640px; }
+
+  .search-block {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--paper); padding: 20px 0; border-bottom: 1px solid var(--line);
+  }
+  .search-inner { position: relative; }
+  #search {
+    width: 100%; font-size: 16px; font-family: inherit;
+    padding: 15px 18px 15px 46px;
+    border: 1.5px solid var(--line); border-radius: var(--radius);
+    background: var(--card); color: var(--ink); outline: none;
+    transition: border-color 0.15s;
+  }
+  #search:focus { border-color: var(--accent); }
+  .search-icon {
+    position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+    width: 18px; height: 18px; stroke: var(--ink-soft); fill: none; stroke-width: 2;
+    pointer-events: none;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+  .chip {
+    font-size: 13px; padding: 5px 12px; border: 1px solid var(--line);
+    border-radius: 20px; background: var(--card); color: var(--ink-soft);
+    cursor: pointer; transition: all 0.15s; font-family: inherit;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  main { padding: 8px 0 80px; }
+  .section { padding: 30px 0 4px; }
+  .section-title {
+    font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-soft); font-weight: 700; margin-bottom: 2px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title .num {
+    color: var(--accent); font-variant-numeric: tabular-nums;
+  }
+  .section.tech .section-title { color: var(--tech); }
+  .section.tech .section-title .num { color: var(--tech); }
+
+  details.topic {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); margin-top: 12px; overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  details.topic[open] { border-color: var(--accent); }
+  .section.tech details.topic[open] { border-color: var(--tech); }
+  details.topic summary {
+    padding: 18px 20px; cursor: pointer; list-style: none;
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    font-weight: 600; font-size: 16px;
+  }
+  details.topic summary::-webkit-details-marker { display: none; }
+  .summary-left { display: flex; align-items: center; gap: 12px; flex: 1; }
+  .q-mark {
+    flex-shrink: 0; width: 26px; height: 26px; border-radius: 7px;
+    background: var(--accent-soft); color: var(--accent);
+    display: grid; place-items: center; font-size: 13px; font-weight: 700;
+  }
+  .section.tech .q-mark { background: var(--tech-soft); color: var(--tech); }
+  .chevron {
+    width: 18px; height: 18px; stroke: var(--ink-soft); fill: none; stroke-width: 2;
+    transition: transform 0.2s; flex-shrink: 0;
+  }
+  details.topic[open] .chevron { transform: rotate(180deg); }
+  .topic-body {
+    padding: 0 20px 20px 58px; color: var(--ink-soft); font-size: 15px;
+  }
+  .topic-body p { margin-bottom: 12px; }
+  .topic-body p:last-child { margin-bottom: 0; }
+  .topic-body strong { color: var(--ink); font-weight: 600; }
+  .topic-body ol, .topic-body ul { margin: 0 0 12px 4px; padding-left: 20px; }
+  .topic-body li { margin-bottom: 7px; }
+  .topic-body code {
+    background: var(--line-soft); padding: 1px 6px; border-radius: 5px;
+    font-size: 13px; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    color: var(--ink);
+  }
+  .warn {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: var(--warn-soft); border: 1px solid var(--warn-line);
+    border-radius: 9px; padding: 12px 14px; margin: 4px 0 12px;
+    font-size: 14px; color: #7a3a13;
+  }
+  .warn svg { flex-shrink: 0; width: 17px; height: 17px; stroke: var(--warn); fill: none; stroke-width: 2; margin-top: 2px; }
+  .warn strong { color: #6a3211; }
+
+  #noresults {
+    display: none; text-align: center; padding: 48px 20px; color: var(--ink-soft);
+  }
+  #noresults strong { color: var(--ink); display: block; font-size: 17px; margin-bottom: 6px; }
+
+  footer {
+    padding: 32px 0; border-top: 1px solid var(--line);
+    text-align: center; font-size: 13px; color: var(--ink-soft);
+  }
+  .hidden { display: none !important; }
+  mark { background: #fff2ac; color: inherit; padding: 0 1px; border-radius: 2px; }
+
+  @media (max-width: 560px) {
+    .topic-body { padding-left: 20px; }
+    header { padding-top: 36px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Manual del administrador</div>
+    <h1>Cómo operar Media Core</h1>
+    <p class="lede">Tu guía paso a paso para administrar clientes, cobros, contenido y todo el sistema. Busca la tarea que necesitas o recórrela por secciones.</p>
+  </div>
+</header>
+
+<div class="search-block">
+  <div class="wrap">
+    <div class="search-inner">
+      <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+      <input type="text" id="search" placeholder="Busca una tarea… (crear cliente, invitar, cuota, UF, factura…)" autocomplete="off">
+    </div>
+    <div class="chips" id="chips">
+      <button class="chip">crear cliente</button>
+      <button class="chip">invitar usuario</button>
+      <button class="chip">roles</button>
+      <button class="chip">cuota escalonada</button>
+      <button class="chip">facturar</button>
+      <button class="chip">migración</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div class="wrap" id="topics">
+
+    <!-- 1. CLIENTES Y ACCESOS -->
+    <section class="section" data-section>
+      <div class="section-title"><span class="num">01</span> Clientes y accesos</div>
+
+      <details class="topic" data-keywords="crear cliente nuevo agregar empresa dar de alta registrar">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Crear un nuevo cliente</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <ol>
+            <li>Ve a <strong>Clientes</strong> en el menú del panel.</li>
+            <li>Pulsa <strong>Nuevo cliente</strong>.</li>
+            <li>Completa el nombre de display (ej. "Café Nocciola"), su segmento y estado.</li>
+            <li>Guarda. El cliente queda creado, listo para sumarle contrato, proyectos y usuarios.</li>
+          </ol>
+          <p>Los datos completos de la empresa (razón social, RUT, giro) se llenan después en su ficha, o los completa el propio cliente desde su portal.</p>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="invitar usuario cliente acceso correo invitacion contraseña crear persona dar acceso portal">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Invitar a un usuario del cliente</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <ol>
+            <li>Entra a la ficha del cliente (<strong>Clientes → </strong>el cliente).</li>
+            <li>En la sección de usuarios, pulsa <strong>Invitar usuario</strong>.</li>
+            <li>Escribe su correo y elige su rol (dueño, finanzas o contenido).</li>
+            <li>Al invitar, le llega un correo con un enlace para que <strong>él mismo defina su contraseña</strong>.</li>
+          </ol>
+          <p>Tú nunca conoces su contraseña —la crea la persona desde el enlace—. Si no le llega el correo, puedes usar <strong>Reenviar invitación</strong>.</p>
+          <div class="warn"><svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg><span><strong>Solo tú creas los accesos.</strong> El cliente no puede dar de alta a su propia gente. Cada usuario que sumes tiene acceso real al portal — no lo confundas con el directorio de contactos de la ficha, que es solo informativo.</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="roles permisos dueño finanzas contenido que ve cada uno cambiar rol asignar diferencia">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Los roles del cliente y qué ve cada uno</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>Cada usuario del cliente tiene uno de tres roles:</p>
+          <ul>
+            <li><strong>Dueño:</strong> ve y hace todo, incluido lo económico completo.</li>
+            <li><strong>Finanzas:</strong> ve solo lo económico (contrato, cuotas, facturas). No ve proyectos, contenido ni calendario.</li>
+            <li><strong>Contenido:</strong> ve proyectos, avance, calendario y aprueba contenido. No ve nada económico.</li>
+          </ul>
+          <p>El rol se asigna al invitar y puedes cambiarlo desde la ficha del cliente.</p>
+          <div class="warn"><svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg><span><strong>Cuidado con quién ve lo financiero.</strong> Solo dueño y finanzas ven cuotas y facturas. Si le das rol de contenido a alguien que debía ver los cobros, no los verá — y al revés, no le des finanzas a quien no deba ver montos.</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="ficha empresa datos razon social rut contactos directorio funcionarios editar cliente">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Llenar la ficha de un cliente</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>En la ficha del cliente tienes las tarjetas <strong>Ficha de la empresa</strong> (razón social, RUT, giro, dirección, horarios) y <strong>Contactos</strong> (el directorio de personas de la empresa).</p>
+          <p>Tú puedes editarla desde el panel, y el cliente (dueño o finanzas) también desde su portal. El RUT que pongas aquí es el que usas para facturar.</p>
+          <p>El directorio de contactos es <strong>informativo</strong>: agregar una persona ahí no le da acceso al portal. Para dar acceso, usa "Invitar usuario".</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- 2. CONTRATOS Y COBROS -->
+    <section class="section" data-section>
+      <div class="section-title"><span class="num">02</span> Contratos y cobros</div>
+
+      <details class="topic" data-keywords="contrato crear acuerdo modalidad proyecto plazo fijo retainer uf tipo cobro">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Crear un contrato y elegir la modalidad</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>Desde la ficha del cliente creas un contrato eligiendo una de tres modalidades:</p>
+          <ul>
+            <li><strong>Proyecto puntual:</strong> un total que se paga en cuotas.</li>
+            <li><strong>Plazo fijo (UF):</strong> cuotas mensuales por un tiempo definido, en UF.</li>
+            <li><strong>Retainer indefinido:</strong> un monto que se cobra periódicamente, sin fecha de término.</li>
+          </ul>
+          <p>Puedes trabajar en UF (se indexa al valor del día al facturar) o en pesos fijos, según lo acordado con el cliente.</p>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="cuota generar crear cuotas plazo fijo mensual dividir">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Generar las cuotas de un contrato</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <ol>
+            <li>En el contrato, elige la cantidad de cuotas y la fecha de inicio.</li>
+            <li>Genera las cuotas. El sistema te confirma cuántas creó.</li>
+          </ol>
+          <div class="warn"><svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg><span><strong>No generes cuotas dos veces sobre el mismo contrato.</strong> Si ya tiene cuotas, el sistema te avisa y te ofrece "borrar las proyectadas y regenerar" — usa esa opción en vez de generar de nuevo, para no duplicar ni descuadrar las fechas.</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="cuota escalonada tramos montos distintos escalon subir bajar diferente por tramo">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Armar un pago escalonado (por tramos)</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>Un escalonado es un contrato a plazo fijo donde las cuotas no valen todas lo mismo. Al crear el contrato:</p>
+          <ol>
+            <li>Usa el <strong>editor de tramos</strong>: defines, por ejemplo, "cuotas 1 a 6 a 24 UF" y "cuotas 7 a 12 a 36 UF".</li>
+            <li>El sistema te muestra un resumen (total, primera y última cuota) antes de generar.</li>
+            <li>Al generar, crea las cuotas ya escalonadas, con fechas mensuales seguidas.</li>
+          </ol>
+          <p>Después puedes editar el monto o la fecha de cualquier cuota individual si necesitas ajustar algo.</p>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="facturar cuota emitir marcar factura registrar cobro congelar uf">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Facturar una cuota</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>Cuando facturas una cuota en el panel, el sistema toma el valor de la UF del día (si es en UF), calcula el monto en pesos con el IVA aparte, y <strong>congela</strong> ese total. De ahí en adelante ese monto queda fijo aunque la UF cambie.</p>
+          <div class="warn"><svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg><span><strong>Facturar en el panel no emite el documento tributario.</strong> Solo registra el cobro. La factura real la emites en el SII o Nubox, y luego subes el PDF a esa cuota (ver "Subir el PDF de una factura").</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="pago marcar pagada transferencia recibido cobrado flow boton confirmar">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Marcar una cuota como pagada</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>Hay dos formas de que una cuota quede pagada:</p>
+          <ul>
+            <li><strong>Pago con Flow:</strong> el cliente paga desde su portal y la cuota se marca sola cuando Flow confirma.</li>
+            <li><strong>Transferencia por fuera:</strong> cuando recibes una transferencia, marcas la cuota como pagada a mano en el panel.</li>
+          </ul>
+          <p>Ambas conviven sin problema.</p>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="pdf factura subir documento adjuntar descargable cliente boleta">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Subir el PDF de una factura</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <ol>
+            <li>Emite la factura real en el SII o Nubox.</li>
+            <li>En el panel, en la cuota facturada, pulsa <strong>Subir factura PDF</strong> y elige el archivo.</li>
+          </ol>
+          <p>El cliente (dueño y finanzas) podrá descargarla desde su portal. Puedes reemplazarla o quitarla si te equivocaste.</p>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="borrar cuota eliminar quitar editar cambiar equivoque">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Editar o borrar una cuota</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>Desde cobros puedes editar el monto y la fecha de una cuota, o borrarla con su botón.</p>
+          <div class="warn"><svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg><span><strong>No borres cuotas ya facturadas o pagadas sin pensarlo.</strong> El sistema te bloquea o advierte, porque representan un cobro real. Borra con confianza solo las que están "proyectadas".</span></div>
+        </div>
+      </details>
+    </section>
+
+    <!-- 3. PROYECTOS Y CONTENIDO -->
+    <section class="section" data-section>
+      <div class="section-title"><span class="num">03</span> Proyectos y contenido</div>
+
+      <details class="topic" data-keywords="proyecto crear fase gantt carta avance hito entregable planificar">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Crear un proyecto y su carta Gantt</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>Creas el proyecto desde su sección y le armas la carta Gantt agregando fases con sus fechas y avance. Cada fase puede tener sus acciones y entregables.</p>
+          <p>Los hitos y entregas se crean aquí, dentro del proyecto, para que queden bien enganchados a la planificación. Luego aparecen automáticamente en el calendario.</p>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="contenido subir pieza aprobacion crear imagen texto periodo publicar propuesta">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Subir contenido para aprobación</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <ol>
+            <li>Ve a <strong>Contenido</strong> y crea un período (mes, quincena o semana).</li>
+            <li>Agrega piezas con su nombre interno, el copy del post y la imagen.</li>
+            <li>Publícalas como propuesta. El cliente las verá en su portal para aprobar o comentar.</li>
+          </ol>
+          <p>Cuando el cliente aprueba o pide cambios, tú lo revisas y confirmas. Si pide correcciones, subes una versión nueva y la anterior queda en el historial.</p>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="aprobacion cliente comentario correccion version confirmar contenido revisar">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Revisar aprobaciones y comentarios del cliente</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>La aprobación o comentario del cliente no queda firme solo: <strong>tú tienes la última palabra</strong>. Ves su voto en el panel y confirmas, o subes una versión corregida si pidió cambios.</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- 4. CALENDARIO Y REUNIONES -->
+    <section class="section" data-section>
+      <div class="section-title"><span class="num">04</span> Calendario y reuniones</div>
+
+      <details class="topic" data-keywords="calendario consolidado ver todos clientes eventos color filtro panel administracion">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>El calendario consolidado</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>En <strong>Calendario</strong> ves los eventos de todos tus clientes juntos, cada cliente con su color. Puedes filtrar para ver uno solo, y cambiar entre vista mensual y lista.</p>
+          <p>Muestra reuniones, rodajes, entregas e hitos, además de las solicitudes de reunión pendientes dibujadas en su fecha preferida.</p>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="crear reunion evento agregar calendario rodaje agendar nuevo desde calendario">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Crear una reunión o evento desde el calendario</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>Desde el calendario puedes crear reuniones y eventos sueltos (como rodajes), eligiendo el cliente. El evento se sincroniza automáticamente con el Google Calendar de ese cliente.</p>
+          <p>Los hitos y entregas no se crean aquí — esos van en la ficha del proyecto, para que queden dentro de su planificación.</p>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="solicitud reunion cliente pidio agendar bandeja aceptar descartar responder">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Atender una solicitud de reunión</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>Cuando un cliente solicita una reunión, te llega por correo y aparece en la <strong>bandeja de solicitudes</strong> del dashboard (y en la ficha del cliente, y dibujada en el calendario en su fecha preferida).</p>
+          <p>Desde ahí la <strong>agendas</strong> —lo que la convierte en un evento real que se sincroniza con Google— o la descartas.</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- 5. CONTEXTO DEL CLIENTE -->
+    <section class="section" data-section>
+      <div class="section-title"><span class="num">05</span> Estrategia, plan y datos</div>
+
+      <details class="topic" data-keywords="estrategia escribir cliente enfoque objetivo mensajes narrativa llenar">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Escribir la estrategia de un cliente</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>En la ficha del cliente, la tarjeta <strong>Estrategia</strong> tiene campos definidos (objetivo, público, mensajes clave) más un espacio de texto libre con formato para desarrollar el enfoque. El cliente la ve en su portal, solo lectura.</p>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="plan contratado alcance items servicios que incluye estado activo pendiente">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Definir el plan contratado (por alcance)</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>En <strong>Plan contratado</strong> armas la lista de lo que incluye el servicio (estrategia, avatar, plan de contenidos, etc.), cada ítem con su descripción y su estado (activo o pendiente). Sin montos — esto es el alcance, no el precio.</p>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="datos bancarios empresa transferencia banco cuenta configurar integraciones global">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Configurar los datos bancarios de Color Media</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>En <strong>Integraciones</strong> llenas una sola vez tus datos bancarios (banco, cuenta, RUT). Son globales: todos los clientes ven los mismos, en su sección "Datos de pago".</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- 6. NOTIFICACIONES -->
+    <section class="section" data-section>
+      <div class="section-title"><span class="num">06</span> Notificaciones por correo</div>
+
+      <details class="topic" data-keywords="notificaciones correo email configurar quien recibe eventos aviso interno cliente">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Configurar quién recibe cada notificación</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>En <strong>Integraciones</strong>, la tarjeta de notificaciones te deja decidir, por cada tipo de evento (acción, hito, reunión), si el correo va solo a tu equipo interno o también al cliente.</p>
+          <p>Ahí también defines a qué correos internos de Color Media llegan los avisos.</p>
+          <div class="warn"><svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg><span><strong>Cuidado con saturar al cliente.</strong> Las acciones del día a día conviene dejarlas solo internas; al cliente, mejor solo hitos y reuniones. Un correo por cada movimiento puede volverse mucho.</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="version sistema actualizar numero v1 subir cambio deploy">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Subir el número de versión del sistema</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>La versión se define en un solo lugar del sistema y se muestra sola en todas las pantallas. Cuando haces un cambio, tú decides si sube el decimal (cambio menor, ej. v1.01) o el entero (cambio mayor, ej. v2.00).</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- 7. TECNICO -->
+    <section class="section tech" data-section>
+      <div class="section-title"><span class="num">07</span> Parte técnica (avanzado)</div>
+
+      <details class="topic" data-keywords="migracion supabase sql correr base datos ejecutar portapapeles">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Correr una migración en Supabase</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>Cuando se agrega una funcionalidad nueva con datos, hay que "correr una migración" —un script que actualiza la base—:</p>
+          <ol>
+            <li>Abre el SQL Editor de Supabase (el enlace que te da Claude Code).</li>
+            <li>Selecciona todo lo que haya (<code>Cmd+A</code>) y bórralo, para partir limpio.</li>
+            <li>Pega el script (<code>Cmd+V</code>).</li>
+            <li><strong>Verifica</strong> que sea el correcto antes de ejecutar (que mencione lo que esperabas).</li>
+            <li>Pulsa <strong>Run</strong>. Si aparece una alerta de "operaciones destructivas", es normal — sigue con Run query.</li>
+          </ol>
+          <div class="warn"><svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg><span><strong>Cuidado con el portapapeles.</strong> A veces trae algo viejo. Siempre revisa que lo pegado sea la migración correcta antes de darle Run.</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="servicios externos supabase google resend flow que son claves credenciales">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Los servicios externos del sistema</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>Media Core se apoya en varios servicios:</p>
+          <ul>
+            <li><strong>Supabase:</strong> la base de datos, los accesos y el guardado de archivos.</li>
+            <li><strong>Google Calendar:</strong> sincroniza los eventos de cada cliente.</li>
+            <li><strong>Resend:</strong> envía los correos (invitaciones y notificaciones), desde marketing@colormedia.cl.</li>
+            <li><strong>Flow:</strong> procesa los pagos en línea.</li>
+          </ul>
+          <div class="warn"><svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg><span><strong>Las llaves de estos servicios son secretas.</strong> Viven en el archivo de configuración del sistema, nunca se comparten ni se pegan en un chat. Trátalas como contraseñas.</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="publicar deploy servidor vercel dominio core produccion actualizar cambios">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Cómo se publican los cambios</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>El sistema vive en <code>core.colormedia.cl</code>, publicado en Vercel. Trabajas en una copia en tu computador y, cuando un cambio está listo y probado, se publica —normalmente casi automático—.</p>
+          <div class="warn"><svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg><span><strong>Con clientes reales usándolo, prueba bien antes de publicar cambios grandes.</strong> Y si un cambio trae migración, recuerda aplicarla también en la base de producción, no solo en la de pruebas.</span></div>
+        </div>
+      </details>
+
+      <details class="topic" data-keywords="respaldo backup copia seguridad perder datos guardar">
+        <summary><span class="summary-left"><span class="q-mark">?</span><span>Respaldos de la información</span></span><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="topic-body">
+          <p>Toda la información vive en Supabase, que mantiene respaldos. Aun así, antes de cambios grandes que toquen muchos datos, es sano tener presente la opción de respaldar la base.</p>
+        </div>
+      </details>
+    </section>
+
+    <div id="noresults">
+      <strong>No encontramos esa tarea.</strong>
+      Prueba con otra palabra clave.
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">Media Core · Manual del administrador · uso interno de Color Media</div>
+</footer>
+
+<script>
+  const search = document.getElementById('search');
+  const topics = Array.from(document.querySelectorAll('.topic'));
+  const sections = Array.from(document.querySelectorAll('[data-section]'));
+  const noresults = document.getElementById('noresults');
+  const chips = document.getElementById('chips');
+
+  function normalize(s) {
+    return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+  function clearMarks(el) {
+    el.querySelectorAll('mark').forEach(m => m.replaceWith(document.createTextNode(m.textContent)));
+    el.normalize();
+  }
+  function highlight(el, term) {
+    if (!term) return;
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    const nterm = normalize(term);
+    nodes.forEach(node => {
+      const text = node.nodeValue;
+      const ntext = normalize(text);
+      let idx = ntext.indexOf(nterm);
+      if (idx === -1) return;
+      const frag = document.createDocumentFragment();
+      let last = 0;
+      while (idx !== -1) {
+        frag.appendChild(document.createTextNode(text.slice(last, idx)));
+        const mark = document.createElement('mark');
+        mark.textContent = text.slice(idx, idx + term.length);
+        frag.appendChild(mark);
+        last = idx + term.length;
+        idx = ntext.indexOf(nterm, last);
+      }
+      frag.appendChild(document.createTextNode(text.slice(last)));
+      node.parentNode.replaceChild(frag, node);
+    });
+  }
+  function run(q) {
+    const query = normalize(q.trim());
+    let anyVisible = false;
+    topics.forEach(t => {
+      const summaryText = normalize(t.querySelector('summary').textContent);
+      const bodyText = normalize(t.querySelector('.topic-body').textContent);
+      const keywords = normalize(t.dataset.keywords || '');
+      const match = !query || summaryText.includes(query) || bodyText.includes(query) || keywords.includes(query);
+      clearMarks(t.querySelector('summary'));
+      clearMarks(t.querySelector('.topic-body'));
+      if (match) {
+        t.classList.remove('hidden');
+        anyVisible = true;
+        if (query) {
+          t.open = true;
+          highlight(t.querySelector('summary .summary-left span:last-child'), q.trim());
+          highlight(t.querySelector('.topic-body'), q.trim());
+        } else { t.open = false; }
+      } else {
+        t.classList.add('hidden');
+        t.open = false;
+      }
+    });
+    sections.forEach(sec => {
+      const visibleInSection = sec.querySelectorAll('.topic:not(.hidden)').length;
+      sec.classList.toggle('hidden', visibleInSection === 0);
+    });
+    noresults.style.display = anyVisible ? 'none' : 'block';
+  }
+  search.addEventListener('input', e => run(e.target.value));
+  chips.addEventListener('click', e => {
+    if (e.target.classList.contains('chip')) {
+      search.value = e.target.textContent;
+      run(e.target.textContent);
+      search.focus();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
+</script>
+
+</body>
+</html>
