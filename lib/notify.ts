@@ -59,8 +59,8 @@ function wrap(title: string, body: string, cta: { href: string; label: string })
       <div style="font-size:14px;color:#444;line-height:1.5">${body}</div>
       <a href="${cta.href}" style="display:inline-block;margin-top:16px;background:#3dbdcb;color:#0c1013;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;font-size:14px">${cta.label}</a>
     </div>
-    <p style="font-size:11px;color:#999;margin-top:14px">Color Media · aviso automático</p>
   </div>`;
+  // El pie automático lo agrega sendEmail (lib/mail.ts), centralizado.
 }
 
 /**

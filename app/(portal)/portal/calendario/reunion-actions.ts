@@ -74,7 +74,6 @@ export async function solicitarReunion(
             </div>
             <a href="${appUrl}/clientes/${session.clientId}" style="display:inline-block;margin-top:16px;background:#3dbdcb;color:#0c1013;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;font-size:14px">Ver en el panel</a>
           </div>
-          <p style="font-size:11px;color:#999;margin-top:14px">Color Media · aviso automático</p>
         </div>`,
       });
     }
