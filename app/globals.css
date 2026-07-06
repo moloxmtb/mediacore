@@ -746,6 +746,68 @@ a.cal-daynum-link:hover {
 .help-center mark { background: var(--warn); color: #0c1013; padding: 0 1px; border-radius: 2px; }
 .help-center .hidden { display: none !important; }
 
+/* ---------- Editor de medios (contenido, admin) ---------- */
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+}
+.media-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.media-thumb {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel);
+  cursor: grab;
+  display: grid;
+  place-items: center;
+}
+.media-thumb:active { cursor: grabbing; }
+.media-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.media-readonly .media-thumb { cursor: default; }
+.media-video {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 11px;
+}
+.media-video-play {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+}
+.media-video-meta { line-height: 1.3; text-transform: capitalize; }
+.media-add {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-soft);
+}
+@media (max-width: 640px) {
+  .media-add { grid-template-columns: 1fr; }
+}
+
 /* Sello de identidad + versión + contacto comercial (pie de ambas caras) */
 .system-footer {
   margin-top: auto;

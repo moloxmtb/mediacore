@@ -282,7 +282,18 @@ de Color Media y al equipo del cliente.
   - **ESTADO:** cuenta creada, dominio colormedia.cl VERIFICADO en Resend (DNS en HostGator /
     cPanel Zone Editor; registros DKIM `resend._domainkey`, MX y TXT `send` agregados sin tocar
     los MX de Google Workspace existentes). Falta pasar la API key (`re_...`) a Claude Code.
-  - **Dirección de envío (from):** `marketing@colormedia.cl`.
+  - **Identidad de correo (ACTUALIZADO 2026-07-06, en producción):** centralizada en `lib/mail.ts`.
+    - `from`: `Notificaciones Color Media <notificaciones@colormedia.cl>` (Resend verifica el dominio,
+      no la dirección; la casilla `notificaciones@` no necesita existir como buzón).
+    - `reply_to`: `marketing@colormedia.cl` (casilla real que Ismael lee).
+    - **Pie único** en todo correo (antes duplicado en `notify.ts` y `reunion-actions.ts`, ya eliminado):
+      estilo secundario gris, texto de no-responder que apunta a `marketing@colormedia.cl`.
+    - **`MAIL_FROM` jubilada:** `from` fijo en el helper (más seguro que env var). Borrada de `.env.local`
+      y de Vercel. El código VIEJO usaba `MAIL_FROM ?? marketing@` como fallback → mientras los commits no
+      estuvieron pusheados, producción envió desde `marketing@` sin la variable. Resuelto al pushear `069cd2a`.
+    - **Confirmar en producción con Opción A:** reenviar una invitación desde el sitio en vivo y verificar
+      que el From sea `notificaciones@` (un envío por script local NO lo confirma — corre código local, no
+      el runtime de Vercel).
 - Es la infraestructura base compartida: habilita también las invitaciones de usuario
   (funcionalidad 3) — se construyen juntas sobre Resend.
 - Definir con precisión qué eventos disparan correo, para no saturar (probablemente
@@ -453,15 +464,34 @@ de producción. El health es un GET nuevo → va al deploy nuevo (producción) �
 corría en el build viejo (sandbox). **NINGÚN dinero real se movió — plata de prueba. El rechazo de la tarjeta
 de débito real encaja: el checkout de sandbox de Webpay/Khipu no acepta tarjetas reales.** NO hay $1.000
 que reembolsar (nunca fue real).
-**CONFIRMAR (sin tocar código):** en `core.colormedia.cl` → finanzas → recarga en duro (Cmd+Shift+R, para
-botar el HTML viejo) → verificar en Vercel que el deployment Production/Current sea el último (posterior al
-cambio de FLOW_API_URL) → hacer un pago chico → debe crear orden con número de SERIE DE PRODUCCIÓN y aparecer
-en el panel de producción de Flow (no sandbox), y descontarse de la cartola real.
-**SALVAGUARDA a construir (Claude Code la ofreció, aprobada en concepto):** registrar en cada
-`installment_payments` el host de Flow usado (sandbox/prod) para trazabilidad; y que el sistema RECHACE crear
-un pago si en producción la URL resulta sandbox (evita que caiga en sandbox silenciosamente). Construir tras
-confirmar la recarga en duro.
-**HASTA CONFIRMAR CON DINERO REAL: NO exponer el pago en línea a clientes (marcar a mano).**
+**✅ RESUELTO Y CONFIRMADO (2026-07-06).** La prueba en duro se hizo y el pago cayó en PRODUCCIÓN:
+la pasarela cobra de verdad, con dinero real. Cómo se cerró:
+- **Causa raíz confirmada tal cual el diagnóstico:** el health (`/api/flow/health`, GET nuevo) daba
+  producción mientras la acción "Pagar" seguía clavada a un deployment viejo. En la sesión del 06-07 se
+  repitió el patrón: producción servía un Current de 12h. Se **promovió el deployment nuevo** (quedó en
+  `32f0c80` tras pushear los commits locales).
+- **Health verificado sobre el Current correcto:** `isSandbox:false`, `apiHost:www.flow.cl`,
+  `apiKeyTail:3909` (la llave de sandbox terminaba en F386), `vercelEnv:production`. Confirmado que el
+  deployment que sirve `core.colormedia.cl` usa la cuenta de producción de Flow.
+- **Pago chico real:** aprobado, cayó en el panel de producción de Flow, descontó de cartola real.
+
+**Nota operativa clave (el gotcha que nos costó dos sesiones):** el `/api/flow/health` está protegido con
+`?secret=$CRON_SECRET` (correcto — expone config). Sin el secret devuelve `{"ok":false}` (401), que NO es
+un problema de Flow sino un rechazo de auth. No confundir. Y el health NO expone el SHA del commit, por eso
+costó saber qué código servía producción → mejora pendiente abajo.
+
+**SALVAGUARDA — CONSTRUIDA, PUSHEADA Y VIVA EN PRODUCCIÓN (commits `2856260` + refactor; en `origin/main`
+desde `32f0c80`):**
+- Columna `flow_env text` en `installment_payments` (nullable, SIN CHECK — auditoría forense, guarda el
+  HOST CRUDO ej. `https://www.flow.cl/api`). Migración corrida; filas viejas `null`. `iniciarPagoFlow`
+  escribe `flow_env: flowApiUrl()` al persistir el token.
+- `assertFlowEnvSafe()` lanza `FlowEnvUnsafeError` si `VERCEL_ENV==='production' && flowIsSandbox()`; se
+  llama al inicio de `createPayment`. Ante el error: intento `error`, no crea orden, log fuerte, redirige a
+  `?pago=config` (banner sobrio con WhatsApp). Solo bloquea en producción.
+- El ramal del catch quedó verificado por build/código; su estreno en runtime real será la primera fuga.
+- **Pendiente menor:** confirmar en Supabase que la fila del pago real trae `flow_env: https://www.flow.cl/api`.
+
+**Ya se puede exponer el pago en línea a clientes** (confirmado con dinero real). Antes estaba marcado a mano.
 
 ### 5. Subir PDF de factura (LA MÁS SIMPLE)
 
@@ -816,46 +846,7 @@ Dos manuales buscables por palabra clave, integrados como páginas dentro de Med
 ---
 
 
-## Notas de producción / despliegue
-
-- **Vercel: variables de entorno solo afectan a deployments NUEVOS.** Cambiar una env var no toca los
-  deployments existentes; hay que redeplegar para que aplique.
-- **Gotcha de Server Actions "clavados" al deployment (incidente Flow sandbox→prod, jul-2026).** Se pasó
-  Flow a producción en Vercel (`FLOW_API_URL=https://www.flow.cl/api` + llaves prod) y se redeplegó. El
-  endpoint de diagnóstico `/api/flow/health` (GET fresco → último deployment) reportaba `isSandbox:false`,
-  PERO los pagos seguían cayendo en **sandbox**. Causa: en Next/Vercel, la acción "Pagar" (Server Action)
-  queda atada al deployment que **renderizó** la página de finanzas. Si la pestaña se cargó antes del
-  redeploy y se clickea "Pagar" sin recarga en duro, la acción se ejecuta en el **deployment viejo**
-  (todavía con env sandbox), aunque un GET nuevo al health pegue en el de producción. Evidencia: todos los
-  `flow_order` quedaron en una sola secuencia de sandbox, y la tarjeta real fue rechazada (los checkout de
-  sandbox de Webpay/Khipu no aceptan tarjetas reales). **No era el código** (hay un único interruptor
-  `FLOW_API_URL` que leen createPayment, getStatus y el health). **Mitigación operativa:** tras cambiar env,
-  recargar en duro (Cmd+Shift+R) la página antes de disparar acciones. Y ver la salvaguarda de más abajo.
-- **`/api/flow/health?secret=<CRON_SECRET>`**: endpoint de diagnóstico que reporta el host/entorno de Flow
-  que el runtime está usando (sin exponer llaves).
-
 ## Mejoras pendientes (no bloquean, pulir cuando haya tiempo)
-
-- **Salvaguarda de entorno de Flow (a construir, plan aprobado por Claude Code).** Para que la fuga
-  sandbox↔prod nunca vuelva a pasar en silencio: (a) registrar en cada `installment_payments` el entorno
-  de Flow usado (`flow_env` = `sandbox`/`produccion`), seteado al crear el pago; (b) que `createPayment`
-  **rechace** crear el pago si `VERCEL_ENV==='production'` y la URL resuelve a sandbox (lanza, no crea la
-  orden, marca el intento `error`, loguea fuerte y muestra un banner sobrio al cliente). Solo bloquea en
-  producción; en preview/local con sandbox sigue normal. Protege deployments futuros.
-
-- **Zona horaria: la app no ancla `America/Santiago` ni al mostrar ni al ingresar (diagnosticado, sin
-  arreglar).** La base guarda bien en UTC (`timestamptz`), pero: (1) los formateadores de hora
-  (`lib/format.ts` `formatDate`/`formatDateTime`, y los `toLocaleTimeString` sueltos en los calendarios y
-  el correo de solicitud) **no pasan `timeZone`** → usan la TZ del entorno: **UTC en Vercel** (server
-  components), TZ del navegador en client, TZ del Mac en local (por eso "se veía bien" local). (2) Al
-  **crear** eventos/reuniones/hitos, el `datetime-local` se guarda **sin convertir** → Postgres lo
-  interpreta como UTC, así que la hora tipeada (pensada como Chile) queda corrida 3-4 h respecto al
-  instante real y respecto a Google. (3) La grilla mensual ubica cada evento por `starts_at.slice(0,10)`
-  (fecha UTC, no de Santiago) → eventos cerca de medianoche caen en el día equivocado. Lo TZ-aware que SÍ
-  está bien: los helpers `todaySantiago()`, el prefill de `AgendarSolicitudForm` y la constante `TZ` de
-  Google. **Arreglo (dos lados juntos):** forzar `America/Santiago` en todo el formateo visible, e
-  interpretar el `datetime-local` como hora de Chile al guardar (y usar la fecha de Santiago para la
-  grilla). Verificar que panel, Google y hora real de Chile queden iguales.
 
 - **Login: submit antes de hidratar.** Si el formulario de login se envía antes de que la página
   termine de cargar (hidratar), hace un GET y se queda en /login (hay que reintentar). No afecta a
@@ -866,11 +857,151 @@ Dos manuales buscables por palabra clave, integrados como páginas dentro de Med
   proyecto desde un bloque estructurado en vez de tipearlas a mano.
 - **Descripción por fase.** Hoy las fases no tienen campo de descripción; el modal usa
   nombre + rango + avance. Agregar una descripción más rica por fase.
+
+- **Zona horaria (pendiente, diagnosticar sin cambiar nada primero).** Los registros salen en UTC;
+  confirmar que las horas se muestren en hora de Chile (`America/Santiago`), sobre todo en calendario y
+  reuniones. Arreglo de dos lados (mostrar e ingresar). Diagnosticar con Code antes de tocar código.
+
+- **SHA del commit en `/api/flow/health` (acordado 2026-07-06, hacer con calma).** Exponer
+  `VERCEL_GIT_COMMIT_SHA` en el health para que un curl diga qué commit sirve producción. Ataca la raíz
+  del enredo de las sesiones de Flow: no saber qué código estaba vivo. Commit chico, sin presión.
+
+- **Endpoint `/api/mail/test` protegido con `CRON_SECRET` (opcional, acordado 2026-07-06).** Para disparar
+  un `sendEmail` desde el runtime de producción vía curl y confirmar remitente sin depender de una acción
+  con sesión. Herramienta repetible; construir cuando haya calma, no en medio de otra prueba.
+
+- **Salvaguarda de APP_URL (viva en producción, commit `32f0c80`).** Helper `lib/app-url.ts` con `appUrl()`:
+  fuente única para la URL base; en producción, si queda en localhost, escribe un `console.error` en los
+  logs de Vercel (alarma pasiva, no bloquea). Calibrada distinto a la de Flow a propósito: Flow bloquea
+  (mueve plata), APP_URL solo avisa (link roto es recuperable).
 - ~~**Generación de cuotas más clara (Fase 5).**~~ **RESUELTO** (commit posterior a Fase 5):
   editor de tramos escalonados al crear contrato a plazo fijo, confirmación de generación con
   guard de doble generación (botón "borrar proyectadas y regenerar"), y editar/borrar cuota
   desde el panel con bloqueo de las facturadas/pagadas. Los tramos no se persisten: el
   escalonamiento vive en el `net_uf` de cada cuota, ajustable por cuota.
+
+---
+
+## En carpeta — próxima sesión (diseñar antes de construir, 2026-07-06)
+
+Cinco funcionalidades pedidas por Ismael. NINGUNA construida aún. Cada una lleva mi lectura de
+arquitecto y las decisiones a cerrar ANTES de que Code toque nada.
+
+**1. Nombre + logo de empresa en el sidebar del portal cliente.**
+Que el cliente logueado vea el nombre de su empresa y su logo en el sidebar, como señal de pertenencia.
+- Nombre: ya existe en `client_details`, traerlo al sidebar del portal.
+- **Logo: lo sube ISMAEL desde el panel admin (ficha del cliente), NO el cliente.** Simplifica: sin
+  validación del lado del cliente, Ismael cura el logo. RLS: escritura solo admin, lectura del cliente
+  dueño. Guardar en Storage (bucket nuevo; decidir público vs signed URL). El portal solo lee y muestra.
+- Dificultad: baja (nombre) + media (logo).
+
+**2. Video en la previsualización de contenido — DISEÑO CERRADO (2026-07-06), listo para construir.**
+Creció de "agregar video" a "rediseñar la pieza para soportar múltiples medios ordenados de tipo mixto".
+Es la MÁS grande de las seis, no la más chica. Decisiones tomadas:
+- **Una pieza puede tener imagen Y video juntos**, varios medios en orden (carrusel real, fiel al post).
+- **Los medios cuelgan de la VERSIÓN, no de la pieza.** Cada versión es un snapshot inmutable de su
+  conjunto de medios. Crear versión nueva = copiar el conjunto de la anterior para editar encima; la
+  versión previa queda intacta. Así el historial muestra exactamente qué conjunto se aprobó.
+- **Video = embed de YouTube/Vimeo SOLO** (NO subida directa, NO Instagram/TikTok — esos requieren scripts
+  de terceros frágiles y además el contenido aún-no-publicado no existe en IG/TikTok al momento de aprobar).
+  Flujo real: subir a YouTube/Vimeo "no listado" → aprobar ahí → publicar después en redes.
+- **Formato vertical y horizontal** (16:9 / 9:16), reproductor responsivo; marcar formato al pegar el link.
+- **Aprobación sobre la PIEZA COMPLETA** (todos los medios juntos), no medio por medio. El sistema de votos
+  /versiones/confirmación EXISTENTE no se toca — opera sobre pieza/versión igual que hoy.
+
+Modelo: tabla nueva `content_media` colgando de la versión — {pieza/versión, tipo imagen|video, orden,
+y según tipo: ruta Storage | (url_embed + proveedor youtube|vimeo + formato vertical|horizontal)}.
+Admin: subir varias imágenes y/o pegar links de video, ordenar, marcar formato. Portal: ver medios en orden
+(imágenes + videos embebidos) y aprobar/rechazar la pieza completa.
+
+**CONSTRUCCIÓN EN 3 FASES (con punto de control entre cada una):**
+
+**FASE 1 — Modelo (✅ HECHA, migración corrida).** Tabla `content_media` colgando de `content_versions`
+(ON DELETE CASCADE), enum `content_media_kind`, check de presencia por tipo, unique(version_id, sort_order),
+índice, RLS espejo de `content_versions` (SELECT admin/owner-content por pieza no-borrador; WRITE solo admin).
+Migración `supabase/fase-content-media.sql`, aditiva e idempotente. `content_versions.image_path` queda
+vestigial (se dropea después). Sin datos reales (tablas de contenido vacías). Falta: commit del `.sql`.
+
+**FASE 2 — Admin (✅ HECHA y verificada end-to-end 2026-07-06). Decisiones tomadas:**
+- **Versionado:** mientras la pieza está en `borrador`, se edita la versión actual LIBREMENTE (agregar/quitar
+  /reordenar medios) sin crear versiones. Al PROPONER al cliente, la versión queda congelada. Si el cliente
+  pide cambios, ahí nace la versión nueva copiando los medios de la anterior (la lógica de copia física
+  opción B se dispara SOLO en ese momento, no en cada guardado). Encaja con el status existente
+  borrador→propuesta y con la RLS que ya oculta borradores al cliente.
+- **Ordenar:** drag & drop con dnd-kit. Reorden en dos fases (sort_orders temporales negativos) para no
+  violar unique(version_id, sort_order).
+- **Video:** al pegar link, detecta PROVEEDOR automático (de la URL, fiable) y PRE-SELECCIONA formato con
+  selector vertical/horizontal corregible de un clic. `lib/video.ts` parsea YouTube/Vimeo.
+- **`crearVersion` ATÓMICO con rollback:** si falla cualquier copia de imagen, aborta y revierte (borra
+  archivos copiados + fila de versión → cascade borra filas de medios). Orden clave: la pieza se apunta a la
+  versión nueva SOLO al final, cuando todo se copió → el cliente nunca ve una versión a medio copiar. Es
+  compensación manual (Storage+DB no comparten transacción), pero el invariante crítico se sostiene por el
+  orden de operaciones. Verificado con Storage real (rollback 6/6, forzando fallo de copia).
+- Acciones nuevas (todas con candado servidor `status==='borrador'`): agregarImagen, agregarVideo,
+  quitarMedio, reordenarMedios, editarCopia. `subirVersion` partida en crearVersion (Rehacer) +
+  proponerPieza. `eliminarPieza` ahora limpia Storage (cerró hueco preexistente de archivos huérfanos).
+- "Rehacer" habilitado desde cualquier estado MENOS borrador y aprobada. `publicarPeriodo` (bulk 1ª ronda)
+  + "Proponer" por pieza (re-rondas) se mantienen ambos.
+- 🐛 **BUG ENCONTRADO Y CORREGIDO por el smoke test (aprendizaje para el proyecto):** `loadVersionCtx` hacía
+  un embed ambiguo `content_pieces(...)` — `content_versions` tiene DOS FK hacia `content_pieces` (`piece_id`
+  y el inverso `current_version_id`), → PGRST201 → la query devolvía null → todas las acciones de medios
+  cortaban EN SILENCIO (el reorden se veía en pantalla pero no persistía). Fix: desambiguar con FK explícito
+  `content_pieces!content_versions_piece_id_fkey(...)`. LECCIÓN: cuando dos tablas tienen relación por más de
+  un FK, los embeds de PostgREST hay que desambiguarlos siempre — revisar si el patrón aparece en otras
+  consultas. Un bug silencioso que un smoke test visual apurado no habría cazado.
+
+**FASE 3 — Portal cliente (por construir). Decisión tomada (2026-07-06):**
+- **Lightbox obligatorio.** Miniaturas en orden como índice (livianas) → tocar cualquiera → se abre GRANDE
+  sobre la pantalla (imagen a tamaño completo, video a tamaño de reproducción) con flechas para navegar.
+  Resuelve de raíz el "el cliente no puede leer/ver el detalle en miniatura".
+- NOTA: Ismael NO ha probado el sistema actual con contenido real (tablas vacías), así que el "las
+  miniaturas no funcionan" es preocupación anticipada, no bug verificado. El lightbox se construye igual
+  porque es estándar de cualquier previsualización para aprobar, exista o no el problema hoy. Cuando la
+  Fase 2 permita subir una pieza real, Ismael verá por primera vez el comportamiento real y confirmará si
+  además hay algo que arreglar en lo existente.
+
+⚠️ Cuidado para Code: medios cuelgan de la versión; con opción B (copia física por versión) cada versión es
+autónoma → borrar una versión borra solo sus archivos, no puede afectar otra.
+FASE futura (anotada, no ahora): archivar link del post ya publicado en IG/TikTok = otra funcionalidad
+(registro de lo publicado), distinta de la previsualización para aprobar.
+
+**3. Reporte de listado de sesiones (SIMPLIFICADO — solo esto).**
+DECISIÓN: solo un listado de sesiones — **quién entró, qué día, a qué hora.** Nada más.
+- Se DESCARTÓ el registro de acciones/auditoría (era el proyecto grande). No hay tabla de log de acciones,
+  no se escribe en cada operación.
+- Directo con lo que Supabase Auth ya registra (`last_sign_in` / sesiones). Un reporte de lectura.
+- Dificultad: baja-media.
+
+**4. Confirmación de envío de invitación en el panel admin.**
+Hoy al invitar/reenviar no se sabe si el correo salió.
+- **Mínimo (empezar acá):** capturar la respuesta inmediata de Resend → "enviado / falló".
+- **Completo (mejora):** webhooks de Resend (entregado / abierto / rebotó).
+- Dificultad: media.
+
+**5. Cuarto rol de CLIENTE: "administrativo" — todo menos finanzas.**
+DECISIÓN: es un rol de CLIENTE (vive en el portal y su RLS), junto a dueño/finanzas/contenido.
+"Todo menos finanzas" = como el rol dueño pero con las secciones de finanzas ocultas y bloqueadas por RLS
+(un "dueño-sin-plata"). Replicable de la lógica de roles existente.
+- ⚠️ Cuidado en construcción: hoy `finanzas` ve SOLO finanzas; este `administrativo` es el complemento (todo
+  MENOS finanzas). Revisar que la matriz de permisos de los CUATRO roles quede coherente — sin huecos sin
+  dueño ni doble cobertura. Punto de cuidado al definir la RLS, no un problema.
+- Dificultad: media (extiende el sistema de roles ya existente).
+
+**Orden sugerido para retomar** (menor a mayor esfuerzo, victorias rápidas primero):
+2 (embed video, decisión ya tomada) → 1 (nombre+logo) → 4-mínimo (confirmación de envío) → 3 (reporte de
+sesiones) → 5 (rol administrativo).
+
+**6. Sidebar colapsable en móvil (admin Y portal).**
+ACOTADO: NO es "el panel no es responsive" — es el SIDEBAR específicamente el que no funciona en teléfono,
+en las dos caras. Problema puntual y conocido, no una reconstrucción.
+- Patrón estándar: en móvil el sidebar se colapsa (desaparece) y se reemplaza por un botón hamburguesa que
+  lo despliega sobre el contenido; se cierra al elegir opción o tocar afuera. En pantalla ancha sigue fijo
+  como hoy. Un solo comportamiento que se activa según ancho (breakpoint).
+- Ventaja: mismo problema en admin y portal → diseñar el patrón UNA vez, aplicar a ambos (idealmente mismo
+  componente de navegación). No es doble trabajo.
+- Antes de construir: pedir a Ismael 1-2 capturas del sidebar en su teléfono (una de cada cara) para ver
+  cómo está construido hoy y que el patrón calce con la estructura real de navegación.
+- Dificultad: media, acotada. NO confundir con rehacer el responsive del panel entero.
 
 ---
 

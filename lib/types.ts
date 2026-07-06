@@ -302,6 +302,20 @@ export type ContentVersion = {
   created_at: string;
 };
 
+export type ContentMediaKind = "imagen" | "video";
+
+export type ContentMedia = {
+  id: string;
+  version_id: string;
+  kind: ContentMediaKind;
+  sort_order: number;
+  storage_path: string | null; // imagen: ruta en bucket 'contenido'
+  embed_url: string | null; // video
+  provider: string | null; // 'youtube' | 'vimeo'
+  orientation: string | null; // 'vertical' | 'horizontal'
+  created_at: string;
+};
+
 export type ContentReview = {
   id: string;
   piece_id: string;
