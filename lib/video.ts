@@ -45,3 +45,24 @@ export function parseVideoUrl(raw: string): VideoParsed | null {
 
   return null; // ni YouTube ni Vimeo
 }
+
+// ---- Thumbnails (a partir del embed_url ya guardado en content_media) ----
+
+/** Extrae el id de YouTube de un embed `…/embed/{id}`. */
+export function youtubeIdFromEmbed(embedUrl: string | null): string | null {
+  if (!embedUrl) return null;
+  const m = embedUrl.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{6,})/i);
+  return m ? m[1] : null;
+}
+
+/** Extrae el id de Vimeo de un embed `player.vimeo.com/video/{id}`. */
+export function vimeoIdFromEmbed(embedUrl: string | null): string | null {
+  if (!embedUrl) return null;
+  const m = embedUrl.match(/player\.vimeo\.com\/video\/(\d+)/i);
+  return m ? m[1] : null;
+}
+
+/** Thumbnail estático de YouTube (sin API key). */
+export function youtubeThumb(id: string): string {
+  return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+}

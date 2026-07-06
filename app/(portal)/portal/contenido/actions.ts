@@ -4,8 +4,6 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { ReviewKind } from "@/lib/types";
 
-export type FormState = { error: string | null; ok?: boolean };
-
 function str(fd: FormData, k: string) {
   return String(fd.get(k) ?? "").trim();
 }
@@ -37,25 +35,20 @@ async function insertClientReview(
   return error?.message ?? null;
 }
 
+/** Aprueba la pieza. Comentario OPCIONAL. */
 export async function aprobarPieza(fd: FormData): Promise<void> {
   const id = str(fd, "id");
   if (!id) return;
-  await insertClientReview(id, "aprobacion", null);
+  await insertClientReview(id, "aprobacion", str(fd, "comment") || null);
   revalidatePath("/portal/contenido");
 }
 
-export async function pedirCambios(
-  _p: FormState,
-  fd: FormData,
-): Promise<FormState> {
+/** Pide cambios sobre la pieza. Comentario OPCIONAL (ya no obligatorio). */
+export async function pedirCambios(fd: FormData): Promise<void> {
   const id = str(fd, "id");
-  const comment = str(fd, "comment");
-  if (!id) return { error: "Falta la pieza." };
-  if (!comment) return { error: "Escribe qué te gustaría cambiar." };
-  const err = await insertClientReview(id, "cambios", comment);
-  if (err) return { error: "No se pudo enviar: " + err };
+  if (!id) return;
+  await insertClientReview(id, "cambios", str(fd, "comment") || null);
   revalidatePath("/portal/contenido");
-  return { error: null, ok: true };
 }
 
 export async function aprobarPeriodo(fd: FormData): Promise<void> {

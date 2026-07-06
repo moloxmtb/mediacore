@@ -1,15 +1,29 @@
 import PageHeader from "@/components/PageHeader";
-import PedirCambiosForm from "@/components/portal/PedirCambiosForm";
+import ContentPieceViewer, {
+  type ViewerMedia,
+  type ViewerPiece,
+  type ViewerVersion,
+} from "@/components/portal/content/ContentPieceViewer";
 import { requirePortalWorld } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { signImages } from "@/lib/storage";
-import {
-  CONTENT_STATUS_LABELS,
-  PERIOD_KIND_LABELS,
-  contentStatusBadge,
-} from "@/lib/content";
-import type { ContentPeriod, ContentPiece, ContentVersion } from "@/lib/types";
-import { aprobarPeriodo, aprobarPieza, pedirCambios } from "./actions";
+import { resolveVideoThumbs } from "@/lib/video-thumbs";
+import { PERIOD_KIND_LABELS } from "@/lib/content";
+import type {
+  ContentMedia,
+  ContentPeriod,
+  ContentPiece,
+  ContentStatus,
+  ContentVersion,
+} from "@/lib/types";
+import { aprobarPeriodo } from "./actions";
+
+const STATUS_MESSAGE: Partial<Record<ContentStatus, string>> = {
+  aprobada_cliente: "Aprobaste esta pieza. Color Media la confirmará.",
+  cambios_solicitados: "Pediste cambios. Estamos trabajando en ello.",
+  aprobada: "Pieza aprobada en firme.",
+  rechazada: "Color Media revisará y te enviará una nueva versión.",
+};
 
 export default async function PortalContenidoPage() {
   await requirePortalWorld("content");
@@ -24,23 +38,90 @@ export default async function PortalContenidoPage() {
   const pieces = (piecesData ?? []) as ContentPiece[];
 
   const ids = pieces.length ? pieces.map((p) => p.id) : ["00000000-0000-0000-0000-000000000000"];
+
+  // TODAS las versiones de las piezas visibles (la actual + el historial).
   const { data: versData } = await supabase
     .from("content_versions")
     .select("*")
-    .in("piece_id", ids);
+    .in("piece_id", ids)
+    .order("version_number", { ascending: false });
   const versions = (versData ?? []) as ContentVersion[];
-  const current = (p: ContentPiece) => versions.find((v) => v.id === p.current_version_id) ?? null;
-  const signed = await signImages(pieces.map((p) => current(p)?.image_path ?? "").filter(Boolean));
+
+  // Medios de todas esas versiones (RLS ya limita a piezas del cliente no-borrador).
+  const versionIds = versions.length
+    ? versions.map((v) => v.id)
+    : ["00000000-0000-0000-0000-000000000000"];
+  const { data: mediaData } = await supabase
+    .from("content_media")
+    .select("*")
+    .in("version_id", versionIds)
+    .order("sort_order", { ascending: true });
+  const media = (mediaData ?? []) as ContentMedia[];
+
+  // Firmar imágenes + resolver thumbnails de video.
+  const signed = await signImages(
+    media.filter((m) => m.kind === "imagen" && m.storage_path).map((m) => m.storage_path!),
+  );
+  const videoThumbs = await resolveVideoThumbs(
+    media.filter((m) => m.kind === "video").map((m) => ({ provider: m.provider, embedUrl: m.embed_url })),
+  );
+
+  const mediaByVersion = new Map<string, ContentMedia[]>();
+  for (const m of media)
+    (mediaByVersion.get(m.version_id) ?? mediaByVersion.set(m.version_id, []).get(m.version_id)!).push(m);
+
+  const toViewerMedia = (m: ContentMedia): ViewerMedia =>
+    m.kind === "imagen"
+      ? {
+          id: m.id,
+          kind: "imagen",
+          thumb: m.storage_path ? (signed[m.storage_path] ?? null) : null,
+          full: m.storage_path ? (signed[m.storage_path] ?? null) : null,
+          provider: null,
+          orientation: m.orientation,
+        }
+      : {
+          id: m.id,
+          kind: "video",
+          thumb: m.embed_url ? (videoThumbs[m.embed_url] ?? null) : null,
+          full: m.embed_url,
+          provider: m.provider,
+          orientation: m.orientation,
+        };
+
+  const toViewerVersion = (v: ContentVersion): ViewerVersion => ({
+    id: v.id,
+    versionNumber: v.version_number,
+    body: v.body,
+    media: (mediaByVersion.get(v.id) ?? []).map(toViewerMedia),
+  });
+
+  const versionsByPiece = new Map<string, ContentVersion[]>();
+  for (const v of versions)
+    (versionsByPiece.get(v.piece_id) ?? versionsByPiece.set(v.piece_id, []).get(v.piece_id)!).push(v);
+
+  const toViewerPiece = (p: ContentPiece): ViewerPiece => {
+    const pv = versionsByPiece.get(p.id) ?? [];
+    const cur = pv.find((v) => v.id === p.current_version_id) ?? null;
+    const past = pv.filter((v) => v.id !== cur?.id); // ya vienen desc por version_number
+    return {
+      id: p.id,
+      title: p.title,
+      status: p.status,
+      votable: p.status === "propuesta",
+      statusMessage: STATUS_MESSAGE[p.status] ?? null,
+      current: cur ? toViewerVersion(cur) : null,
+      past: past.map(toViewerVersion),
+    };
+  };
 
   const piecesByPeriod = new Map<string, ContentPiece[]>();
-  for (const p of pieces) (piecesByPeriod.get(p.period_id) ?? piecesByPeriod.set(p.period_id, []).get(p.period_id)!).push(p);
+  for (const p of pieces)
+    (piecesByPeriod.get(p.period_id) ?? piecesByPeriod.set(p.period_id, []).get(p.period_id)!).push(p);
 
   return (
     <>
-      <PageHeader
-        title="Contenido"
-        subtitle="Revisa y aprueba las piezas que preparamos para ti"
-      />
+      <PageHeader title="Contenido" subtitle="Revisa y aprueba las piezas que preparamos para ti" />
       <div className="app-content">
         {periods.length ? (
           <div className="stack">
@@ -64,53 +145,14 @@ export default async function PortalContenidoPage() {
                     </div>
                   </div>
                   <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
-                    {pp.map((p) => {
-                      const cur = current(p);
-                      const img = cur?.image_path ? signed[cur.image_path] : null;
-                      return (
-                        <div key={p.id} style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: "20px", borderTop: "1px solid var(--border-soft)", paddingTop: "18px" }}>
-                          <div>
-                            {img ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={img} alt={p.title} style={{ width: "100%", borderRadius: "8px", border: "1px solid var(--border)" }} />
-                            ) : (
-                              <div className="empty" style={{ padding: "30px 10px" }}>Sin imagen</div>
-                            )}
-                          </div>
-                          <div>
-                            <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
-                              <span style={{ fontWeight: 500 }}>{p.title}</span>
-                              <span className={`badge ${contentStatusBadge(p.status)}`}>
-                                {CONTENT_STATUS_LABELS[p.status]}
-                              </span>
-                            </div>
-                            <p style={{ color: "var(--muted)", whiteSpace: "pre-wrap", marginTop: "8px" }}>
-                              {cur?.body ?? ""}
-                            </p>
-
-                            {p.status === "propuesta" ? (
-                              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
-                                <form action={aprobarPieza}>
-                                  <input type="hidden" name="id" value={p.id} />
-                                  <button className="btn btn-sm btn-primary" type="submit">Aprobar</button>
-                                </form>
-                                <details>
-                                  <summary className="btn btn-sm">Pedir cambios</summary>
-                                  <PedirCambiosForm action={pedirCambios} pieceId={p.id} />
-                                </details>
-                              </div>
-                            ) : (
-                              <div className="meta" style={{ marginTop: "6px" }}>
-                                {p.status === "aprobada_cliente" && "Aprobaste esta pieza. Color Media la confirmará."}
-                                {p.status === "cambios_solicitados" && "Pediste cambios. Estamos trabajando en ello."}
-                                {p.status === "aprobada" && "Pieza aprobada en firme."}
-                                {p.status === "rechazada" && "Color Media revisará y te enviará una nueva versión."}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {pp.map((p) => (
+                      <div
+                        key={p.id}
+                        style={{ borderTop: "1px solid var(--border-soft)", paddingTop: "18px" }}
+                      >
+                        <ContentPieceViewer piece={toViewerPiece(p)} />
+                      </div>
+                    ))}
                     {!pp.length && <div className="empty">Aún no hay piezas en este período.</div>}
                   </div>
                 </div>

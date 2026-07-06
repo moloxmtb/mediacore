@@ -808,6 +808,166 @@ a.cal-daynum-link:hover {
   .media-add { grid-template-columns: 1fr; }
 }
 
+/* ---------- Vista de pieza en el portal (cliente) ---------- */
+.pc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.pc-title { font-weight: 500; }
+.pc-body { color: var(--muted); white-space: pre-wrap; margin: 12px 0 0; }
+.pc-body-muted { font-size: 13px; opacity: 0.85; }
+.pc-statusmsg { margin-top: 10px; }
+
+/* Grilla de miniaturas uniformes (cuadradas, recortadas) */
+.pc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+}
+.pc-thumb {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel);
+  cursor: pointer;
+  display: block;
+}
+.pc-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.pc-thumb:hover { border-color: var(--accent); }
+.pc-vfallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: capitalize;
+}
+.pc-play {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 14px;
+}
+.pc-play-over {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Historial secundario */
+.pc-history { margin-top: 14px; }
+.pc-history-list { margin-top: 12px; display: flex; flex-direction: column; gap: 16px; }
+.pc-history-item {
+  border-left: 2px solid var(--border-soft);
+  padding-left: 12px;
+}
+.pc-history-label { margin-bottom: 8px; }
+
+/* Voto */
+.pc-vote { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; max-width: 520px; }
+.pc-vote-comment { width: 100%; }
+.pc-vote-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ---------- Lightbox propio ---------- */
+.lb-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.86);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+.lb-stage {
+  max-width: min(1100px, 92vw);
+  max-height: 86vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lb-stage.is-vertical { max-width: min(520px, 82vw); }
+.lb-img {
+  /* Límites definidos en vw/vh (no % de un flex de ancho automático, que
+     colapsaría a 0 con imágenes pequeñas). */
+  max-width: min(1100px, 92vw);
+  max-height: 86vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 6px;
+  display: block;
+}
+.lb-stage.is-vertical .lb-img { max-width: min(520px, 82vw); }
+.lb-video {
+  position: relative;
+  width: min(1100px, 92vw);
+  aspect-ratio: 16 / 9;
+}
+.lb-stage.is-vertical .lb-video { width: min(520px, 82vw); aspect-ratio: 9 / 16; }
+.lb-iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 6px;
+}
+.lb-close,
+.lb-nav {
+  position: fixed;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+.lb-close:hover,
+.lb-nav:hover { background: rgba(255, 255, 255, 0.24); }
+.lb-close { top: 20px; right: 24px; width: 40px; height: 40px; font-size: 26px; }
+.lb-nav { top: 50%; transform: translateY(-50%); width: 48px; height: 48px; font-size: 30px; }
+.lb-prev { left: 20px; }
+.lb-next { right: 20px; }
+.lb-count {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+}
+@media (max-width: 640px) {
+  .lb-backdrop { padding: 16px; }
+  .lb-close { top: 10px; right: 12px; }
+  .lb-nav { width: 40px; height: 40px; font-size: 26px; }
+  .lb-prev { left: 8px; }
+  .lb-next { right: 8px; }
+}
+
 /* Sello de identidad + versión + contacto comercial (pie de ambas caras) */
 .system-footer {
   margin-top: auto;

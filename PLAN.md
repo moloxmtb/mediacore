@@ -950,15 +950,24 @@ vestigial (se dropea después). Sin datos reales (tablas de contenido vacías). 
   un FK, los embeds de PostgREST hay que desambiguarlos siempre — revisar si el patrón aparece en otras
   consultas. Un bug silencioso que un smoke test visual apurado no habría cazado.
 
-**FASE 3 — Portal cliente (por construir). Decisión tomada (2026-07-06):**
-- **Lightbox obligatorio.** Miniaturas en orden como índice (livianas) → tocar cualquiera → se abre GRANDE
-  sobre la pantalla (imagen a tamaño completo, video a tamaño de reproducción) con flechas para navegar.
-  Resuelve de raíz el "el cliente no puede leer/ver el detalle en miniatura".
-- NOTA: Ismael NO ha probado el sistema actual con contenido real (tablas vacías), así que el "las
-  miniaturas no funcionan" es preocupación anticipada, no bug verificado. El lightbox se construye igual
-  porque es estándar de cualquier previsualización para aprobar, exista o no el problema hoy. Cuando la
-  Fase 2 permita subir una pieza real, Ismael verá por primera vez el comportamiento real y confirmará si
-  además hay algo que arreglar en lo existente.
+**FASE 3 — Portal cliente (DISEÑO CERRADO 2026-07-06, por construir). Decisiones tomadas:**
+Es la más acotada: NO toca modelo ni crea lógica de aprobación (usa `content_reviews` + trigger
+`apply_client_review` existentes). Es presentación + interfaz de voto sobre la vista de medios múltiples.
+- **Grilla de miniaturas uniformes** (cuadrito parejo, recortadas) para ver TODO el conjunto de una — mejor
+  que carrusel deslizable para aprobar (el cliente no puede decir "no vi esa"). Videos en la grilla:
+  thumbnail del video (que YouTube/Vimeo entregan) + ícono play encima (un embed no se recorta como imagen).
+- **Lightbox** al tocar cualquier miniatura: se abre GRANDE, cada medio en su FORMATO REAL completo
+  (vertical/horizontal), con flechas para navegar. Imagen a tamaño completo, video = reproductor real.
+  Resuelve el "no se lee en miniatura". El recorte de la grilla es solo cosmético del índice.
+- **Voto: Aprobar / Pedir cambios con campo de comentario OPCIONAL** (disponible, no obligatorio — sin
+  fricción al aprobar, permite explicar al pedir cambios). Sobre el sistema de votos existente.
+- **Historial de versiones navegable pero SECUNDARIO:** enlace discreto "ver versiones anteriores"; la
+  versión ACTUAL es siempre el foco y la única votable. Versiones viejas = SOLO LECTURA (no se puede aprobar
+  una v1 si ya se va en v3). La opción B de Fase 2 (medios físicos por versión en rutas v1/, v2/...) es lo
+  que hace el historial realmente navegable — cada versión conserva su conjunto intacto.
+- NOTA lightbox: Ismael NO había probado el sistema con contenido real (tablas vacías). Con Fase 2 ya puede
+  subir una pieza real → al construir Fase 3 verá por primera vez el comportamiento real y confirmará si las
+  miniaturas se ven bien. El lightbox se construye igual (estándar de previsualización para aprobar).
 
 ⚠️ Cuidado para Code: medios cuelgan de la versión; con opción B (copia física por versión) cada versión es
 autónoma → borrar una versión borra solo sus archivos, no puede afectar otra.
