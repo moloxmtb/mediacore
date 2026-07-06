@@ -25,6 +25,24 @@ export function flowIsSandbox(): boolean {
   return API_URL.includes("sandbox.flow.cl");
 }
 
+/** Info NO sensible del entorno de Flow, para diagnóstico. Nunca devuelve las
+ *  llaves completas: solo el host y los últimos 4 del apiKey. */
+export function flowRuntimeInfo() {
+  let apiHost = "(inválida)";
+  try {
+    apiHost = new URL(API_URL).host;
+  } catch {
+    apiHost = API_URL || "(vacía)";
+  }
+  return {
+    apiUrl: API_URL,
+    apiHost,
+    hasApiKey: !!API_KEY,
+    hasSecret: !!SECRET,
+    apiKeyTail: API_KEY ? API_KEY.slice(-4) : null,
+  };
+}
+
 /**
  * Firma de Flow: parámetros ordenados alfabéticamente por nombre, concatenados
  * como nombre+valor (sin separadores), HMAC-SHA256 hex con la secret key.
