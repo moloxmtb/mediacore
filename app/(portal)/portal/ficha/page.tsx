@@ -3,7 +3,7 @@ import PageHeader from "@/components/PageHeader";
 import FichaForm from "@/components/admin/FichaForm";
 import ContactoForm from "@/components/admin/ContactoForm";
 import DeleteButton from "@/components/admin/DeleteButton";
-import { canSeeFinance, getSessionProfile } from "@/lib/auth";
+import { canEditFicha, getSessionProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   guardarFicha,
@@ -39,8 +39,9 @@ export default async function PortalFichaPage() {
   const contactos = (contactsData ?? []) as ClientContact[];
   const clientId = session.clientId ?? "";
 
-  // Dueño y finanzas pueden editar; contenido solo mira.
-  const editable = canSeeFinance(session.clientRole);
+  // Los tres roles del cliente pueden editar la ficha de empresa (no toca
+  // finanzas). RLS de client_details/client_contacts write lo respalda.
+  const editable = canEditFicha(session.clientRole);
 
   return (
     <>

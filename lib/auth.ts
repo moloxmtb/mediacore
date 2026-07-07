@@ -46,6 +46,13 @@ export function canSeeContent(role: ClientRole | null): boolean {
 export function canSeeFinance(role: ClientRole | null): boolean {
   return role === "owner" || role === "finance";
 }
+/** Editar "Mi empresa" (antecedentes + contactos): los tres roles del cliente.
+ *  Separado de canSeeFinance a propósito: el mundo financiero NO se abre a
+ *  content; solo la ficha de empresa. Coincide con la RLS de client_details /
+ *  client_contacts write. */
+export function canEditFicha(role: ClientRole | null): boolean {
+  return role === "owner" || role === "finance" || role === "content";
+}
 
 /** Home del portal según el rol (finanzas puro no tiene mundo de contenido). */
 export function portalHome(role: ClientRole | null): string {
