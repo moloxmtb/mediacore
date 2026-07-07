@@ -5,7 +5,7 @@
  *   - entero para cambios mayores, y resetea el decimal:  1.14 → 2.00
  * Se muestra automáticamente en panel y portal (ver components/SystemFooter).
  */
-export const APP_VERSION = "1.00";
+export const APP_VERSION = "1.10";
 
 /**
  * Fecha de última actualización — AUTOMÁTICA. Se fija sola al hacer build /
