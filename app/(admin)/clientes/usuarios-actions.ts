@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { canActOnClient } from "@/lib/auth";
 import { sendEmail } from "@/lib/mail";
 import { recordInvitation } from "@/lib/invitations";
 import { appUrl } from "@/lib/app-url";
@@ -15,14 +15,12 @@ function str(fd: FormData, k: string) {
   return String(fd.get(k) ?? "").trim();
 }
 
-async function isAdmin(): Promise<boolean> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return false;
-  const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-  return data?.role === "admin";
+/** Cliente real de un usuario (por su id), vía service_role — para autorizar
+ *  sobre el cliente EFECTIVO del usuario, no el que venga en el form (anti-spoof). */
+async function clientOfUser(admin: ReturnType<typeof createAdminClient>, userId: string): Promise<string> {
+  if (!userId) return "";
+  const { data } = await admin.from("profiles").select("client_id").eq("id", userId).maybeSingle();
+  return (data?.client_id as string | null) ?? "";
 }
 
 function confirmLink(hashedToken: string, type: "invite" | "recovery"): string {
@@ -46,12 +44,13 @@ export async function invitarUsuario(
   _p: FormState,
   fd: FormData,
 ): Promise<FormState> {
-  if (!(await isAdmin())) return { error: "No autorizado." };
   const clientId = str(fd, "client_id");
   const email = str(fd, "email").toLowerCase();
   const clientRole = str(fd, "client_role") as ClientRole;
 
   if (!clientId) return { error: "Falta el cliente." };
+  // Guard: owner o staff asignado a ESTE cliente (el nuevo usuario colgará de él).
+  if (!(await canActOnClient(clientId))) return { error: "No autorizado." };
   if (!email.includes("@")) return { error: "Correo inválido." };
   if (!ROLES.includes(clientRole)) return { error: "Rol inválido." };
 
@@ -102,13 +101,14 @@ export async function invitarUsuario(
 
 /** Reenvía el enlace para fijar contraseña (usuario ya existente). */
 export async function reenviarInvitacion(fd: FormData): Promise<void> {
-  if (!(await isAdmin())) return;
   const email = str(fd, "email").toLowerCase();
   const clientId = str(fd, "client_id");
   if (!email) return;
   const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.generateLink({ type: "recovery", email });
   if (error || !data) return;
+  // Guard sobre el cliente EFECTIVO del usuario (no el del form) antes de enviar.
+  if (!(await canActOnClient(await clientOfUser(admin, data.user?.id ?? "")))) return;
   const sent = await sendEmail({
     to: email,
     subject: "Fija tu contraseña — Color Media",
@@ -128,22 +128,24 @@ export async function reenviarInvitacion(fd: FormData): Promise<void> {
 }
 
 export async function cambiarRolUsuario(fd: FormData): Promise<void> {
-  if (!(await isAdmin())) return;
   const userId = str(fd, "user_id");
   const clientId = str(fd, "client_id");
   const clientRole = str(fd, "client_role") as ClientRole;
   if (!userId || !ROLES.includes(clientRole)) return;
   const admin = createAdminClient();
+  // Guard sobre el cliente EFECTIVO del usuario objetivo (no el del form).
+  if (!(await canActOnClient(await clientOfUser(admin, userId)))) return;
   await admin.from("profiles").update({ client_role: clientRole }).eq("id", userId);
   revalidatePath(`/clientes/${clientId}`);
 }
 
 export async function eliminarUsuario(fd: FormData): Promise<void> {
-  if (!(await isAdmin())) return;
   const userId = str(fd, "user_id");
   const clientId = str(fd, "client_id");
   if (!userId) return;
   const admin = createAdminClient();
+  // Guard sobre el cliente EFECTIVO del usuario objetivo (no el del form).
+  if (!(await canActOnClient(await clientOfUser(admin, userId)))) return;
   await admin.auth.admin.deleteUser(userId);
   revalidatePath(`/clientes/${clientId}`);
 }

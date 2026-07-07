@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { isSessionOwner } from "@/lib/auth";
 import type {
   ClientSegment,
   ClientStatus,
@@ -35,6 +36,11 @@ export async function crearCliente(
   _prev: FormState,
   fd: FormData,
 ): Promise<FormState> {
+  // Crear clientes en la cartera es acto de administración de negocio: solo
+  // owner. La RLS de clients-write ya es is_owner(); este guard da un rechazo
+  // limpio en vez de un error de RLS (defensa en profundidad).
+  if (!(await isSessionOwner())) return { error: "No autorizado." };
+
   const name = str(fd, "name");
   const segment = str(fd, "segment") as ClientSegment;
   const status = str(fd, "status") as ClientStatus;

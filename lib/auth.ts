@@ -100,3 +100,25 @@ export async function requireAdminRole(section: AdminSection): Promise<SessionPr
   }
   return session!;
 }
+
+// ---- Guards para MUTACIONES que corren con service_role (esquivan la RLS) ----
+// Estas se aplican en código porque el service_role bypasea la RLS: sin ellas,
+// un ejecutivo/productor (que es role='admin') podría actuar sobre un cliente
+// ajeno forzando el id.
+
+/** ¿La sesión puede actuar sobre este cliente? owner, o staff asignado a él.
+ *  Reusa la MISMA función de la RLS (staff_sees_client) con la sesión del
+ *  llamador → una sola regla. Devuelve false para no-admin o no-asignado. */
+export async function canActOnClient(clientId: string): Promise<boolean> {
+  if (!clientId) return false;
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("staff_sees_client", { cid: clientId });
+  return data === true;
+}
+
+/** ¿La sesión es owner? Para actos de administración de negocio (p. ej. crear
+ *  clientes en la cartera): no es cuestión de asignación, es solo del dueño. */
+export async function isSessionOwner(): Promise<boolean> {
+  const session = await getSessionProfile();
+  return session?.role === "admin" && session.adminRole === "owner";
+}

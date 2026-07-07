@@ -1135,8 +1135,19 @@ NO se construye de un viaje. Orden acordado: **Pieza 1 (equipo interno) → Piez
   totales globales que antes (no se rompió al quitar SECURITY DEFINER); ejecutivo acotado, cero finanzas por
   ninguna vía. Rendimiento sin impacto (datasets chicos). Es la parte de la Fase 2 que era SEGURIDAD real, no
   cosmética — cerrada.
-- ⏳ **FASE 3 — Blindaje service_role (pendiente).** Acotar `listUsers` y meter chequeos de autorización en
-  las mutaciones que corren con service_role (bypassa RLS — único punto que la RLS no cubre sola).
+- ✅ **FASE 3 — Blindaje service_role (HECHA 2026-07-06).** Auditoría de los 5 usos de service_role: los de
+  lectura son auth/owner-only (sin fuga de negocio); el hueco real eran las 4 mutaciones de `usuarios-actions`
+  (invitar, reenviar, cambiar rol, eliminar) que corren con service_role (esquivan RLS) y hacían solo
+  `requireAdmin()` — que tras el flip incluye a staff → un ejecutivo podía invitar/mutar usuarios en clientes
+  NO asignados. Fix: guard `canActOnClient(clientId)` (llama la misma `staff_sees_client` de la RLS con la
+  sesión del llamador — una sola regla) en las 4. **ANTI-SPOOFING:** las 3 que operan sobre un usuario existente
+  derivan el cliente DEL USUARIO OBJETIVO, no del form → cierra el ataque de pasar el client_id propio pero
+  apuntar a un usuario ajeno. `crearCliente` → `requireOwner()` (defensa en profundidad; la RLS ya la cubría por
+  is_owner). Verificado en datos reales: ejecutivo bloqueado en las 4 sobre cliente ajeno + anti-spoof + no crea
+  cliente; owner todo. **Con esto la superficie service_role quedó cerrada: staff no puede leer NI actuar sobre
+  clientes ajenos por NINGUNA vía (RLS + guards de mutación).**
+
+**✅ PIEZA 1 SEGURA DE PUNTA A PUNTA** (Fases 0-3). Falta solo Fase 4 (UI de gestión, sin seguridad delicada).
 - ⏳ **FASE 4 — UI de gestión owner (pendiente).** Crear miembros internos + asignar clientes desde el panel
   (hoy se haría por SQL).
 
