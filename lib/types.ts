@@ -47,6 +47,26 @@ export type ClientContact = {
   created_at: string;
 };
 
+export type InvitationStatus =
+  | "enviado"
+  | "entregado"
+  | "abierto"
+  | "rebotado"
+  | "fallido";
+
+export type ClientInvitation = {
+  id: string;
+  client_id: string;
+  user_id: string | null;
+  email: string;
+  kind: "invite" | "recovery";
+  message_id: string | null;
+  status: InvitationStatus;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ClientStrategy = {
   client_id: string;
   objetivo: string | null;

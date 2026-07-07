@@ -4,6 +4,7 @@ import type {
   ClientStatus,
   Contract,
   DeliverableStatus,
+  InvitationStatus,
   ProjectStatus,
 } from "./types";
 
@@ -114,6 +115,28 @@ export function clientStatusBadge(status: ClientStatus): string {
 
 export function projectStatusBadge(status: ProjectStatus): string {
   return status === "activo" ? "b-ok" : status === "pausado" ? "b-warn" : "b-idle";
+}
+
+export const INVITATION_STATUS_LABELS: Record<InvitationStatus, string> = {
+  enviado: "Enviado",
+  entregado: "Entregado",
+  abierto: "Abierto",
+  rebotado: "Rebotado",
+  fallido: "Falló el envío",
+};
+
+export function invitationStatusBadge(status: InvitationStatus): string {
+  switch (status) {
+    case "abierto":
+      return "b-ok";
+    case "entregado":
+      return "b-accent";
+    case "enviado":
+      return "b-idle";
+    case "rebotado":
+    case "fallido":
+      return "b-bad";
+  }
 }
 
 export const DELIVERABLE_STATUS_LABELS: Record<DeliverableStatus, string> = {

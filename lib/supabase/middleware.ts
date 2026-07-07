@@ -11,6 +11,9 @@ const PUBLIC_PATHS = [
   // Callbacks de Flow: llegan sin sesión (server-a-server y retorno del
   // navegador). Se autoprotegen: solo confían en getStatus firmado de Flow.
   "/api/flow",
+  // Webhook de Resend: llega sin sesión. Se autoprotege verificando la firma
+  // (Standard Webhooks) antes de tocar la base.
+  "/api/resend",
 ];
 
 /** Home de cada rol tras autenticarse. */

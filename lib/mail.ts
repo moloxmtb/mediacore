@@ -18,21 +18,28 @@ export function mailConfigured(): boolean {
 
 /**
  * Envía un correo con Resend. Best-effort: si falla (o no está configurado),
- * registra en el log y devuelve false, sin lanzar — nunca rompe la acción que
- * lo disparó.
+ * registra en el log y devuelve { ok:false, ... } sin lanzar — nunca rompe la
+ * acción que lo disparó. Devuelve el message-id cuando el envío se acepta.
  */
+export type SendResult = {
+  ok: boolean;
+  /** message-id de Resend (para casar con los eventos del webhook); null si no salió. */
+  id: string | null;
+  error: string | null;
+};
+
 export async function sendEmail(opts: {
   to: string | string[];
   subject: string;
   html: string;
-}): Promise<boolean> {
+}): Promise<SendResult> {
   if (!mailConfigured()) {
     console.warn("[mail] RESEND_API_KEY no configurada; correo omitido:", opts.subject);
-    return false;
+    return { ok: false, id: null, error: "RESEND_API_KEY no configurada" };
   }
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
-    const { error } = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: FROM,
       replyTo: REPLY_TO,
       to: opts.to,
@@ -41,11 +48,11 @@ export async function sendEmail(opts: {
     });
     if (error) {
       console.error("[mail] Resend error:", error);
-      return false;
+      return { ok: false, id: null, error: error.message ?? "error de Resend" };
     }
-    return true;
+    return { ok: true, id: data?.id ?? null, error: null };
   } catch (e) {
     console.error("[mail] excepción al enviar:", e);
-    return false;
+    return { ok: false, id: null, error: (e as Error).message };
   }
 }

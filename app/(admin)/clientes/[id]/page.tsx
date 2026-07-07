@@ -36,6 +36,7 @@ import AgendarSolicitudForm from "@/components/admin/AgendarSolicitudForm";
 import type {
   ClientContact,
   ClientDetails,
+  ClientInvitation,
   ClientPlanItem,
   ClientStrategy,
   MeetingRequest,
@@ -53,6 +54,8 @@ import {
   PROJECT_STATUS_LABELS,
   clientStatusBadge,
   CLIENT_ROLE_LABELS,
+  INVITATION_STATUS_LABELS,
+  invitationStatusBadge,
 } from "@/lib/format";
 import type { Client, Contract, Project } from "@/lib/types";
 import {
@@ -124,6 +127,20 @@ export default async function ClienteDetallePage({
     email: emailById.get(p.id as string) ?? "—",
     client_role: (p.client_role as ClientRole) ?? "content",
   }));
+
+  // Invitaciones de este cliente (historial de envíos/reenvíos), agrupadas por
+  // email. La más reciente marca el estado actual; el resto es el historial.
+  const { data: invData } = await adminClient
+    .from("client_invitations")
+    .select("*")
+    .eq("client_id", id)
+    .order("created_at", { ascending: false });
+  const invitations = (invData ?? []) as ClientInvitation[];
+  const invitationsByEmail = new Map<string, ClientInvitation[]>();
+  for (const inv of invitations) {
+    const key = inv.email.toLowerCase();
+    (invitationsByEmail.get(key) ?? invitationsByEmail.set(key, []).get(key)!).push(inv);
+  }
 
   const [{ data: fichaData }, { data: contactsData }] = await Promise.all([
     supabase.from("client_details").select("*").eq("client_id", id).maybeSingle(),
@@ -231,11 +248,15 @@ export default async function ClienteDetallePage({
                   <tr>
                     <th>Correo</th>
                     <th>Rol en el portal</th>
+                    <th>Invitación</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {portalUsers.map((u) => (
+                  {portalUsers.map((u) => {
+                    const invs = invitationsByEmail.get(u.email.toLowerCase()) ?? [];
+                    const latest = invs[0] ?? null;
+                    return (
                     <tr key={u.id}>
                       <td className="mono">{u.email}</td>
                       <td>
@@ -256,6 +277,35 @@ export default async function ClienteDetallePage({
                           <button className="btn btn-sm" type="submit">Guardar</button>
                         </form>
                       </td>
+                      <td>
+                        {latest ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "flex-start" }}>
+                            <span className={`badge ${invitationStatusBadge(latest.status)}`}>
+                              {INVITATION_STATUS_LABELS[latest.status]}
+                            </span>
+                            <details>
+                              <summary className="meta" style={{ cursor: "pointer" }}>
+                                Historial ({invs.length})
+                              </summary>
+                              <div style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                                {invs.map((iv) => (
+                                  <div key={iv.id} style={{ fontSize: "12px", display: "flex", gap: "6px", alignItems: "center" }}>
+                                    <span className={`badge ${invitationStatusBadge(iv.status)}`}>
+                                      {INVITATION_STATUS_LABELS[iv.status]}
+                                    </span>
+                                    <span style={{ color: "var(--muted)" }}>
+                                      {iv.kind === "invite" ? "invitación" : "reenvío"} · {formatDateTime(iv.created_at)}
+                                    </span>
+                                    {iv.error && <span style={{ color: "var(--bad)" }} title={iv.error}>· {iv.error.slice(0, 40)}</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+                          </div>
+                        ) : (
+                          <span className="meta">Sin registro</span>
+                        )}
+                      </td>
                       <td className="num">
                         <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", alignItems: "center" }}>
                           <form action={reenviarInvitacion}>
@@ -274,7 +324,8 @@ export default async function ClienteDetallePage({
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             ) : (

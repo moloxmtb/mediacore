@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/mail";
+import { recordInvitation } from "@/lib/invitations";
 import { appUrl } from "@/lib/app-url";
 import type { ClientRole } from "@/lib/types";
 
@@ -79,11 +80,23 @@ export async function invitarUsuario(
     html: inviteHtml(confirmLink(data.properties.hashed_token, "invite")),
   });
 
+  // Registro de la invitación: aceptada → 'enviado' + message-id; si no salió →
+  // 'fallido' + motivo. El webhook luego avanza el estado por su message_id.
+  await recordInvitation(admin, {
+    client_id: clientId,
+    user_id: data.user.id,
+    email,
+    kind: "invite",
+    message_id: sent.id,
+    status: sent.ok ? "enviado" : "fallido",
+    error: sent.ok ? null : sent.error,
+  });
+
   revalidatePath(`/clientes/${clientId}`);
   return {
     error: null,
     ok: true,
-    ...(sent ? {} : { error: "Usuario creado, pero el correo no salió (revisa RESEND_API_KEY)." }),
+    ...(sent.ok ? {} : { error: "Usuario creado, pero el correo no salió (revisa RESEND_API_KEY)." }),
   };
 }
 
@@ -96,10 +109,20 @@ export async function reenviarInvitacion(fd: FormData): Promise<void> {
   const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.generateLink({ type: "recovery", email });
   if (error || !data) return;
-  await sendEmail({
+  const sent = await sendEmail({
     to: email,
     subject: "Fija tu contraseña — Color Media",
     html: inviteHtml(confirmLink(data.properties.hashed_token, "recovery")),
+  });
+  // Cada reenvío es un registro nuevo (historial completo, no se pisa).
+  await recordInvitation(admin, {
+    client_id: clientId,
+    user_id: data.user?.id ?? null,
+    email,
+    kind: "recovery",
+    message_id: sent.id,
+    status: sent.ok ? "enviado" : "fallido",
+    error: sent.ok ? null : sent.error,
   });
   revalidatePath(`/clientes/${clientId}`);
 }
