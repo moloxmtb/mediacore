@@ -1,6 +1,7 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import { createClient } from "@/lib/supabase/server";
+import { requireAdminRole } from "@/lib/auth";
 import {
   CLIENT_STATUS_LABELS,
   SEGMENT_LABELS,
@@ -10,6 +11,7 @@ import {
 import type { Client, Contract } from "@/lib/types";
 
 export default async function ClientesPage() {
+  await requireAdminRole("clientes"); // owner-only (cartera global)
   const supabase = await createClient();
   const [{ data: clients }, { data: contracts }] = await Promise.all([
     supabase.from("clients").select("*").order("created_at", { ascending: true }),

@@ -13,6 +13,7 @@ import PlanItemForm from "@/components/admin/PlanItemForm";
 import Markdown from "@/components/Markdown";
 import DeleteButton from "@/components/admin/DeleteButton";
 import { createClient } from "@/lib/supabase/server";
+import { requireAdminRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getLatestUf } from "@/lib/uf";
 import { getConnectionStatus, listCalendars } from "@/lib/google";
@@ -74,6 +75,7 @@ export default async function ClienteDetallePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireAdminRole("clientes"); // owner-only (ficha con finanzas)
   const { id } = await params;
   const supabase = await createClient();
 

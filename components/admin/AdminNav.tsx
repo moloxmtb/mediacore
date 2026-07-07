@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import type { AdminRole } from "@/lib/types";
+import { canSeeAdminSection, type AdminSection } from "@/lib/admin-sections";
 
 type Item = { href: string; label: string; icon: ReactNode };
 type Group = { label: string; items: Item[] };
@@ -139,30 +141,38 @@ const groups: Group[] = [
   },
 ];
 
-export default function AdminNav() {
+// La sección de cada ítem se deriva del href (/dashboard → "dashboard", etc.),
+// que coincide con las claves de ADMIN_SECTIONS.
+const sectionOf = (href: string) => href.slice(1) as AdminSection;
+
+export default function AdminNav({ adminRole }: { adminRole: AdminRole | null }) {
   const pathname = usePathname();
 
   return (
     <nav className="admin-nav">
-      {groups.map((group) => (
-        <div key={group.label}>
-          <div className="nav-label">{group.label}</div>
-          {group.items.map((item) => {
-            const active =
-              pathname === item.href || pathname.startsWith(item.href + "/");
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`nav-item${active ? " active" : ""}`}
-              >
-                {item.icon}
-                {item.label}
-              </Link>
-            );
-          })}
-        </div>
-      ))}
+      {groups.map((group) => {
+        const items = group.items.filter((i) => canSeeAdminSection(adminRole, sectionOf(i.href)));
+        if (!items.length) return null; // grupo sin ítems visibles → se oculta
+        return (
+          <div key={group.label}>
+            <div className="nav-label">{group.label}</div>
+            {items.map((item) => {
+              const active =
+                pathname === item.href || pathname.startsWith(item.href + "/");
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`nav-item${active ? " active" : ""}`}
+                >
+                  {item.icon}
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        );
+      })}
     </nav>
   );
 }

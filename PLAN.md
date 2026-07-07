@@ -1097,6 +1097,108 @@ NOTA: quedó pendiente SOLO la #3 (reporte de sesiones). Las otras cinco, hechas
 
 ---
 
+## 🗂️ PROYECTO GRANDE — Sistema de tareas + equipo interno (diseño 2026-07-06, POR CONSTRUIR)
+
+Ismael pidió "una sección de tareas": listado de tareas por hacer, cruzadas con usuarios, con responsable,
+plazo estimado y check de cumplida. Al desglosarlo resultó ser un proyecto de TRES PIEZAS con dependencias —
+NO se construye de un viaje. Orden acordado: **Pieza 1 (equipo interno) → Pieza 2 (tareas) → Pieza 3 (cruce Gantt).**
+
+**Contexto que emergió del diseño:**
+- Hay DOS tipos de tareas: INTERNAS (las hace el equipo de Color Media, el cliente NO las ve — ej. "editar el
+  reel") y DEL CLIENTE (las hace el cliente y las ve/marca — ej. "recopilar datos", "hacer un estudio").
+- Para asignar tareas internas hace falta que el EQUIPO INTERNO exista como usuarios. Hoy NO existe (el admin
+  lo usa Ismael; no hay registro de miembros del equipo). Por eso el equipo es prerrequisito → Pieza 1.
+- Ismael quiso roles internos completos (acceso restringido), NO solo una lista de personas. Eso convierte la
+  Pieza 1 en un SISTEMA DE PERMISOS INTERNO — el proyecto más grande y delicado planteado hasta ahora (toca
+  acceso a datos sensibles de TODOS los clientes: finanzas, contratos). Diseñar con máximo cuidado.
+
+### PIEZA 1 — Equipo interno con roles (EN CONSTRUCCIÓN — Fases 0 y 1 HECHAS, 2026-07-06)
+**Estado de construcción (commit `c784e4e`, migraciones corridas en Supabase):**
+- ✅ **FASE 0 — Modelo (HECHA).** enum `admin_role`, columna en profiles, backfill (solo molox=owner tras
+  eliminar la cuenta residual qa.admin), tabla `admin_assignments`, funciones `auth_admin_role`/`is_owner`/
+  `is_staff`/`staff_sees_client`. Aditiva, sin cambio de comportamiento. Verificada.
+- ✅ **FASE 1 — El flip (HECHA, el paso de máximo riesgo).** `is_admin()` redefinida = `is_owner()` (enfoque
+  clave: cierra ~53 cláusulas solas para staff sin tocarlas) + `staff_sees_client/project/piece()` agregado a
+  las 16 cláusulas de negocio (SELECT+WRITE). Atómica (begin/commit). ROLLBACK atómico escrito y en mano
+  (`fase-admin-roles-1-flip-ROLLBACK.sql`) — no hizo falta. Verificado con baseline numérico tabla por tabla:
+  OWNER ve idéntico al baseline en las 16 tablas (acceso intacto ✔); ejecutivo ve solo su asignado, 0 ajeno,
+  0 finanzas, write ajeno bloqueado (42501); productor igual; portal cliente intacto. LA RLS —capa que de
+  verdad protege— YA ESTÁ PUESTA Y VERIFICADA POR AMBAS CARAS.
+- ✅ **FASE 2 — Gating de UI (HECHA 2026-07-06).** AdminNav filtrado por admin_role (fuente única en AdminShell),
+  `requireAdminRole` en rutas con redirect a la home del rol (owner/ejecutivo→Resumen, productor→Proyectos).
+  **Fuga de dashboard CERRADA en la raíz:** `v_dashboard`/`get_dashboard_stats` corrían con `createAdminClient()`
+  (service_role) + SECURITY DEFINER → filtraban el ingreso recurrente TOTAL y la cartera completa a cualquier
+  staff. Fix: quitado el service_role del dashboard (consulta con sesión del usuario, sujeta a RLS) y las
+  funciones dejaron de ser SECURITY DEFINER ciegas → la RLS de Fase 1 filtra sola, sin filtros manuales por
+  función. Dashboard por rol: owner=global con finanzas; ejecutivo=solo sus clientes SIN cifras de plata (las
+  tarjetas financieras se omiten, no se muestran vacías); productor=sin Resumen. Verificado: owner ve los MISMOS
+  totales globales que antes (no se rompió al quitar SECURITY DEFINER); ejecutivo acotado, cero finanzas por
+  ninguna vía. Rendimiento sin impacto (datasets chicos). Es la parte de la Fase 2 que era SEGURIDAD real, no
+  cosmética — cerrada.
+- ⏳ **FASE 3 — Blindaje service_role (pendiente).** Acotar `listUsers` y meter chequeos de autorización en
+  las mutaciones que corren con service_role (bypassa RLS — único punto que la RLS no cubre sola).
+- ⏳ **FASE 4 — UI de gestión owner (pendiente).** Crear miembros internos + asignar clientes desde el panel
+  (hoy se haría por SQL).
+
+**Diseño de referencia (cerrado):**
+**Tres roles internos:**
+- **Dueño (Ismael):** ve TODO — todos los clientes, todas las secciones, finanzas incluida. ÚNICO que
+  gestiona el equipo y las asignaciones.
+- **Ejecutivo:** ve SOLO sus clientes asignados; dentro de ellos, TODO MENOS finanzas.
+- **Productor:** ve SOLO sus clientes asignados; dentro de ellos, SOLO contenido y proyectos (no finanzas, no
+  estrategia/comercial).
+
+**Dos dimensiones de permiso** (la RLS cruza AMBAS): (1) qué clientes ve — dueño=todos, ejecutivo/productor=
+asignados; (2) qué secciones ve dentro de un cliente — según rol.
+
+**MATRIZ DE SECCIONES COMPLETA (definida 2026-07-06 contra los ítems del sidebar admin):**
+- **Dueño:** TODO — Resumen, Clientes (cartera global), Proyectos, Carta Gantt, Calendario, Entregables,
+  Contenido, Cobros y contratos (finanzas), Bitácora, Integraciones. Todos los clientes. Único que gestiona
+  equipo/asignaciones/Integraciones.
+- **Ejecutivo** (SOLO clientes asignados): Proyectos, Contenido, Calendario, Entregables, Carta Gantt,
+  Resumen, Bitácora — todo acotado a sus clientes. NO ve: Cobros/finanzas, Clientes-cartera global, Integraciones.
+- **Productor** (SOLO clientes asignados): Proyectos, Contenido, Calendario, Entregables, Carta Gantt. NO ve:
+  Resumen, Bitácora, Cobros/finanzas, Clientes-cartera global, Integraciones.
+- **Diferencia ejecutivo vs productor = SOLO dos secciones:** Resumen y Bitácora (las ve el ejecutivo, no el
+  productor). Todo lo demás lo comparten.
+
+⚠️ **DOS MATICES CRÍTICOS DE CONSTRUCCIÓN:**
+1. **"Clientes" (cartera global) vs. acceso puntual:** productor y ejecutivo NO ven el LISTADO global de
+   clientes, pero SÍ deben acceder a la ficha operativa de sus clientes ASIGNADOS. La RLS debe bloquear el
+   listado global pero permitir el acceso puntual a los asignados.
+2. **Secciones que AGREGAN datos de varios clientes (Resumen, Bitácora):** para el ejecutivo NO basta con
+   mostrar/ocultar — la sección debe RECALCULARSE filtrada por sus clientes asignados (el Resumen hoy es un
+   dashboard GLOBAL: ingreso recurrente total, cartera completa; para el ejecutivo debe mostrar solo lo suyo).
+   Esto es más trabajo que un sí/no de acceso. Punto de mayor cuidado.
+
+**Piezas técnicas que requiere:**
+- Registro de MIEMBROS DEL EQUIPO interno (persona + rol interno). Nuevo — hoy no existe.
+- Tabla de ASIGNACIONES (miembro ↔ cliente).
+- RLS nueva sobre las tablas del admin que cruza rol interno + asignación (más compleja que la del cliente,
+  que solo mira client_id).
+- Gating de UI en el panel admin según rol interno.
+- UI de gestión (SOLO dueño) para crear miembros y asignarles clientes.
+
+**Primer paso de construcción:** que Code mapee las secciones del ADMIN contra el código real (rutas, gating,
+policies) para confirmar la matriz de arriba y ver CÓMO se controla hoy el acceso admin, antes de diseñar la
+RLS. La matriz de secciones × rol YA está definida (arriba); el diagnóstico es para confirmarla contra el
+código y planear la implementación (especialmente los dos matices críticos), no para redefinirla.
+
+⚠️ Es un sistema de permisos sobre datos sensibles: el smoke test debe verificar las DOS caras por cada rol
+(qué SÍ ve y —crítico— qué NO puede ver), como se hizo con el rol administrativo del cliente.
+
+### PIEZA 2 — Sistema de tareas (por diseñar)
+Tareas con responsable, plazo estimado, check de cumplida. Dos mundos: INTERNAS (asignadas al equipo, invisibles
+al cliente) y DEL CLIENTE (asignadas a usuarios del portal, visibles a ellos). Cada tarea con "dueño de mundo".
+Se diseña DESPUÉS de la Pieza 1 (necesita el equipo para asignar internas).
+
+### PIEZA 3 — Cruce con Gantt / hitos / reuniones (por diseñar, la más compleja)
+Que una tarea pueda venir de / vincularse con una fase de la Gantt, un hito o una reunión existente. Nudo a
+resolver: qué pasa con la tarea si la fase de la Gantt cambia o se borra (sincronización). Se deja AL FINAL,
+como mejora sobre un sistema de tareas que ya funcione.
+
+---
+
 ## Prompt de arranque para Claude Code
 
 > Voy a construir una app Next.js (App Router, TypeScript) con Supabase y Tailwind, en Vercel. Es un panel de gestión de clientes con dos caras —panel interno de administración y portal de cliente en solo lectura— separadas por Row Level Security. La carta Gantt combina fases del proyecto con eventos de Google Calendar (sincronización bidireccional, un calendario de Google por cliente), y al abrir una barra muestra un modal con acciones, entregables y resultados. Adjunto `schema.sql`, `PLAN.md` y el prototipo visual `panel-colormedia.html`. Partamos por la Fase 1: crea el proyecto, conecta Supabase, deja el login por email y el `middleware.ts` que enruta según el rol del perfil. No avances a otras fases hasta que la Fase 1 funcione end to end.

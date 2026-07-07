@@ -19,6 +19,7 @@ export type InstallmentStatus =
   | "anulada";
 export type EventSource = "google" | "panel";
 export type ClientRole = "owner" | "finance" | "content";
+export type AdminRole = "owner" | "ejecutivo" | "productor";
 
 export type ClientDetails = {
   client_id: string;

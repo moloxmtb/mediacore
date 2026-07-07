@@ -1,6 +1,7 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import { createClient } from "@/lib/supabase/server";
+import { requireAdminRole } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 
 type Row = {
@@ -16,6 +17,7 @@ type Row = {
 };
 
 export default async function AccionesPage() {
+  await requireAdminRole("acciones"); // owner + ejecutivo (bitácora)
   const supabase = await createClient();
   const { data } = await supabase
     .from("actions")

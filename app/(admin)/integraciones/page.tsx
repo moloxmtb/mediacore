@@ -1,6 +1,7 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import { createClient } from "@/lib/supabase/server";
+import { requireAdminRole } from "@/lib/auth";
 import { getConnectionStatus } from "@/lib/google";
 import { formatDate } from "@/lib/format";
 import {
@@ -40,6 +41,7 @@ export default async function IntegracionesPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  await requireAdminRole("integraciones"); // owner-only (config/sistema)
   const sp = await searchParams;
   const key = Object.entries(sp)
     .filter(([k]) => ["connected", "synced", "disconnected", "error"].includes(k))
@@ -229,7 +231,7 @@ export default async function IntegracionesPage({
                 <div className="field">
                   <label>Correos internos de Color Media (separados por coma)</label>
                   <textarea name="internal_emails" defaultValue={notifConfig?.internal_emails ?? ""} placeholder="marketing@colormedia.cl" style={{ minHeight: "56px" }} />
-                  <span className="hint">A estos correos llegan los avisos marcados como "interno". Al cliente le llega solo a sus usuarios dueño/contenido de esa empresa.</span>
+                  <span className="hint">A estos correos llegan los avisos marcados como “interno”. Al cliente le llega solo a sus usuarios dueño/contenido de esa empresa.</span>
                 </div>
                 <div>
                   <button className="btn btn-primary btn-sm" type="submit">Guardar notificaciones</button>

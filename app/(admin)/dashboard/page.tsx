@@ -1,7 +1,7 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdminRole } from "@/lib/auth";
 import { getLatestUf } from "@/lib/uf";
 import {
   CLIENT_STATUS_LABELS,
@@ -18,46 +18,55 @@ import AgendarSolicitudForm from "@/components/admin/AgendarSolicitudForm";
 import type { Client, Contract, MeetingRequest, Project } from "@/lib/types";
 
 export default async function DashboardPage() {
+  // owner + ejecutivo (productor cae en /proyectos). El ejecutivo ve un Resumen
+  // ACOTADO a sus clientes (la RLS ya lo filtra) y SIN cifras de finanzas.
+  const session = await requireAdminRole("dashboard");
+  const isOwner = session.adminRole === "owner";
+
   const supabase = await createClient();
-  const [{ data: clients }, { data: contracts }, { data: projects }, uf] =
-    await Promise.all([
-      supabase.from("clients").select("*").order("created_at", { ascending: true }),
-      supabase.from("contracts").select("*"),
-      supabase
-        .from("projects")
-        .select("*, clients(name, accent_color)")
-        .order("created_at", { ascending: false }),
-      getLatestUf(),
-    ]);
+
+  // Operativo, con la sesión del usuario (RLS): para un ejecutivo, clients /
+  // projects / meeting_requests ya vienen acotados a sus clientes asignados.
+  const [{ data: clients }, { data: projects }, uf] = await Promise.all([
+    supabase.from("clients").select("*").order("created_at", { ascending: true }),
+    supabase
+      .from("projects")
+      .select("*, clients(name, accent_color)")
+      .order("created_at", { ascending: false }),
+    getLatestUf(),
+  ]);
 
   const clientList = (clients ?? []) as Client[];
-  const contractList = (contracts ?? []) as Contract[];
   const projectList = (projects ?? []) as (Project & {
     clients: { name: string; accent_color: string | null } | null;
   })[];
 
-  // Contrato activo representativo por cliente.
-  const activeByClient = new Map<string, Contract>();
-  for (const c of contractList) {
-    if (c.status !== "activo") continue;
-    if (!activeByClient.has(c.client_id)) activeByClient.set(c.client_id, c);
-  }
-
-  // Ingreso recurrente mensual: suma de contratos activos.
+  // FINANZAS: solo owner. Para un no-owner NO se consulta `contracts` ni se
+  // calcula ninguna cifra de plata (la RLS igual la bloquearía; esto además
+  // evita el cálculo). Una sola fuente de verdad: la RLS filtra, no una función.
+  let contractList: Contract[] = [];
   let monthlyTotal = 0;
   let activeUfTotal = 0;
-  for (const c of contractList) {
-    if (c.status !== "activo") continue;
-    const m = contractMonthlyNetCLP(c, uf.value);
-    if (m != null) monthlyTotal += m;
-    if (c.currency === "UF") activeUfTotal += c.net_uf ?? 0;
+  const activeByClient = new Map<string, Contract>();
+  if (isOwner) {
+    const { data: contracts } = await supabase.from("contracts").select("*");
+    contractList = (contracts ?? []) as Contract[];
+    for (const c of contractList) {
+      if (c.status !== "activo") continue;
+      if (!activeByClient.has(c.client_id)) activeByClient.set(c.client_id, c);
+      const m = contractMonthlyNetCLP(c, uf.value);
+      if (m != null) monthlyTotal += m;
+      if (c.currency === "UF") activeUfTotal += c.net_uf ?? 0;
+    }
   }
 
   const activeClients = clientList.filter((c) => c.status === "activo").length;
   const proposals = clientList.filter((c) => c.status === "propuesta").length;
   const activeProjects = projectList.filter((p) => p.status === "activo");
 
-  // Bandeja global de solicitudes de reunión pendientes (todas las empresas).
+  // Solicitudes de reunión pendientes (RLS-scoped a sus clientes). Sin
+  // createAdminClient: el email del solicitante requería service_role (bypass
+  // de RLS) y se quitó; la tarjeta muestra cliente + motivo + urgencia.
   const { data: reqData } = await supabase
     .from("meeting_requests")
     .select("*")
@@ -66,30 +75,27 @@ export default async function DashboardPage() {
     .limit(20);
   const pendingReqs = (reqData ?? []) as MeetingRequest[];
   const clientNameById = new Map(clientList.map((c) => [c.id, c.name]));
-  let reqEmailById = new Map<string, string>();
-  if (pendingReqs.length) {
-    const { data: userList } = await createAdminClient().auth.admin.listUsers({ perPage: 1000 });
-    reqEmailById = new Map((userList?.users ?? []).map((u) => [u.id, u.email ?? "—"]));
-  }
 
   return (
     <>
       <PageHeader
         title="Resumen"
-        subtitle="Cartera de clientes y estado del mes en curso"
+        subtitle={isOwner ? "Cartera de clientes y estado del mes en curso" : "Tus clientes y su actividad"}
       />
       <div className="app-content">
         <div className="kpis">
-          <div className="kpi accent">
-            <div className="k">Ingreso recurrente / mes</div>
-            <div className="v mono">{formatCLP(monthlyTotal)}</div>
-            <div className="m">
-              <b>{formatUF(activeUfTotal)}</b> en contratos ·{" "}
-              {contractList.filter((c) => c.status === "activo").length} activos
+          {isOwner && (
+            <div className="kpi accent">
+              <div className="k">Ingreso recurrente / mes</div>
+              <div className="v mono">{formatCLP(monthlyTotal)}</div>
+              <div className="m">
+                <b>{formatUF(activeUfTotal)}</b> en contratos ·{" "}
+                {contractList.filter((c) => c.status === "activo").length} activos
+              </div>
             </div>
-          </div>
+          )}
           <div className="kpi">
-            <div className="k">Clientes en cartera</div>
+            <div className="k">{isOwner ? "Clientes en cartera" : "Tus clientes"}</div>
             <div className="v mono">{clientList.length}</div>
             <div className="m">
               <b>{activeClients}</b> activos
@@ -125,7 +131,7 @@ export default async function DashboardPage() {
                         {" — "}{r.reason}
                       </div>
                       <div className="meta" style={{ marginTop: "3px" }}>
-                        {reqEmailById.get(r.requested_by) ?? "—"} · urgencia {r.urgency}
+                        urgencia {r.urgency}
                         {r.preferred_at ? ` · preferida ${formatDateTime(r.preferred_at)}` : ""}
                       </div>
                     </div>
@@ -143,67 +149,66 @@ export default async function DashboardPage() {
         )}
 
         <div className="grid-2">
-          {/* Clientes y tarifa */}
-          <div className="card">
-            <div className="card-head">
-              <h3>Clientes y tarifa mensual</h3>
-              {uf.value != null && (
-                <span className="tag">UF {formatCLP(uf.value)}</span>
+          {/* Clientes y tarifa — SOLO owner (finanzas). */}
+          {isOwner && (
+            <div className="card">
+              <div className="card-head">
+                <h3>Clientes y tarifa mensual</h3>
+                {uf.value != null && (
+                  <span className="tag">UF {formatCLP(uf.value)}</span>
+                )}
+              </div>
+              {clientList.length ? (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Cliente</th>
+                      <th className="num">Tarifa mensual</th>
+                      <th>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clientList.map((cl) => {
+                      const con = activeByClient.get(cl.id);
+                      const monthly = con ? contractMonthlyNetCLP(con, uf.value) : null;
+                      return (
+                        <tr key={cl.id}>
+                          <td>
+                            <Link href={`/clientes/${cl.id}`} className="row-link">
+                              <div className="cli">
+                                <span className="dot" style={{ background: cl.accent_color ?? "#3dbdcb" }} />
+                                <div>
+                                  <div>{cl.name}</div>
+                                  <div className="meta">{SEGMENT_LABELS[cl.segment]}</div>
+                                </div>
+                              </div>
+                            </Link>
+                          </td>
+                          <td className="num">
+                            <div className="amount mono">
+                              {monthly != null ? formatCLP(monthly) : "—"}
+                              {con?.currency === "UF" && (
+                                <span className="uf">{formatUF(con.net_uf)}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`badge ${clientStatusBadge(cl.status)}`}>
+                              {CLIENT_STATUS_LABELS[cl.status]}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="empty">Sin clientes todavía.</div>
               )}
             </div>
-            {clientList.length ? (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Cliente</th>
-                    <th className="num">Tarifa mensual</th>
-                    <th>Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {clientList.map((cl) => {
-                    const con = activeByClient.get(cl.id);
-                    const monthly = con ? contractMonthlyNetCLP(con, uf.value) : null;
-                    return (
-                      <tr key={cl.id}>
-                        <td>
-                          <Link href={`/clientes/${cl.id}`} className="row-link">
-                            <div className="cli">
-                              <span
-                                className="dot"
-                                style={{ background: cl.accent_color ?? "#3dbdcb" }}
-                              />
-                              <div>
-                                <div>{cl.name}</div>
-                                <div className="meta">{SEGMENT_LABELS[cl.segment]}</div>
-                              </div>
-                            </div>
-                          </Link>
-                        </td>
-                        <td className="num">
-                          <div className="amount mono">
-                            {monthly != null ? formatCLP(monthly) : "—"}
-                            {con?.currency === "UF" && (
-                              <span className="uf">{formatUF(con.net_uf)}</span>
-                            )}
-                          </div>
-                        </td>
-                        <td>
-                          <span className={`badge ${clientStatusBadge(cl.status)}`}>
-                            {CLIENT_STATUS_LABELS[cl.status]}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            ) : (
-              <div className="empty">Sin clientes todavía.</div>
-            )}
-          </div>
+          )}
 
-          {/* Proyectos en curso */}
+          {/* Proyectos en curso — todos los roles (acotado por RLS). */}
           <div className="card">
             <div className="card-head">
               <h3>Proyectos en curso</h3>
@@ -243,14 +248,16 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div className="note">
-          <p style={{ margin: 0 }}>
-            La conversión UF, las tarifas y el estado de pago son la capa
-            interna: no se muestran en el portal del cliente. La emisión del DTE
-            sigue ocurriendo en el SII o Nubox; el registro de cobros llega en la
-            Fase 5.
-          </p>
-        </div>
+        {isOwner && (
+          <div className="note">
+            <p style={{ margin: 0 }}>
+              La conversión UF, las tarifas y el estado de pago son la capa
+              interna: no se muestran en el portal del cliente. La emisión del DTE
+              sigue ocurriendo en el SII o Nubox; el registro de cobros llega en la
+              Fase 5.
+            </p>
+          </div>
+        )}
       </div>
     </>
   );

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { ClientRole } from "@/lib/types";
+import type { AdminRole, ClientRole } from "@/lib/types";
+import { adminHome, canSeeAdminSection, type AdminSection } from "@/lib/admin-sections";
 
 export type Role = "admin" | "client";
 
@@ -9,6 +10,7 @@ export type SessionProfile = {
   email: string | null;
   role: Role;
   clientRole: ClientRole | null; // solo para role === "client"
+  adminRole: AdminRole | null; // solo para role === "admin"
   fullName: string | null;
   clientId: string | null;
 };
@@ -25,7 +27,7 @@ export async function getSessionProfile(): Promise<SessionProfile | null> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, client_role, full_name, client_id")
+    .select("role, client_role, admin_role, full_name, client_id")
     .eq("id", user.id)
     .single();
 
@@ -34,6 +36,7 @@ export async function getSessionProfile(): Promise<SessionProfile | null> {
     email: user.email ?? null,
     role: profile?.role === "admin" ? "admin" : "client",
     clientRole: (profile?.client_role as ClientRole | null) ?? null,
+    adminRole: (profile?.admin_role as AdminRole | null) ?? null,
     fullName: profile?.full_name ?? null,
     clientId: profile?.client_id ?? null,
   };
@@ -74,5 +77,26 @@ export async function requirePortalWorld(
       ? canSeeContent(session!.clientRole)
       : canSeeFinance(session!.clientRole);
   if (!ok) redirect(portalHome(session!.clientRole));
+  return session!;
+}
+
+// ============================================================
+//  Roles internos del equipo (admin): owner / ejecutivo / productor.
+//  La matriz y los helpers puros viven en lib/admin-sections (client-safe);
+//  acá solo el gate de servidor. Es conveniencia (redirige a la home del rol,
+//  no 404); la protección REAL de los datos es la RLS (staff_sees_client).
+// ============================================================
+
+/**
+ * Gatea una página del admin a un conjunto de sub-roles. Si el rol no puede,
+ * redirige a la home del rol (conveniencia, no seguridad: la RLS ya frena los
+ * datos). Devuelve la sesión para reusarla en la página.
+ */
+export async function requireAdminRole(section: AdminSection): Promise<SessionProfile> {
+  const session = await getSessionProfile();
+  if (!session || session.role !== "admin") redirect("/login");
+  if (!canSeeAdminSection(session!.adminRole, section)) {
+    redirect(adminHome(session!.adminRole));
+  }
   return session!;
 }

@@ -1,9 +1,11 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import ClientForm from "@/components/admin/ClientForm";
+import { requireAdminRole } from "@/lib/auth";
 import { crearCliente } from "../actions";
 
-export default function NuevoClientePage() {
+export default async function NuevoClientePage() {
+  await requireAdminRole("clientes"); // owner-only (alta de cartera)
   return (
     <>
       <PageHeader title="Nuevo cliente" subtitle="Alta de una empresa en la cartera" />

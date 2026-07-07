@@ -1,9 +1,17 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import AdminNav from "@/components/admin/AdminNav";
 import Brand from "@/components/Brand";
 import AppShell from "@/components/AppShell";
 import SystemFooter from "@/components/SystemFooter";
 import { getSessionProfile } from "@/lib/auth";
+import { adminHome } from "@/lib/admin-sections";
+
+const ADMIN_ROLE_LABELS: Record<string, string> = {
+  owner: "Dueño",
+  ejecutivo: "Ejecutivo",
+  productor: "Productor",
+};
 
 /**
  * Layout del panel interno (solo admin). El middleware ya bloquea el acceso
@@ -30,17 +38,17 @@ export default async function AdminLayout({
     <AppShell
       sidebar={
         <>
-          <div className="sidebar-brand" style={{ padding: "20px 18px" }}>
+          <Link href={adminHome(session.adminRole)} className="sidebar-brand" style={{ padding: "20px 18px" }}>
             <Brand size="sm" caption="Panel interno" />
-          </div>
+          </Link>
 
-          <AdminNav />
+          <AdminNav adminRole={session.adminRole} />
 
           <div className="sidebar-who">
             <div className="avatar">{initials}</div>
             <div>
               <div className="n">{name}</div>
-              <div className="r">Administrador</div>
+              <div className="r">{ADMIN_ROLE_LABELS[session.adminRole ?? ""] ?? "Administrador"}</div>
             </div>
           </div>
         </>

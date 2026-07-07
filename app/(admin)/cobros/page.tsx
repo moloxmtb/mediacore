@@ -2,6 +2,7 @@ import PageHeader from "@/components/PageHeader";
 import DeleteButton from "@/components/admin/DeleteButton";
 import CuotaEditForm from "@/components/admin/CuotaEditForm";
 import { createClient } from "@/lib/supabase/server";
+import { requireAdminRole } from "@/lib/auth";
 import { getLatestUf } from "@/lib/uf";
 import { formatCLP, formatDate, formatUF } from "@/lib/format";
 import {
@@ -39,6 +40,7 @@ function today(): string {
 }
 
 export default async function CobrosPage() {
+  await requireAdminRole("cobros"); // owner-only (finanzas)
   const supabase = await createClient();
   const [{ data }, uf] = await Promise.all([
     supabase

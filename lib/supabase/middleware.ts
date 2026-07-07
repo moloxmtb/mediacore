@@ -94,12 +94,15 @@ export async function updateSession(request: NextRequest) {
   //     perfil (política "profiles: cada uno ve el suyo"). ---
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, admin_role")
     .eq("id", user.id)
     .single();
 
   const role = profile?.role === "admin" ? "admin" : "client";
-  const home = role === "admin" ? ADMIN_HOME : CLIENT_HOME;
+  // Home del admin según su sub-rol: productor no tiene Resumen → Proyectos.
+  // (Se inlinea adminHome() para no importar lib/auth en el edge.)
+  const adminHomePath = profile?.admin_role === "productor" ? "/proyectos" : ADMIN_HOME;
+  const home = role === "admin" ? adminHomePath : CLIENT_HOME;
 
   // Fijar contraseña: accesible por cualquier usuario autenticado, sin rebote
   // de rol (el recién invitado aún no tiene su "mundo").
@@ -112,7 +115,7 @@ export async function updateSession(request: NextRequest) {
 
   // Separación de áreas por rol.
   if (role === "admin" && isPortalArea(pathname)) {
-    return redirectTo(ADMIN_HOME);
+    return redirectTo(adminHomePath);
   }
   if (role === "client" && !isPortalArea(pathname)) {
     return redirectTo(CLIENT_HOME);
