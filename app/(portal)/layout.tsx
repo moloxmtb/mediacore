@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import PortalNav from "@/components/portal/PortalNav";
 import Brand from "@/components/Brand";
+import AppShell from "@/components/AppShell";
 import SystemFooter from "@/components/SystemFooter";
 import { getSessionProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -67,48 +68,48 @@ export default async function PortalLayout({
     .toUpperCase();
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="sidebar-brand" style={{ padding: "20px 18px" }}>
-          <Brand size="sm" caption="Portal cliente" />
-        </div>
+    <AppShell
+      sidebar={
+        <>
+          <div className="sidebar-brand" style={{ padding: "20px 18px" }}>
+            <Brand size="sm" caption="Portal cliente" />
+          </div>
 
-        {/* Identidad de la empresa del cliente (señal de pertenencia). Con logo:
-            logo arriba (proporción real) + nombre debajo. Sin logo: solo nombre. */}
-        <div className="sidebar-client">
-          {logoUrl && (
-            <div className="sidebar-logo-box">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={logoUrl} alt={companyName} className="sidebar-logo" />
+          {/* Identidad de la empresa del cliente (señal de pertenencia). Con logo:
+              logo arriba (proporción real) + nombre debajo. Sin logo: solo nombre. */}
+          <div className="sidebar-client">
+            {logoUrl && (
+              <div className="sidebar-logo-box">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={logoUrl} alt={companyName} className="sidebar-logo" />
+              </div>
+            )}
+            <div className="sidebar-client-name">{companyName}</div>
+          </div>
+
+          <PortalNav role={session.clientRole} counts={navCounts} />
+
+          <div className="sidebar-who">
+            <div
+              className="avatar"
+              style={{
+                background: client?.accent_color
+                  ? `linear-gradient(135deg, ${client.accent_color}, #3d6bcb)`
+                  : undefined,
+              }}
+            >
+              {initials}
             </div>
-          )}
-          <div className="sidebar-client-name">{companyName}</div>
-        </div>
-
-        <PortalNav role={session.clientRole} counts={navCounts} />
-
-        <div className="sidebar-who">
-          <div
-            className="avatar"
-            style={{
-              background: client?.accent_color
-                ? `linear-gradient(135deg, ${client.accent_color}, #3d6bcb)`
-                : undefined,
-            }}
-          >
-            {initials}
+            <div>
+              <div className="n">{contact}</div>
+              {contactSub && <div className="r">{contactSub}</div>}
+            </div>
           </div>
-          <div>
-            <div className="n">{contact}</div>
-            {contactSub && <div className="r">{contactSub}</div>}
-          </div>
-        </div>
-      </aside>
-
-      <main className="app-main">
-        {children}
-        <SystemFooter />
-      </main>
-    </div>
+        </>
+      }
+    >
+      {children}
+      <SystemFooter />
+    </AppShell>
   );
 }

@@ -913,9 +913,9 @@ Señal de pertenencia ("este acceso es de mi empresa"). Decisiones tomadas y con
   bloquean por script) — se replicó por sesión admin autenticada, misma RLS+storage+update. Validación de
   mime/peso revisada por código.
 
-**2. Video en la previsualización de contenido — DISEÑO CERRADO (2026-07-06), listo para construir.**
+**2. Video en la previsualización de contenido — ✅ HECHA y verificada (3 fases completas, 2026-07-06).**
 Creció de "agregar video" a "rediseñar la pieza para soportar múltiples medios ordenados de tipo mixto".
-Es la MÁS grande de las seis, no la más chica. Decisiones tomadas:
+Fue la MÁS grande de las seis. Commits: Fase 1+2 `c588d44`, Fase 3 `4843a76`. Decisiones tomadas:
 - **Una pieza puede tener imagen Y video juntos**, varios medios en orden (carrusel real, fiel al post).
 - **Los medios cuelgan de la VERSIÓN, no de la pieza.** Cada versión es un snapshot inmutable de su
   conjunto de medios. Crear versión nueva = copiar el conjunto de la anterior para editar encima; la
@@ -1011,36 +1011,89 @@ DECISIÓN: solo un listado de sesiones — **quién entró, qué día, a qué ho
 - Directo con lo que Supabase Auth ya registra (`last_sign_in` / sesiones). Un reporte de lectura.
 - Dificultad: baja-media.
 
-**4. Confirmación de envío de invitación en el panel admin.**
-Hoy al invitar/reenviar no se sabe si el correo salió.
-- **Mínimo (empezar acá):** capturar la respuesta inmediata de Resend → "enviado / falló".
-- **Completo (mejora):** webhooks de Resend (entregado / abierto / rebotó).
-- Dificultad: media.
+**4. Confirmación de envío de invitación — ✅ HECHA y verificada (2026-07-06). Alcance COMPLETO.**
+Hoy al invitar/reenviar no se sabía si el correo salió. Construido:
+- **Alcance completo:** confirmación INMEDIATA (Resend aceptó, se sabe en el acto) + WEBHOOK (entregado/rebotado
+  /abierto).
+- **Estado progresivo por invitación:** enviado → entregado → abierto; + rebotado/fallido. `lib/invitations.ts`
+  con `shouldAdvance` (anti-regresión MONÓTONA: un evento fuera de orden no retrocede el estado — verificado).
+- **Cada envío/reenvío = fila nueva** en tabla `client_invitations` (historial completo, no se pisa). El
+  WEBHOOK actualiza la fila existente por su message_id (no crea otra): un envío = una fila que progresa.
+  En el panel: agrupado por email, estado más reciente destacado + historial de intentos desplegable.
+- **Vínculo crítico:** `data.id` del envío de Resend ↔ `data.email_id` del evento. Casó en los 4 eventos del test.
+- **Webhook `/api/resend/webhook`:** verifica firma con `resend.webhooks.verify()` del SDK (Standard Webhooks
+  /Svix, sin instalar svix — el SDK ya lo trae; mejor que HMAC a mano como Flow, es oficial y auditado) ANTES
+  de tocar la base. Firma inválida → 401 sin escribir. Env `RESEND_WEBHOOK_SECRET`.
+- 🐛 **BUG ENCONTRADO Y CORREGIDO por el smoke test:** el middleware de auth redirigía el webhook a `/login`
+  (307) antes de llegar al endpoint → los eventos nunca se procesaban, estado se quedaba en "enviado" en
+  SILENCIO. Fix: exentar `/api/resend` en `middleware.ts` (PUBLIC_PATHS), igual que Flow (se auto-protege por
+  firma, no necesita sesión). LECCIÓN: todo webhook nuevo hay que exentarlo del middleware de auth.
+- `sendEmail` ahora devuelve `{ok, id, error}` capturando el message-id (identidad de correo `notificaciones@`
+  intacta — solo cambió el retorno; los otros 3 callers lo ignoran sin efecto).
+- Archivos: nuevos `fase-invitaciones.sql`, `lib/invitations.ts`, `app/api/resend/webhook/route.ts`;
+  modificados `lib/mail.ts`, `usuarios-actions.ts`, `middleware.ts`, admin `[id]/page.tsx`, `lib/format.ts`,
+  `lib/types.ts`.
+- ⚠️ **CONFIG EXTERNA PENDIENTE (Ismael, antes del push):** el código está listo pero NO funciona en producción
+  hasta: (1) setear `RESEND_WEBHOOK_SECRET` real en Vercel, (2) dar de alta el endpoint
+  `core.colormedia.cl/api/resend/webhook` en el dashboard de Resend. Sin esto el endpoint existe pero Resend
+  no le manda eventos. Guiar por capturas.
 
-**5. Cuarto rol de CLIENTE: "administrativo" — todo menos finanzas.**
-DECISIÓN: es un rol de CLIENTE (vive en el portal y su RLS), junto a dueño/finanzas/contenido.
-"Todo menos finanzas" = como el rol dueño pero con las secciones de finanzas ocultas y bloqueadas por RLS
-(un "dueño-sin-plata"). Replicable de la lógica de roles existente.
-- ⚠️ Cuidado en construcción: hoy `finanzas` ve SOLO finanzas; este `administrativo` es el complemento (todo
-  MENOS finanzas). Revisar que la matriz de permisos de los CUATRO roles quede coherente — sin huecos sin
-  dueño ni doble cobertura. Punto de cuidado al definir la RLS, no un problema.
-- Dificultad: media (extiende el sistema de roles ya existente).
+**5. "Rol administrativo — todo menos finanzas" → ✅ RESUELTO SIN ROL NUEVO y verificado (2026-07-06).**
+El diagnóstico reveló que el rol `content` YA es, en la práctica, "dueño menos finanzas" para VER. La ÚNICA
+diferencia real: `content` no podía EDITAR la ficha de "Mi empresa". Resuelto abriéndole esa edición.
+- **DECISIÓN: NO crear cuarto rol** (sería deuda técnica — dos roles casi idénticos que mantener coherentes).
+  En su lugar, dar al rol `content` existente el permiso de editar la ficha. Con eso `content` = "dueño menos
+  finanzas" completo. Cambio quirúrgico, sin enum nuevo, sin migración de roles, sin reasignar usuarios.
+- **Alcance: AMBAS tablas de la ficha** — `client_details` (razón social, RUT, giro, dirección, etc.) Y
+  `client_contacts` (directorio de contactos; son solo informativos, NO dan acceso al portal). No separar en
+  dos permisos: reintroduciría la asimetría que evitamos al descartar el rol nuevo.
+- **Dos capas a tocar:**
+  - RLS: policies de escritura `client_details write` y `client_contacts write` pasan de `owner/finance` a
+    `owner/finance/content`.
+  - UI: en `ficha/page.tsx` el flag `editable = canSeeFinance(...)` debe incluir también a `content` (hoy una
+    sola condición gobierna ambas tarjetas).
+- ⚠️ **FINANZAS NO SE TOCA.** Solo se abre la ficha de empresa. El mundo financiero (contracts, installments,
+  installment_payments, bucket facturas) sigue cerrado a `content`, idéntico. El cambio fue estrictamente esas
+  dos tablas de la ficha.
+- **VERIFICADO en base (smoke test 5/5):** content edita ficha (UPDATE pasa) y contactos (INSERT pasa); y SIGUE
+  bloqueado en finanzas — installment_payments/contracts dan 42501 (RLS deniega), installments SELECT 0 filas.
+  Se sembró contrato/cuota reales para que el bloqueo fuera genuinamente por RLS. UI: content ve el formulario
+  editable, no la vista solo-lectura. Helper `canEditFicha` separado a propósito de `canSeeFinance` (que NO se
+  tocó) para no acoplar la ficha a finanzas.
+- Migración `supabase/fase-ficha-content-write.sql` (aditiva), corrida. Dificultad final: baja (el diagnóstico
+  la redujo de "rol nuevo" a un cambio de permiso quirúrgico).
 
 **Orden sugerido para retomar** (menor a mayor esfuerzo, victorias rápidas primero):
 2 (embed video, decisión ya tomada) → 1 (nombre+logo) → 4-mínimo (confirmación de envío) → 3 (reporte de
 sesiones) → 5 (rol administrativo).
 
-**6. Sidebar colapsable en móvil (admin Y portal).**
-ACOTADO: NO es "el panel no es responsive" — es el SIDEBAR específicamente el que no funciona en teléfono,
-en las dos caras. Problema puntual y conocido, no una reconstrucción.
-- Patrón estándar: en móvil el sidebar se colapsa (desaparece) y se reemplaza por un botón hamburguesa que
-  lo despliega sobre el contenido; se cierra al elegir opción o tocar afuera. En pantalla ancha sigue fijo
-  como hoy. Un solo comportamiento que se activa según ancho (breakpoint).
-- Ventaja: mismo problema en admin y portal → diseñar el patrón UNA vez, aplicar a ambos (idealmente mismo
-  componente de navegación). No es doble trabajo.
-- Antes de construir: pedir a Ismael 1-2 capturas del sidebar en su teléfono (una de cada cara) para ver
-  cómo está construido hoy y que el patrón calce con la estructura real de navegación.
-- Dificultad: media, acotada. NO confundir con rehacer el responsive del panel entero.
+**6. Sidebar colapsable en móvil (admin Y portal) — ✅ HECHA y verificada (2026-07-06).**
+Era el SIDEBAR (no el panel entero): hecho para vivir al lado del contenido, en pantalla angosta se desparramaba.
+- **En móvil (<768px):** barra superior fija con ☰ + logo; el contenido ocupa todo el ancho. Al tocar ☰, DRAWER
+  lateral desde la izquierda con la navegación completa + perfil + cerrar sesión + ayuda (bajados del PageHeader,
+  solo en móvil). Overlay detrás. Cierra al navegar (delegación de click), tocar overlay, o Escape.
+- **En escritorio (≥768px):** IDÉNTICO a hoy — verificado por DOM: grid 232px 1fr, sidebar sticky, sin transform,
+  topbar/overlay ocultos, cerrar-sesión+ayuda en el header. El cambio móvil no alteró nada del escritorio.
+- **`AppShell` compartido:** se extrajo la duplicación del shell (admin y portal repetían el markup inline). Un
+  componente client único que ambos layouts usan, pasándole su nav como prop. El mismo `.sidebar` sirve de fijo
+  (escritorio) y drawer (móvil) según breakpoint CSS. Sin librería, estado efímero useState (sin localStorage).
+- Verificado en admin Y portal, móvil Y escritorio (4 casos). 0 errores de consola.
+- 🐛 Bugs cazados por el smoke test: estilos inline `display` (en `.header-actions` y `.sidebar`) que ganaban
+  sobre el media query → movidos a CSS para que el breakpoint recupere control. LECCIÓN: un `style` inline
+  sobrescribe siempre el media query; para togglear por breakpoint, el display va en CSS, no inline.
+- Archivos: nuevo `components/AppShell.tsx`; modificados admin `layout.tsx`, portal `layout.tsx`,
+  `PageHeader.tsx`, `globals.css`.
+
+---
+
+## ✅ LAS SEIS FUNCIONALIDADES DE LA CARPETA (2026-07-06) — COMPLETAS
+1. Logo + nombre en sidebar del portal — HECHA (`e6c74b7`)
+2. Contenido multi-medios (3 fases) — HECHA (`c588d44`, `4843a76`)
+3. Reporte de sesiones — PENDIENTE (diseño simplificado; única de las 6 sin construir)
+4. Estado de invitaciones (inmediata + webhook Resend) — HECHA (sin commitear aún)
+5. Rol "administrativo" → resuelto abriendo edición de ficha a `content` (sin rol nuevo) — HECHA (sin commitear)
+6. Sidebar colapsable en móvil — HECHA (sin commitear)
+NOTA: quedó pendiente SOLO la #3 (reporte de sesiones). Las otras cinco, hechas.
 
 ---
 

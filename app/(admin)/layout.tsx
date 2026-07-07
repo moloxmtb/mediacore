@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import AdminNav from "@/components/admin/AdminNav";
 import Brand from "@/components/Brand";
+import AppShell from "@/components/AppShell";
 import SystemFooter from "@/components/SystemFooter";
 import { getSessionProfile } from "@/lib/auth";
 
@@ -26,27 +27,27 @@ export default async function AdminLayout({
     .toUpperCase();
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="sidebar-brand" style={{ padding: "20px 18px" }}>
-          <Brand size="sm" caption="Panel interno" />
-        </div>
-
-        <AdminNav />
-
-        <div className="sidebar-who">
-          <div className="avatar">{initials}</div>
-          <div>
-            <div className="n">{name}</div>
-            <div className="r">Administrador</div>
+    <AppShell
+      sidebar={
+        <>
+          <div className="sidebar-brand" style={{ padding: "20px 18px" }}>
+            <Brand size="sm" caption="Panel interno" />
           </div>
-        </div>
-      </aside>
 
-      <main className="app-main">
-        {children}
-        <SystemFooter />
-      </main>
-    </div>
+          <AdminNav />
+
+          <div className="sidebar-who">
+            <div className="avatar">{initials}</div>
+            <div>
+              <div className="n">{name}</div>
+              <div className="r">Administrador</div>
+            </div>
+          </div>
+        </>
+      }
+    >
+      {children}
+      <SystemFooter />
+    </AppShell>
   );
 }

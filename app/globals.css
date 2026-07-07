@@ -320,6 +320,35 @@ h3 {
   flex-direction: column;
 }
 
+/* ---------- Shell responsive: barra superior + drawer (SOLO móvil) ----------
+   En escritorio todo esto queda oculto y el layout es idéntico a siempre. Las
+   reglas móviles viven en el @media (max-width: 768px) más abajo. */
+.header-actions { display: flex; align-items: center; gap: 10px; }
+.mobile-topbar { display: none; }
+.sidebar-overlay { display: none; }
+.drawer-only { display: none; }
+.hamburger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.hamburger:hover { background: rgba(255, 255, 255, 0.06); }
+.hamburger svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.sidebar-actions {
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+}
+
 /* Badge (círculo con número) en los ítems del nav del portal */
 .nav-badge {
   margin-left: auto;
@@ -1935,20 +1964,6 @@ tbody tr:hover {
 }
 
 @media (max-width: 900px) {
-  .app-shell {
-    grid-template-columns: 1fr;
-  }
-  .sidebar {
-    position: static;
-    height: auto;
-    flex-direction: row;
-    align-items: center;
-    overflow-x: auto;
-  }
-  .admin-nav {
-    flex-direction: row;
-    overflow-x: auto;
-  }
   .app-header {
     padding: 14px 18px;
   }
@@ -1970,6 +1985,76 @@ tbody tr:hover {
   }
   .g-name {
     padding: 12px;
+  }
+}
+
+/* ---------- Móvil: barra superior + sidebar como drawer ---------- */
+@media (max-width: 768px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    z-index: 50;
+    padding: 0 12px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* El MISMO sidebar se vuelve drawer off-canvas (entra desde la izquierda). */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    height: 100vh;
+    width: 272px;
+    max-width: 84vw;
+    z-index: 70;
+    transform: translateX(-100%);
+    transition: transform 0.26s ease;
+  }
+  .app-shell.nav-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.26s ease;
+  }
+  .app-shell.nav-open .sidebar-overlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Deja libre la barra superior fija. */
+  .app-main {
+    padding-top: 56px;
+  }
+  .app-header {
+    top: 56px;
+  }
+
+  /* Ayuda + cerrar sesión: fuera del header, dentro del drawer. */
+  .header-actions {
+    display: none;
+  }
+  .drawer-only {
+    display: flex;
   }
 }
 

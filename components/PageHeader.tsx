@@ -14,7 +14,7 @@ export default function PageHeader({
         <h1>{title}</h1>
         {subtitle && <p>{subtitle}</p>}
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+      <div className="header-actions">
         <HelpLink />
         <form action={logout}>
           <button type="submit" className="logout-btn">
