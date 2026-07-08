@@ -1148,8 +1148,19 @@ NO se construye de un viaje. Orden acordado: **Pieza 1 (equipo interno) → Piez
   clientes ajenos por NINGUNA vía (RLS + guards de mutación).**
 
 **✅ PIEZA 1 SEGURA DE PUNTA A PUNTA** (Fases 0-3). Falta solo Fase 4 (UI de gestión, sin seguridad delicada).
-- ⏳ **FASE 4 — UI de gestión owner (pendiente).** Crear miembros internos + asignar clientes desde el panel
-  (hoy se haría por SQL).
+- ✅ **FASE 4 — UI de gestión owner (HECHA 2026-07-06).** Sección "Equipo" solo-owner (`requireOwner` en ruta
+  Y en cada acción): crear miembro interno (`invitarMiembroInterno`, acción SEPARADA de invitarUsuario para no
+  cruzar privilegios — reusa el correo/Resend/estado de invitación existente, chequea email duplicado
+  portal/interno), cambiar rol, eliminar, asignar/quitar clientes. Autoprotección: owner no puede quitarse
+  owner ni auto-eliminarse. Estado intermedio resuelto: un miembro invitado pendiente tiene admin_role +
+  asignaciones registradas pero NO puede loguearse hasta setear contraseña (Supabase Auth) — el poder nace con
+  la aceptación, no con la invitación. Cambio de rol mantiene asignaciones; eliminar miembro las borra (cascade).
+  Verificado dos caras: owner gestiona todo; ejecutivo/productor no ve la sección ni puede disparar sus acciones.
+
+**✅✅ PIEZA 1 COMPLETA (Fases 0-4) — equipo interno con roles, de punta a punta.** Modelo + RLS con alcance +
+gating UI + blindaje service_role + UI de gestión. El proyecto más grande y delicado de la sesión, verificado
+fase por fase. Commits: `c784e4e` (0+1), `62301a7` (2), `b4e9139` (3), + Fase 4.
+Sigue: PIEZA 2 (sistema de tareas) y PIEZA 3 (cruce Gantt) — el objetivo original, aún por diseñar.
 
 **Diseño de referencia (cerrado):**
 **Tres roles internos:**

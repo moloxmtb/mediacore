@@ -3,9 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { canActOnClient } from "@/lib/auth";
-import { sendEmail } from "@/lib/mail";
+import { sendInviteEmail } from "@/lib/invite";
 import { recordInvitation } from "@/lib/invitations";
-import { appUrl } from "@/lib/app-url";
 import type { ClientRole } from "@/lib/types";
 
 export type FormState = { error: string | null; ok?: boolean };
@@ -21,22 +20,6 @@ async function clientOfUser(admin: ReturnType<typeof createAdminClient>, userId:
   if (!userId) return "";
   const { data } = await admin.from("profiles").select("client_id").eq("id", userId).maybeSingle();
   return (data?.client_id as string | null) ?? "";
-}
-
-function confirmLink(hashedToken: string, type: "invite" | "recovery"): string {
-  return `${appUrl()}/auth/confirm?token_hash=${hashedToken}&type=${type}&next=${encodeURIComponent("/fijar-clave")}`;
-}
-
-function inviteHtml(link: string): string {
-  return `
-  <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#1a1d23">
-    <div style="border-left:4px solid #3dbdcb;padding:16px 20px;background:#f6f8f9;border-radius:8px">
-      <h2 style="margin:0 0 8px;font-size:17px">Te invitaron al portal de Color Media</h2>
-      <div style="font-size:14px;color:#444;line-height:1.5">Crea tu contraseña para entrar a tu portal y revisar tus proyectos, contenido y avances.</div>
-      <a href="${link}" style="display:inline-block;margin-top:16px;background:#3dbdcb;color:#0c1013;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;font-size:14px">Fijar mi contraseña</a>
-      <p style="font-size:12px;color:#888;margin-top:14px">El enlace vence pronto. Si no lo pediste, ignora este correo.</p>
-    </div>
-  </div>`;
 }
 
 /** Invita a un usuario: lo crea (sin contraseña) y le manda el enlace por Resend. */
@@ -73,10 +56,11 @@ export async function invitarUsuario(
     return { error: "No se pudo asignar el perfil: " + pErr.message };
   }
 
-  const sent = await sendEmail({
+  const sent = await sendInviteEmail({
     to: email,
-    subject: "Te invitaron al portal de Color Media",
-    html: inviteHtml(confirmLink(data.properties.hashed_token, "invite")),
+    hashedToken: data.properties.hashed_token,
+    type: "invite",
+    variant: "portal",
   });
 
   // Registro de la invitación: aceptada → 'enviado' + message-id; si no salió →
@@ -109,10 +93,11 @@ export async function reenviarInvitacion(fd: FormData): Promise<void> {
   if (error || !data) return;
   // Guard sobre el cliente EFECTIVO del usuario (no el del form) antes de enviar.
   if (!(await canActOnClient(await clientOfUser(admin, data.user?.id ?? "")))) return;
-  const sent = await sendEmail({
+  const sent = await sendInviteEmail({
     to: email,
-    subject: "Fija tu contraseña — Color Media",
-    html: inviteHtml(confirmLink(data.properties.hashed_token, "recovery")),
+    hashedToken: data.properties.hashed_token,
+    type: "recovery",
+    variant: "recovery",
   });
   // Cada reenvío es un registro nuevo (historial completo, no se pisa).
   await recordInvitation(admin, {

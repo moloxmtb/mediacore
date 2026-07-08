@@ -20,10 +20,18 @@ export const ADMIN_SECTIONS = {
   contenido: ["owner", "ejecutivo", "productor"],
   cobros: ["owner"],
   acciones: ["owner", "ejecutivo"],
+  equipo: ["owner"],
   integraciones: ["owner"],
 } as const satisfies Record<string, readonly AdminRole[]>;
 
 export type AdminSection = keyof typeof ADMIN_SECTIONS;
+
+/** Etiquetas de los sub-roles internos (para el sidebar y la sección Equipo). */
+export const ADMIN_ROLE_LABELS: Record<AdminRole, string> = {
+  owner: "Dueño",
+  ejecutivo: "Ejecutivo",
+  productor: "Productor",
+};
 
 export function canSeeAdminSection(role: AdminRole | null, section: AdminSection): boolean {
   return !!role && (ADMIN_SECTIONS[section] as readonly AdminRole[]).includes(role);

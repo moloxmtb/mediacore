@@ -1513,6 +1513,21 @@ tbody tr:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
+/* Chip de asignación con ✕ para quitar (sección Equipo). */
+.chip-removable {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+}
+.chip-removable span {
+  font-size: 11px;
+  opacity: 0.6;
+}
+.chip-removable:hover {
+  color: var(--bad);
+  border-color: var(--bad);
+}
 
 .gantt {
   background: var(--panel);

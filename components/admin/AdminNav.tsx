@@ -126,6 +126,18 @@ const groups: Group[] = [
     label: "Sistema",
     items: [
       {
+        href: "/equipo",
+        label: "Equipo",
+        icon: (
+          <svg viewBox="0 0 24 24">
+            <circle cx="9" cy="7" r="3" />
+            <path d="M3 21v-2a5 5 0 0 1 5-5h2" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            <path d="M21 21v-2a5 5 0 0 0-4-4.9" />
+          </svg>
+        ),
+      },
+      {
         href: "/integraciones",
         label: "Integraciones",
         icon: (
