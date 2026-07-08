@@ -18,6 +18,7 @@ export const ADMIN_SECTIONS = {
   calendario: ["owner", "ejecutivo", "productor"],
   entregables: ["owner", "ejecutivo", "productor"],
   contenido: ["owner", "ejecutivo", "productor"],
+  tareas: ["owner", "ejecutivo", "productor"],
   cobros: ["owner"],
   acciones: ["owner", "ejecutivo"],
   equipo: ["owner"],

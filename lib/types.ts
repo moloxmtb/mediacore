@@ -20,6 +20,22 @@ export type InstallmentStatus =
 export type EventSource = "google" | "panel";
 export type ClientRole = "owner" | "finance" | "content";
 export type AdminRole = "owner" | "ejecutivo" | "productor";
+export type TaskType = "interna" | "cliente";
+export type TaskStatus = "pendiente" | "hecha" | "confirmada";
+
+export type Task = {
+  id: string;
+  client_id: string;
+  tipo: TaskType;
+  titulo: string;
+  descripcion: string | null;
+  responsable_id: string | null;
+  plazo: string | null;
+  estado: TaskStatus;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
 export type ClientDetails = {
   client_id: string;

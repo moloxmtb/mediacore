@@ -6,6 +6,8 @@ import type {
   DeliverableStatus,
   InvitationStatus,
   ProjectStatus,
+  TaskStatus,
+  TaskType,
 } from "./types";
 
 export const CLIENT_ROLE_LABELS: Record<ClientRole, string> = {
@@ -115,6 +117,19 @@ export function clientStatusBadge(status: ClientStatus): string {
 
 export function projectStatusBadge(status: ProjectStatus): string {
   return status === "activo" ? "b-ok" : status === "pausado" ? "b-warn" : "b-idle";
+}
+
+export const TASK_TYPE_LABELS: Record<TaskType, string> = {
+  interna: "Interna",
+  cliente: "Del cliente",
+};
+export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
+  pendiente: "Pendiente",
+  hecha: "Hecha",
+  confirmada: "Confirmada",
+};
+export function taskStatusBadge(status: TaskStatus): string {
+  return status === "confirmada" ? "b-ok" : status === "hecha" ? "b-accent" : "b-warn";
 }
 
 export const INVITATION_STATUS_LABELS: Record<InvitationStatus, string> = {
