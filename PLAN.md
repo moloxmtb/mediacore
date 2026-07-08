@@ -1237,29 +1237,33 @@ tareas un tiempo; la infra de crons ya existe — UF, calendario).
   UPDATE del cliente acotados a `tipo='cliente' AND client_id=auth_client_id() AND auth_client_role() IN
   ('owner','content')`, y en el UPDATE `+ estado <> 'confirmada'` (using y with check) → confirmar/reabrir
   imposibles desde el portal por RLS.
-- **Fase B — sección admin `/tareas` + acciones:** construida y verificada **a nivel RLS + lógica**. Lista PLANA
-  con columna empresa + filtros por estado/empresa (no agrupada). Formulario con **selector de responsable
-  CONDICIONADO por tipo** (interna → miembros internos; cliente → usuarios de portal de ESA empresa; se resetea
-  al cambiar empresa/tipo; responsable nullable "sin asignar"). **Guard responsable↔tipo load-bearing** en
-  `crearTarea` (perfil leído por service_role; interna⇒role=admin, cliente⇒role=client con client_id de la
-  empresa): el smoke probó que **la RLS por sí sola ACEPTARÍA el combo malo** (cliente de una empresa con
-  responsable de portal de OTRA) → el guard es la única barrera. **Completar por empresa, no por responsable:**
-  `marcarHecha` la puede hacer cualquier staff con acceso al cliente. `confirmar`/`reabrir` solo staff.
-- **Fase C — vista portal `/portal/tareas`:** construida y verificada **a nivel RLS + lógica**. `requirePortalWorld
-  ("content")` (finanzas no la ve). Company-wide: el cliente ve TODAS las tareas `cliente` de su empresa, con las
-  suyas destacadas (`responsable_id === session.userId`, sin lookup). **Completar por empresa, no por
-  responsable** también acá: cualquier owner/content marca hecha (`marcarHechaPortal`, pendiente→hecha). No puede
-  confirmar ni reabrir (bloqueado por RLS: 42501 / 0 filas). **Confirmada = terminal y VISIBLE**, con badge y sin
-  botones (cierra el ciclo, no se oculta). **Fetch de nombres de colegas ACOTADO** a tres condiciones del lado
-  servidor: `client_id = session.clientId` (de la SESIÓN, nunca de input) + `role='client'` + `select` solo
-  `id, full_name` (nada de email/rol/metadata).
+- **Fase B — sección admin `/tareas` + acciones — CERRADA-CERRADA.** Lista PLANA con columna empresa + filtros
+  por estado/empresa (no agrupada). Formulario con **selector de responsable CONDICIONADO por tipo** (interna →
+  miembros internos; cliente → usuarios de portal de ESA empresa; se resetea al cambiar empresa/tipo; responsable
+  nullable "sin asignar"). **Guard responsable↔tipo load-bearing** en `crearTarea` (perfil leído por service_role;
+  interna⇒role=admin, cliente⇒role=client con client_id de la empresa): el smoke probó que **la RLS por sí sola
+  ACEPTARÍA el combo malo** (cliente de una empresa con responsable de portal de OTRA) → el guard es la única
+  barrera. **Completar por empresa, no por responsable:** `marcarHecha` la puede hacer cualquier staff con acceso
+  al cliente. `confirmar`/`reabrir` solo staff.
+- **Fase C — vista portal `/portal/tareas` — CERRADA-CERRADA.** `requirePortalWorld("content")` (finanzas no la
+  ve). Company-wide: el cliente ve TODAS las tareas `cliente` de su empresa, con las suyas destacadas
+  (`responsable_id === session.userId`, sin lookup). **Completar por empresa, no por responsable** también acá:
+  cualquier owner/content marca hecha (`marcarHechaPortal`, pendiente→hecha). No puede confirmar ni reabrir
+  (bloqueado por RLS: 42501 / 0 filas). **Confirmada = terminal y VISIBLE**, con badge y sin botones (cierra el
+  ciclo, no se oculta). **Fetch de nombres de colegas ACOTADO** a tres condiciones del lado servidor:
+  `client_id = session.clientId` (de la SESIÓN, nunca de input) + `role='client'` + `select` solo `id, full_name`
+  (nada de email/rol/metadata).
 
-⚠️ **NI B NI C ESTÁN CERRADAS-CERRADAS.** Falta el pase end-to-end por la server action REAL (no por predicado
-replicado ni update RLS directo). Dos deudas explícitas, para un único montaje del dev server:
-  1. **Fase B:** ejecutar `crearTarea` real — happy-path + un negativo (combo malo cliente+responsable ajeno) —
-     para confirmar que el guard corre ANTES del insert, sin camino que lo saltee.
-  2. **Fase C:** ejecutar `marcarHechaPortal` real con sesión de portal de verdad.
-  Ambas requieren credenciales de cuentas con acceso (interno + portal); se piden al llegar a ese pase.
+✅ **PASE END-TO-END VERIFICADO (2026-07-08):** además del smoke a nivel RLS+lógica, se ejercitaron las server
+actions REALES por HTTP (`crearTarea` / `marcarHechaPortal`) con sesiones autenticadas de verdad (ejecutivo
+asignado solo a Real Data; portal owner de Cliente Prueba 2), 11/11:
+  - **Fase B:** happy-path `cliente` + responsable de esa empresa → insertada `pendiente`; **combo malo** (responsable
+    de otra empresa) → rechazada y **0 filas insertadas** (el guard corta ANTES del insert); interna + responsable
+    interno → ok; el ejecutivo no ve clientes ajenos.
+  - **Fase C:** `pendiente→hecha` company-scoped (marca quien no es el responsable) ok; **confirmar desde el portal →
+    42501**; **reabrir una `confirmada` desde el portal → 0 filas**.
+  Todo el andamiaje de prueba (ruta dev temporal, exención de middleware, cuenta ejecutivo de prueba) se eliminó
+  al terminar; base y árbol de git limpios.
 
 ### PIEZA 3 — Cruce con Gantt / hitos / reuniones (por diseñar, la más compleja)
 Que una tarea pueda venir de / vincularse con una fase de la Gantt, un hito o una reunión existente. Nudo a
