@@ -1209,10 +1209,27 @@ código y planear la implementación (especialmente los dos matices críticos), 
 ⚠️ Es un sistema de permisos sobre datos sensibles: el smoke test debe verificar las DOS caras por cada rol
 (qué SÍ ve y —crítico— qué NO puede ver), como se hizo con el rol administrativo del cliente.
 
-### PIEZA 2 — Sistema de tareas (por diseñar)
-Tareas con responsable, plazo estimado, check de cumplida. Dos mundos: INTERNAS (asignadas al equipo, invisibles
-al cliente) y DEL CLIENTE (asignadas a usuarios del portal, visibles a ellos). Cada tarea con "dueño de mundo".
-Se diseña DESPUÉS de la Pieza 1 (necesita el equipo para asignar internas).
+### PIEZA 2 — Sistema de tareas (DISEÑO CERRADO 2026-07-06, por construir)
+El objetivo ORIGINAL del proyecto. Ahora tiene base: la Pieza 1 (equipo interno) da a quién asignar internas.
+**Modelo de tarea:**
+- **Dos tipos:** INTERNA (responsable = miembro del equipo interno) y DEL CLIENTE (responsable = usuario del
+  portal). El TIPO determina de qué universo sale el responsable (dos tablas distintas — el campo responsable
+  se interpreta según el tipo). Interna vive en mundo admin (RLS staff), del cliente en mundo portal (RLS cliente).
+- **Toda tarea pertenece a un CLIENTE** (hereda su mundo de seguridad — NO hay tareas huérfanas sin cliente).
+  La RLS de tareas se apoya en la existente: interna del cliente X → solo miembros asignados a X + owner; del
+  cliente X → solo usuarios del portal de X. `staff_sees_client` + RLS de portal ya puestas hacen el trabajo.
+- **Campos:** título/descripción, responsable, plazo estimado, estado.
+**Estados (3): pendiente → hecha → confirmada.**
+- pendiente → hecha: la marca el RESPONSABLE (interno o cliente según tipo).
+- hecha → confirmada / devolver a pendiente: solo OWNER/equipo interno (control, no ejecución). El cliente NO
+  confirma sus propias tareas.
+- ⚠️ Las transiciones van GATEADAS por rol — no cualquiera que VEA la tarea puede moverla; depende de su papel.
+**Vista:** sección "Tareas" GLOBAL en el admin (no dentro de cada cliente), acotada por rol vía la RLS existente
+(owner ve todas; ejecutivo/productor solo las de sus clientes asignados — filtra sola). Cada tarea muestra de
+QUÉ CLIENTE es (la vista cruza clientes). Filtros: cliente / estado / responsable / vencidas.
+**Vencimiento:** visual (tarea vencida marcada, ej. rojo) + aviso DENTRO del sistema (contador/filtro de
+"vencidas" en la sección). **Correo automático vía cron diario = 2ª ETAPA, NO ahora** (evaluar tras usar las
+tareas un tiempo; la infra de crons ya existe — UF, calendario).
 
 ### PIEZA 3 — Cruce con Gantt / hitos / reuniones (por diseñar, la más compleja)
 Que una tarea pueda venir de / vincularse con una fase de la Gantt, un hito o una reunión existente. Nudo a
