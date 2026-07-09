@@ -9,13 +9,13 @@ type Item = { href: string; label: string; world: "content" | "finance" | "any";
 
 const items: Item[] = [
   {
-    href: "/portal/que-viene",
-    label: "Qué viene",
+    href: "/portal",
+    label: "Inicio",
     world: "content",
     icon: (
       <svg viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 7v5l3 2" />
+        <path d="M3 11l9-8 9 8" />
+        <path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10" />
       </svg>
     ),
   },
@@ -159,8 +159,11 @@ export default function PortalNav({
     <nav className="admin-nav">
       <div className="nav-label">Tu espacio</div>
       {visible.map((item) => {
+        // "/portal" (Inicio) solo activo exacto; el resto también en subrutas.
         const active =
-          pathname === item.href || pathname.startsWith(item.href + "/");
+          item.href === "/portal"
+            ? pathname === "/portal"
+            : pathname === item.href || pathname.startsWith(item.href + "/");
         const badge = counts[item.href] ?? 0;
         return (
           <Link

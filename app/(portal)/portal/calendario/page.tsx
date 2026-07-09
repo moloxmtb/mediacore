@@ -4,7 +4,7 @@ import SolicitarReunionForm from "@/components/portal/SolicitarReunionForm";
 import { requirePortalWorld } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
-import { confirmarAsistencia } from "../que-viene/asistencia-actions";
+import { confirmarAsistencia } from "../asistencia-actions";
 import type { MeetingRequest } from "@/lib/types";
 
 // ---------- helpers de fecha (UTC-safe para armar la grilla) ----------
