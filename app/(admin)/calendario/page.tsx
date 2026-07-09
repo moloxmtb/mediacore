@@ -2,7 +2,7 @@ import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatDate, REUNION_ESTADO_LABELS, reunionEstadoBadge } from "@/lib/format";
+import { formatDate, formatDateTime, REUNION_ESTADO_LABELS, reunionEstadoBadge } from "@/lib/format";
 import { deriveReunionEstado } from "@/lib/reuniones";
 import NuevoEventoForm from "@/components/admin/NuevoEventoForm";
 import AgendarSolicitudForm from "@/components/admin/AgendarSolicitudForm";
@@ -58,9 +58,10 @@ export default async function AdminCalendarioPage({
 
   const rangeStart = `${Math.min(Y, ty)}-01-01`;
   const rangeEnd = `${Math.max(Y, ty) + 1}-01-01`;
+  const nowIso = new Date().toISOString();
 
   // Admin ve TODO (RLS is_admin). Sin filtrar por cliente ni por visible_to_client.
-  const [{ data: clientsData }, { data: eventsData }, { data: delivData }, { data: phasesData }, { data: reqData }, { data: minutesData }] =
+  const [{ data: clientsData }, { data: eventsData }, { data: delivData }, { data: phasesData }, { data: reqData }, { data: minutesData }, { data: porDocData }] =
     await Promise.all([
       supabase.from("clients").select("id, name, accent_color").order("name"),
       supabase
@@ -86,6 +87,16 @@ export default async function AdminCalendarioPage({
         .order("created_at", { ascending: false }),
       // Estado 'realizada' de las minutas (RLS: staff ve las de sus clientes).
       supabase.from("meeting_minutes").select("event_id, realizada"),
+      // "Por documentar" EXHAUSTIVA: TODA reunión pasada, sin límite de rango
+      // (a diferencia de las otras tiras), acotada por RLS (staff_sees_client vía
+      // la policy de calendar_events). El 'realizada' sale de realizadaByEvent
+      // (minutesData, también sin rango), no de un embed.
+      supabase
+        .from("calendar_events")
+        .select("id, title, starts_at, client_id")
+        .eq("kind", "reunion")
+        .lt("starts_at", nowIso)
+        .order("starts_at", { ascending: false }),
     ]);
 
   const realizadaByEvent = new Map(
@@ -173,7 +184,32 @@ export default async function AdminCalendarioPage({
     arr.push(it);
     listaByDay.set(it.date, arr);
   }
-  const reqSinFecha = requests.filter((r) => !r.preferred_at && (!filtro || r.client_id === filtro));
+  // --- Lente hacia adelante: tres tiras DERIVADAS (sin estado nuevo) ---
+  // Por agendar: solicitudes pendientes (con o sin fecha) del cliente en foco.
+  const porAgendar = requests.filter((r) => !filtro || r.client_id === filtro);
+  // Reuniones con su estado derivado (deriveReunionEstado), para las otras dos tiras.
+  const reunionesDeriv = events
+    .filter((e) => normalizeKind(e.kind) === "reunion")
+    .filter((e) => !filtro || e.client_id === filtro)
+    .map((e) => ({
+      id: e.id,
+      title: e.title,
+      starts_at: e.starts_at,
+      clientId: e.client_id,
+      estado: deriveReunionEstado(e.starts_at, realizadaByEvent.get(e.id) ?? false),
+    }));
+  const proximasReuniones = reunionesDeriv
+    .filter((r) => r.estado === "agendada")
+    .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  // Por documentar: EXHAUSTIVA (query dedicada porDocData, sin límite de rango; la
+  // RLS ya la acota al staff). Es toda reunión pasada cuya minuta no está marcada
+  // realizada — el gemelo de "por agendar", pero sin perder las antiguas.
+  // realizadaByEvent viene de minutesData (TODAS las minutas visibles al staff,
+  // sin límite de rango) → sirve de fuente exhaustiva del 'realizada' sin embed.
+  const porDocumentar = ((porDocData ?? []) as { id: string; title: string; starts_at: string; client_id: string }[])
+    .filter((e) => !filtro || e.client_id === filtro)
+    .filter((e) => realizadaByEvent.get(e.id) !== true) // sin minuta marcada realizada
+    .map((e) => ({ id: e.id, title: e.title, starts_at: e.starts_at, clientId: e.client_id, estado: "por_documentar" as const }));
 
   return (
     <>
@@ -214,6 +250,71 @@ export default async function AdminCalendarioPage({
               </details>
             </div>
           </div>
+
+          {/* Lente hacia adelante: tres tiras derivadas (por agendar / próximas / por documentar) */}
+          {porAgendar.length > 0 && (
+            <div className="card">
+              <div className="card-head"><h3>Por agendar</h3><span className="tag">{porAgendar.length}</span></div>
+              <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {porAgendar.map((r) => (
+                  <div key={r.id} className="lista-row">
+                    <span className="cal-dot" style={{ background: colorOf(r.client_id) }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: "13.5px", fontWeight: 500 }}>{r.reason}</div>
+                      <div className="meta">
+                        {nameOf(r.client_id)} · {reqEmailById.get(r.requested_by) ?? "—"} · urgencia {r.urgency}
+                        {r.preferred_at ? ` · preferida ${formatDate(r.preferred_at.slice(0, 10))}` : " · sin fecha"}
+                      </div>
+                    </div>
+                    <AgendarSolicitudForm requestId={r.id} clientId={r.client_id} clientName={nameOf(r.client_id)} preferredAt={r.preferred_at} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {proximasReuniones.length > 0 && (
+            <div className="card">
+              <div className="card-head"><h3>Próximas reuniones</h3><span className="tag">{proximasReuniones.length}</span></div>
+              <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {proximasReuniones.map((r) => (
+                  <div key={r.id} className="lista-row">
+                    <span className="cal-dot" style={{ background: colorOf(r.clientId) }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: "13.5px", fontWeight: 500 }}>
+                        <Link href={`/calendario/${r.id}`} className="row-link">{r.title}</Link>
+                      </div>
+                      <div className="meta">{nameOf(r.clientId)} · {formatDateTime(r.starts_at)}</div>
+                    </div>
+                    <span className={`badge ${reunionEstadoBadge(r.estado)}`}>{REUNION_ESTADO_LABELS[r.estado]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {porDocumentar.length > 0 && (
+            <div className="card">
+              <div className="card-head"><h3>Por documentar</h3><span className="tag">{porDocumentar.length}</span></div>
+              <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {porDocumentar.map((r) => (
+                  <div key={r.id} className="lista-row">
+                    <span className="cal-dot" style={{ background: colorOf(r.clientId) }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: "13.5px", fontWeight: 500 }}>
+                        <Link href={`/calendario/${r.id}`} className="row-link">{r.title}</Link>
+                      </div>
+                      <div className="meta">{nameOf(r.clientId)} · {formatDateTime(r.starts_at)}</div>
+                    </div>
+                    <span className={`badge ${reunionEstadoBadge(r.estado)}`}>{REUNION_ESTADO_LABELS[r.estado]}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="card-body" style={{ borderTop: "1px solid var(--border-soft)" }}>
+                <p className="hint">Reuniones que ya pasaron y aún no tienen minuta. Entra a cada una para documentarla.</p>
+              </div>
+            </div>
+          )}
 
           {vista === "mes" ? (
             <div className="card">
@@ -272,9 +373,6 @@ export default async function AdminCalendarioPage({
                               {it.datetime ? ` · ${new Date(it.datetime).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}` : ""}
                             </div>
                           </div>
-                          {it.request && (
-                            <AgendarSolicitudForm requestId={it.request.id} clientId={it.clientId} clientName={it.clientName} preferredAt={it.request.preferred_at} />
-                          )}
                         </div>
                       ))}
                     </div>
@@ -283,25 +381,6 @@ export default async function AdminCalendarioPage({
               ) : (
                 <div className="empty">No hay eventos próximos.</div>
               )}
-            </div>
-          )}
-
-          {/* Solicitudes sin fecha preferida (no ubicables en la grilla) */}
-          {reqSinFecha.length > 0 && (
-            <div className="card">
-              <div className="card-head"><h3>Solicitudes sin fecha preferida</h3><span className="tag">{reqSinFecha.length}</span></div>
-              <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                {reqSinFecha.map((r) => (
-                  <div key={r.id} className="lista-row">
-                    <span className="cal-dot" style={{ background: colorOf(r.client_id) }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: "13.5px", fontWeight: 500 }}>{r.reason}</div>
-                      <div className="meta">{nameOf(r.client_id)} · {reqEmailById.get(r.requested_by) ?? "—"} · urgencia {r.urgency}</div>
-                    </div>
-                    <AgendarSolicitudForm requestId={r.id} clientId={r.client_id} clientName={nameOf(r.client_id)} preferredAt={r.preferred_at} />
-                  </div>
-                ))}
-              </div>
             </div>
           )}
 
