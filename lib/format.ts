@@ -6,6 +6,7 @@ import type {
   DeliverableStatus,
   InvitationStatus,
   ProjectStatus,
+  ReunionEstado,
   TaskStatus,
   TaskType,
 } from "./types";
@@ -130,6 +131,15 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
 };
 export function taskStatusBadge(status: TaskStatus): string {
   return status === "confirmada" ? "b-ok" : status === "hecha" ? "b-accent" : "b-warn";
+}
+
+export const REUNION_ESTADO_LABELS: Record<ReunionEstado, string> = {
+  agendada: "Agendada",
+  por_documentar: "Por documentar",
+  realizada: "Realizada",
+};
+export function reunionEstadoBadge(estado: ReunionEstado): string {
+  return estado === "realizada" ? "b-ok" : estado === "por_documentar" ? "b-warn" : "b-idle";
 }
 
 export const INVITATION_STATUS_LABELS: Record<InvitationStatus, string> = {

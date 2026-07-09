@@ -82,6 +82,24 @@ begin
   return coalesce((select visible_to_client from calendar_events where id = ev), false);
 end $$;
 
+-- Carpeta raíz del path ('<client_id>/...') como uuid, con cast protegido. Se usa
+-- para el alcance de STAFF en el bucket vía staff_sees_client (security definer,
+-- que SÍ lee admin_assignments —owner-only por RLS— sin que el ejecutivo tenga
+-- acceso directo a esa tabla). El subquery inline a admin_assignments NO sirve
+-- acá: correría bajo la RLS owner-only y devolvería vacío para el ejecutivo.
+create or replace function minutas_folder_client(objname text)
+returns uuid language plpgsql immutable set search_path = public
+as $$
+declare cid uuid;
+begin
+  begin
+    cid := (storage.foldername(objname))[1]::uuid;
+  exception when others then
+    return null;
+  end;
+  return cid;
+end $$;
+
 -- ============================================================
 --  RLS — staff por asignación ve/escribe lo de sus clientes; el cliente
 --  owner/content LEE lo suyo SOLO si la reunión es visible (finanzas NO).
@@ -130,15 +148,13 @@ insert into storage.buckets (id, name, public)
 values ('minutas','minutas', false)
 on conflict (id) do nothing;
 
--- Lectura: staff (owner o asignado) del cliente dueño de la carpeta, o el
--- cliente owner/content de su propia empresa SI la reunión es visible. Finanzas
--- queda fuera; una reunión interna no filtra su PDF.
+-- Lectura: staff (owner o asignado, vía staff_sees_client security definer) del
+-- cliente dueño de la carpeta, o el cliente owner/content de su propia empresa SI
+-- la reunión es visible. Finanzas queda fuera; una reunión interna no filtra su PDF.
 drop policy if exists "minutas read" on storage.objects;
 create policy "minutas read" on storage.objects for select using (
   bucket_id = 'minutas' and (
-    is_owner()
-    or (storage.foldername(name))[1] in (
-      select client_id::text from admin_assignments where member_id = auth.uid())
+    staff_sees_client(minutas_folder_client(name))
     or ((storage.foldername(name))[1] = auth_client_id()::text
         and auth_client_role() in ('owner','content')
         and path_event_visible(name))
@@ -147,13 +163,5 @@ create policy "minutas read" on storage.objects for select using (
 -- Escritura (subir/reemplazar/borrar): solo staff (owner o asignado) del cliente.
 drop policy if exists "minutas write" on storage.objects;
 create policy "minutas write" on storage.objects for all
-  using (bucket_id = 'minutas' and (
-    is_owner()
-    or (storage.foldername(name))[1] in (
-      select client_id::text from admin_assignments where member_id = auth.uid())
-  ))
-  with check (bucket_id = 'minutas' and (
-    is_owner()
-    or (storage.foldername(name))[1] in (
-      select client_id::text from admin_assignments where member_id = auth.uid())
-  ));
+  using (bucket_id = 'minutas' and staff_sees_client(minutas_folder_client(name)))
+  with check (bucket_id = 'minutas' and staff_sees_client(minutas_folder_client(name)));

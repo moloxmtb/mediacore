@@ -37,6 +37,34 @@ export type Task = {
   updated_at: string;
 };
 
+// Reuniones (Pieza 3): la reunión durable es el calendar_event (kind='reunion').
+// meeting_minutes cuelga 1:1; el estado se DERIVA (fecha + realizada), no se guarda.
+export type ReunionEstado = "agendada" | "por_documentar" | "realizada";
+
+export type MeetingMinute = {
+  id: string;
+  event_id: string;
+  client_id: string;
+  realizada: boolean;
+  minuta_path: string | null;
+  notas: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MeetingMinuteItem = {
+  id: string;
+  minute_id: string;
+  client_id: string;
+  texto: string;
+  hecho: boolean;
+  sort_order: number;
+  promoted_task_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ClientDetails = {
   client_id: string;
   razon_social: string | null;

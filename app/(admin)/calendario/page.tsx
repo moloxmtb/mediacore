@@ -2,10 +2,11 @@ import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatDate } from "@/lib/format";
+import { formatDate, REUNION_ESTADO_LABELS, reunionEstadoBadge } from "@/lib/format";
+import { deriveReunionEstado } from "@/lib/reuniones";
 import NuevoEventoForm from "@/components/admin/NuevoEventoForm";
 import AgendarSolicitudForm from "@/components/admin/AgendarSolicitudForm";
-import type { MeetingRequest } from "@/lib/types";
+import type { MeetingRequest, ReunionEstado } from "@/lib/types";
 
 function todaySantiago(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date());
@@ -35,6 +36,7 @@ type CalItem = {
   color: string;
   href?: string;
   request?: MeetingRequest;
+  estado?: ReunionEstado; // solo reuniones (estado derivado)
 };
 
 const DEFAULT_COLOR = "#3dbdcb";
@@ -58,7 +60,7 @@ export default async function AdminCalendarioPage({
   const rangeEnd = `${Math.max(Y, ty) + 1}-01-01`;
 
   // Admin ve TODO (RLS is_admin). Sin filtrar por cliente ni por visible_to_client.
-  const [{ data: clientsData }, { data: eventsData }, { data: delivData }, { data: phasesData }, { data: reqData }] =
+  const [{ data: clientsData }, { data: eventsData }, { data: delivData }, { data: phasesData }, { data: reqData }, { data: minutesData }] =
     await Promise.all([
       supabase.from("clients").select("id, name, accent_color").order("name"),
       supabase
@@ -82,7 +84,13 @@ export default async function AdminCalendarioPage({
         .select("*")
         .eq("status", "pendiente")
         .order("created_at", { ascending: false }),
+      // Estado 'realizada' de las minutas (RLS: staff ve las de sus clientes).
+      supabase.from("meeting_minutes").select("event_id, realizada"),
     ]);
+
+  const realizadaByEvent = new Map(
+    ((minutesData ?? []) as { event_id: string; realizada: boolean }[]).map((m) => [m.event_id, m.realizada]),
+  );
 
   const clients = (clientsData ?? []) as { id: string; name: string; accent_color: string | null }[];
   const clientById = new Map(clients.map((c) => [c.id, c]));
@@ -104,10 +112,13 @@ export default async function AdminCalendarioPage({
   // Normalizar a CalItem (una sola fuente por dato).
   const items: CalItem[] = [];
   for (const e of events) {
+    const isReunion = normalizeKind(e.kind) === "reunion";
     items.push({
       key: "e" + e.id, date: e.starts_at.slice(0, 10), datetime: e.starts_at, type: normalizeKind(e.kind),
       title: e.title, clientId: e.client_id, clientName: nameOf(e.client_id), color: colorOf(e.client_id),
-      href: `/clientes/${e.client_id}`,
+      // La reunión es un objeto con detalle propio; el resto sigue yendo a la ficha.
+      href: isReunion ? `/calendario/${e.id}` : `/clientes/${e.client_id}`,
+      estado: isReunion ? deriveReunionEstado(e.starts_at, realizadaByEvent.get(e.id) ?? false) : undefined,
     });
   }
   for (const d of delivs) {
@@ -250,8 +261,11 @@ export default async function AdminCalendarioPage({
                         <div key={it.key} className="lista-row">
                           <span className="cal-dot" style={{ background: it.color }} />
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: "13.5px", fontWeight: 500 }}>
+                            <div style={{ fontSize: "13.5px", fontWeight: 500, display: "flex", alignItems: "center", gap: "8px" }}>
                               {it.href ? <Link href={it.href} className="row-link">{it.title}</Link> : it.title}
+                              {it.estado && (
+                                <span className={`badge ${reunionEstadoBadge(it.estado)}`}>{REUNION_ESTADO_LABELS[it.estado]}</span>
+                              )}
                             </div>
                             <div className="meta">
                               {it.clientName} · {TIPO_LABEL[it.type]}
