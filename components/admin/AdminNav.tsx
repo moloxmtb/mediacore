@@ -118,7 +118,7 @@ const groups: Group[] = [
       },
       {
         href: "/acciones",
-        label: "Bitácora de acciones",
+        label: "Bitácora",
         icon: (
           <svg viewBox="0 0 24 24">
             <path d="M12 2v4" />

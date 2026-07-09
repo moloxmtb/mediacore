@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { notifyEvent } from "@/lib/notify";
 
-export type FormState = { error: string | null; ok?: boolean };
+// notified: nº de destinatarios-cliente notificados (0 si la acción es interna).
+// La UI lo ignora; el smoke lo usa para probar que la interna NO filtra el aviso.
+export type FormState = { error: string | null; ok?: boolean; notified?: number };
 
 function str(fd: FormData, key: string): string {
   return String(fd.get(key) ?? "").trim();
@@ -41,19 +43,26 @@ export async function crearAccion(
   const { error } = await supabase.from("actions").insert(a);
   if (error) return { error: "No se pudo registrar la acción: " + error.message };
 
-  await notifyEvent({
-    type: "accion",
-    clientId: a.client_id,
-    title: a.title,
-    detail: a.description ?? a.title,
-    panelPath: a.project_id ? `/proyectos/${a.project_id}` : "/acciones",
-    portalPath: a.project_id ? `/portal/proyectos/${a.project_id}` : "/portal/que-viene",
-  });
+  // La notificación respeta el MISMO flag que la visibilidad: una acción interna
+  // se guarda pero NO le avisa al cliente (antes notificaba sin mirar el flag →
+  // fuga lateral). Arreglado en la raíz: cubre bitácora Y ficha de proyecto.
+  let notified = 0;
+  if (a.visible_to_client) {
+    const r = await notifyEvent({
+      type: "accion",
+      clientId: a.client_id,
+      title: a.title,
+      detail: a.description ?? a.title,
+      panelPath: a.project_id ? `/proyectos/${a.project_id}` : "/acciones",
+      portalPath: a.project_id ? `/portal/proyectos/${a.project_id}` : "/portal/que-viene",
+    });
+    notified = r.client;
+  }
 
   if (a.project_id) revalidatePath(`/proyectos/${a.project_id}`);
   revalidatePath("/acciones");
   revalidatePath("/gantt");
-  return { error: null, ok: true };
+  return { error: null, ok: true, notified };
 }
 
 export async function actualizarAccion(
