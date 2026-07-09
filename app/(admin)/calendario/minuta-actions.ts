@@ -186,3 +186,38 @@ export async function eliminarPendiente(fd: FormData): Promise<void> {
   await g.supabase.from("meeting_minute_items").delete().eq("id", g.itemId);
   if (g.eventId) revalidate(g.eventId);
 }
+
+// ---------- Clasificar un evento como reunión (reversible) ----------
+// Los eventos sincronizados de Google llegan con kind=null (el sync no lo setea).
+// Marcarlos como reunión los hace documentables. La marca es DURABLE: el upsert
+// del sync no envía kind, así que un re-sync no la pisa. Guard: canActOnClient
+// (el client_id se resuelve del evento bajo RLS, nunca del input) + RLS.
+export async function marcarComoReunion(fd: FormData): Promise<void> {
+  const eventId = str(fd, "event_id");
+  if (!eventId) return;
+  const session = await getSessionProfile();
+  if (!session || session.role !== "admin") return;
+  const supabase = await createClient();
+  const { data: ev } = await supabase.from("calendar_events").select("client_id, kind").eq("id", eventId).maybeSingle();
+  if (!ev || ev.kind === "reunion") return; // ya es reunión, o no accesible por RLS
+  if (!(await canActOnClient(ev.client_id as string))) return; // guard explícito
+  await supabase.from("calendar_events").update({ kind: "reunion" }).eq("id", eventId);
+  revalidate(eventId);
+}
+
+// Desmarcar: vuelve a kind=null. SOLO si aún no hay documentación (fila de
+// meeting_minutes), para no dejar una minuta huérfana e inaccesible por UI.
+export async function desmarcarReunion(fd: FormData): Promise<void> {
+  const eventId = str(fd, "event_id");
+  if (!eventId) return;
+  const session = await getSessionProfile();
+  if (!session || session.role !== "admin") return;
+  const supabase = await createClient();
+  const { data: ev } = await supabase.from("calendar_events").select("client_id, kind").eq("id", eventId).maybeSingle();
+  if (!ev || ev.kind !== "reunion") return;
+  if (!(await canActOnClient(ev.client_id as string))) return; // guard explícito
+  const { data: m } = await supabase.from("meeting_minutes").select("id").eq("event_id", eventId).maybeSingle();
+  if (m) return; // ya documentada → no desmarcar (no orfanar)
+  await supabase.from("calendar_events").update({ kind: null }).eq("id", eventId);
+  revalidate(eventId);
+}

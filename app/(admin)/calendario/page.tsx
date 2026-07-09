@@ -127,8 +127,9 @@ export default async function AdminCalendarioPage({
     items.push({
       key: "e" + e.id, date: e.starts_at.slice(0, 10), datetime: e.starts_at, type: normalizeKind(e.kind),
       title: e.title, clientId: e.client_id, clientName: nameOf(e.client_id), color: colorOf(e.client_id),
-      // La reunión es un objeto con detalle propio; el resto sigue yendo a la ficha.
-      href: isReunion ? `/calendario/${e.id}` : `/clientes/${e.client_id}`,
+      // TODO evento del calendario abre su detalle (que se adapta: reunión →
+      // documentar; sin clasificar → "Marcar como reunión"). Un solo camino.
+      href: `/calendario/${e.id}`,
       estado: isReunion ? deriveReunionEstado(e.starts_at, realizadaByEvent.get(e.id) ?? false) : undefined,
     });
   }

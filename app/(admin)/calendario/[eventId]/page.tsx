@@ -17,9 +17,11 @@ import {
   agregarPendiente,
   togglePendiente,
   eliminarPendiente,
+  marcarComoReunion,
+  desmarcarReunion,
 } from "../minuta-actions";
 
-export default async function ReunionDetallePage({
+export default async function EventoDetallePage({
   params,
 }: {
   params: Promise<{ eventId: string }>;
@@ -28,23 +30,23 @@ export default async function ReunionDetallePage({
   const { eventId } = await params;
   const supabase = await createClient();
 
-  // RLS: staff solo alcanza los eventos de sus clientes.
+  // RLS: staff solo alcanza los eventos de sus clientes. Cualquier evento abre
+  // esta vista; se adapta según sea reunión o un evento sin clasificar.
   const { data: ev } = await supabase
     .from("calendar_events")
     .select("id, title, description, starts_at, ends_at, kind, client_id, visible_to_client, clients(name)")
     .eq("id", eventId)
     .maybeSingle();
-  if (!ev || ev.kind !== "reunion") notFound(); // el detalle es solo de reuniones
+  if (!ev) notFound();
 
   const clientName = (ev.clients as unknown as { name: string } | null)?.name ?? "Cliente";
+  const clientHref = `/clientes/${ev.client_id}`;
+  const isReunion = ev.kind === "reunion";
 
-  const { data: minData } = await supabase
-    .from("meeting_minutes")
-    .select("*")
-    .eq("event_id", eventId)
-    .maybeSingle();
-  const minute = (minData as MeetingMinute | null) ?? null;
-
+  // Datos de documentación solo si es reunión.
+  const minute = isReunion
+    ? (((await supabase.from("meeting_minutes").select("*").eq("event_id", eventId).maybeSingle()).data) as MeetingMinute | null)
+    : null;
   const items = minute
     ? ((
         await supabase
@@ -55,15 +57,62 @@ export default async function ReunionDetallePage({
           .order("created_at", { ascending: true })
       ).data as MeetingMinuteItem[] | null) ?? []
     : [];
-
   const estado = deriveReunionEstado(ev.starts_at, minute?.realizada ?? false);
   const minutaUrl = await signMinuta(minute?.minuta_path ?? null);
 
+  const cabecera = (
+    <>
+      <PageHeader title={ev.title} subtitle={`${isReunion ? "Reunión" : "Evento"} · ${clientName}`} />
+    </>
+  );
+  const navLinks = (
+    <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
+      <Link href="/calendario" className="back-link">← Volver al calendario</Link>
+      <Link href={clientHref} className="back-link">Ver ficha del cliente →</Link>
+    </div>
+  );
+
+  // ---------- Evento sin clasificar (kind=null u otro): ofrecer marcar ----------
+  if (!isReunion) {
+    return (
+      <>
+        {cabecera}
+        <div className="app-content">
+          {navLinks}
+          <div className="stack">
+            <div className="card">
+              <div className="card-head">
+                <h3>Evento</h3>
+                <span className="badge b-idle">Sin clasificar</span>
+              </div>
+              <div className="card-body">
+                <div className="meta">{formatDateTime(ev.starts_at)}{ev.ends_at ? ` → ${formatDateTime(ev.ends_at)}` : ""}</div>
+                {ev.description && <p style={{ marginTop: "8px" }}>{ev.description}</p>}
+                <div style={{ marginTop: "16px", display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                  <form action={marcarComoReunion}>
+                    <input type="hidden" name="event_id" value={eventId} />
+                    <button className="btn btn-sm btn-primary" type="submit">Marcar como reunión</button>
+                  </form>
+                  <Link href={clientHref} className="btn btn-sm">Ver ficha del cliente</Link>
+                </div>
+                <p className="hint" style={{ marginTop: "10px" }}>
+                  Este evento vino de tu calendario sin tipo. Márcalo como reunión para documentarla
+                  (marcar realizada, subir minuta, pendientes).
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // ---------- Reunión: UI de documentar ----------
   return (
     <>
-      <PageHeader title={ev.title} subtitle={`Reunión · ${clientName}`} />
+      {cabecera}
       <div className="app-content">
-        <Link href="/calendario" className="back-link">← Volver al calendario</Link>
+        {navLinks}
 
         <div className="stack">
           {/* Estado + datos */}
@@ -102,6 +151,17 @@ export default async function ReunionDetallePage({
                       : "Reunión agendada (aún no ocurre)."}
                 </span>
               </div>
+
+              {/* Desmarcar el tipo reunión — solo si aún no hay documentación */}
+              {!minute && (
+                <div style={{ marginTop: "12px", borderTop: "1px solid var(--border-soft)", paddingTop: "12px" }}>
+                  <form action={desmarcarReunion}>
+                    <input type="hidden" name="event_id" value={eventId} />
+                    <button className="btn btn-sm" type="submit">No es una reunión (quitar tipo)</button>
+                  </form>
+                  <span className="hint">Disponible solo mientras no tenga minuta ni pendientes.</span>
+                </div>
+              )}
             </div>
           </div>
 
