@@ -1265,10 +1265,35 @@ asignado solo a Real Data; portal owner de Cliente Prueba 2), 11/11:
   Todo el andamiaje de prueba (ruta dev temporal, exención de middleware, cuenta ejecutivo de prueba) se eliminó
   al terminar; base y árbol de git limpios.
 
-### PIEZA 3 — Cruce con Gantt / hitos / reuniones (por diseñar, la más compleja)
-Que una tarea pueda venir de / vincularse con una fase de la Gantt, un hito o una reunión existente. Nudo a
-resolver: qué pasa con la tarea si la fase de la Gantt cambia o se borra (sincronización). Se deja AL FINAL,
-como mejora sobre un sistema de tareas que ya funcione.
+### PIEZA 3 — Consolidación reuniones + bitácora + entregables (COMPLETA, A–E · v1.11)
+Reencuadre del scope original ("cruce con Gantt"): en vez de acoplar tareas a la Gantt, se construyó la
+consolidación de reuniones/bitácora bajo el norte de "dos lentes sobre objetos tipados" (calendario hacia
+adelante / bitácora hacia atrás). Todo DERIVADO de fuentes que ya existen — cero estado nuevo salvo la minuta.
+
+Fases (commiteadas local en `main`, verificadas con smoke pos/neg de sesiones reales + pase end-to-end de UI):
+- **A** `da50494` — modelo `meeting_minutes` + `meeting_minute_items` (1:1 con el `calendar_event`; `client_id`
+  denormalizado) + RLS con **visibilidad DERIVADA del evento** (funciones security definer, sin copia que
+  desincronizar; blindaje en fila, ítem y objeto de Storage) + bucket privado `minutas`.
+- **B** `07fc7d5` — reunión como objeto con **ciclo de vida derivado** (`deriveReunionEstado` = fecha +
+  `realizada`, sin estado guardado): marcar/desmarcar realizada, subir/reemplazar/quitar minuta (guard
+  `canActOnClient` + RLS), pendientes; detalle en `/calendario/[eventId]`.
+- **C** `458223d` — lente hacia adelante del calendario: tres tiras derivadas (por agendar / próximas /
+  por documentar exhaustiva).
+- **D** `744dd00` — bitácora ADMIN como VISTA que une reuniones/entregas/hitos/notas (reusa `actions`, sin tabla
+  nueva; `lib/bitacora.ts` puro) + **fix de fuga de notify** en `crearAccion` (notifica solo si `visible_to_client`).
+- **E** `e63671c` — portal `/portal`: pantalla única de 3 zonas (Te toca a ti / Lo que viene / Lo que ha pasado),
+  reusa `mergeBitacora` con minuta descargable; internas cortadas por la RLS del cliente en cada fuente.
+
+**Deudas anotadas (no bloquean; pendientes de decisión/acción):**
+1. **Puente pendientes→tareas DIFERIDO** (era el "cruce Gantt" original). La estructura quedó lista:
+   `meeting_minute_items.promoted_task_id → tasks(id)` existe pero **sin cablear**. Activarlo = promover un
+   pendiente de reunión a una tarea de Pieza 2. Nudo a resolver si se hace: sincronización cuando cambie/borre el origen.
+2. **Fix del bucket `contenido`**: usa el mismo subquery inline a `admin_assignments` (owner-only por RLS) que
+   bloqueaba al ejecutivo en `minutas` → un ejecutivo no sube/lee imágenes de contenido de sus clientes asignados.
+   Fix = `staff_sees_client(...)` (security definer), igual que se aplicó en `minutas`.
+3. **Aviso a contactos de Real Data**: durante el smoke de Fase D se enviaron ~8 correos de prueba reales a 4
+   usuarios de portal de Real Data (se reusó un cliente real en un test que notifica). Lección aplicada: todo smoke
+   que pueda mandar correo va aislado en cliente desechable con sinks. El aviso a esos contactos lo hace Ismael.
 
 ---
 
