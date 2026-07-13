@@ -195,3 +195,17 @@ export function deliverableApprovalBadge(status: DeliverableApproval, respondedA
   if (status === "borrador") return respondedAt ? "b-warn" : "b-idle";
   return status === "aprobado" ? "b-ok" : status === "rechazado" ? "b-bad" : status === "enviado" ? "b-accent" : "b-warn";
 }
+
+// Idioma del CLIENTE (portal) — sin jerga interna (nada de "borrador"/"enviado").
+export function deliverableClientLabel(status: DeliverableApproval): string {
+  return {
+    borrador: "En preparación",
+    enviado: "Por revisar",
+    aprobado: "Aprobado por ti",
+    cambios_solicitados: "Enviaste un pedido de cambios",
+    rechazado: "Rechazado por ti",
+  }[status];
+}
+export function deliverableClientBadge(status: DeliverableApproval): string {
+  return status === "aprobado" ? "b-ok" : status === "rechazado" ? "b-bad" : status === "enviado" ? "b-accent" : status === "cambios_solicitados" ? "b-warn" : "b-idle";
+}

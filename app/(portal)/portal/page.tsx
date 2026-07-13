@@ -45,6 +45,7 @@ export default async function PortalInicioPage({
   const [
     { data: pendTasks },
     { count: contentPend },
+    { count: entregablesPorRevisar },
     { data: upEvents },
     { data: enCurso },
     { data: pastActs },
@@ -55,6 +56,9 @@ export default async function PortalInicioPage({
   ] = await Promise.all([
     supabase.from("tasks").select("id, titulo, plazo, responsable_id").eq("tipo", "cliente").eq("estado", "pendiente").order("created_at", { ascending: false }),
     supabase.from("content_pieces").select("id", { count: "exact", head: true }).eq("status", "propuesta"),
+    // Entregables del flujo nuevo enviados, a la espera de respuesta (Te toca a ti).
+    // en_flujo_aprobacion filtra los legacy: nunca se le muestran al cliente.
+    supabase.from("deliverables").select("id", { count: "exact", head: true }).eq("en_flujo_aprobacion", true).eq("approval_status", "enviado"),
     supabase.from("calendar_events").select("id, title, starts_at, kind, project_id, projects(name)").gte("starts_at", now).order("starts_at", { ascending: true }).limit(15),
     supabase.from("deliverables").select("id, title, status, project_id, projects(name)").neq("status", "aprobado").order("created_at", { ascending: false }).limit(15),
     supabase.from("actions").select("id, action_date, title, description, project_id").gte("action_date", desde),
@@ -108,7 +112,7 @@ export default async function PortalInicioPage({
   for (const it of timeline) (byDay.get(it.date) ?? byDay.set(it.date, []).get(it.date)!).push(it);
   const masAtras = ymdMonthsAgo(desde, 6);
 
-  const nada = tasks.length === 0 && (contentPend ?? 0) === 0 && !proxReunion;
+  const nada = tasks.length === 0 && (contentPend ?? 0) === 0 && (entregablesPorRevisar ?? 0) === 0 && !proxReunion;
 
   return (
     <>
@@ -128,6 +132,13 @@ export default async function PortalInicioPage({
                     <span className="alert-dot alert-accent" />
                     <div style={{ flex: 1 }}>Tienes {contentPend} pieza{contentPend === 1 ? "" : "s"} de contenido por aprobar.</div>
                     <Link href="/portal/contenido" className="btn btn-sm">Revisar contenido</Link>
+                  </div>
+                )}
+                {(entregablesPorRevisar ?? 0) > 0 && (
+                  <div className="lista-row">
+                    <span className="alert-dot alert-accent" />
+                    <div style={{ flex: 1 }}>Tienes {entregablesPorRevisar} entregable{entregablesPorRevisar === 1 ? "" : "s"} por revisar.</div>
+                    <Link href="/portal/entregables" className="btn btn-sm">Revisar entregables</Link>
                   </div>
                 )}
                 {proxReunion && (

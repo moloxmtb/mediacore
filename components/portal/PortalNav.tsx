@@ -67,6 +67,18 @@ const items: Item[] = [
     ),
   },
   {
+    href: "/portal/entregables",
+    label: "Entregables",
+    world: "content",
+    icon: (
+      <svg viewBox="0 0 24 24">
+        <path d="M21 8v13H3V8" />
+        <rect x="1" y="3" width="22" height="5" />
+        <line x1="10" y1="12" x2="14" y2="12" />
+      </svg>
+    ),
+  },
+  {
     href: "/portal/tareas",
     label: "Tareas",
     world: "content",

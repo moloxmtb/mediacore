@@ -68,7 +68,7 @@ export async function crearBorrador(_p: FormState, fd: FormData): Promise<FormSt
 
   const { data: dv, error: insErr } = await supabase
     .from("deliverables")
-    .insert({ project_id: projectId, title, description: opt(fd, "description"), approval_status: "borrador", visible_to_client: true })
+    .insert({ project_id: projectId, title, description: opt(fd, "description"), approval_status: "borrador", visible_to_client: true, en_flujo_aprobacion: true })
     .select("id")
     .single();
   if (insErr || !dv) return { error: "No se pudo crear el entregable: " + (insErr?.message ?? "") };
@@ -131,6 +131,8 @@ export async function reemplazarArchivo(fd: FormData): Promise<void> {
     { onConflict: "deliverable_id" },
   );
   // Re-bloqueo: vuelve a 'borrador' hasta que el staff reenvíe explícitamente.
+  // NO marca en_flujo_aprobacion: reemplazar un archivo no "despierta" un legacy
+  // (solo crearBorrador mete algo al flujo del cliente).
   await g.supabase.from("deliverables").update({ approval_status: "borrador" }).eq("id", id);
   revalidatePath("/entregables");
   revalidatePath(`/entregables/${id}`);
