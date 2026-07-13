@@ -1309,6 +1309,9 @@ Ismael quiere que ENTREGABLES (manuales, reportes, piezas grandes — distinto d
 flujo de aprobación del cliente. Diagnóstico confirmó: HOY inexistente para el cliente (solo ve/descarga link;
 tabla deliverables sin estado de aprobación/comentario/versiones manejables por cliente).
 
+ESTADO: Fase 1 (modelo + RLS + bloqueo de archivo en dos niveles + RPC de respuesta) HECHA y verificada
+(smoke 11/11, commit 1dfc621). Pendientes: Fase 2 (UI admin) y Fase 3 (UI cliente).
+
 DECISIÓN DE ARQUITECTURA: implementación SEPARADA (opción B), no compartir con contenido. Razón: el flujo
 de contenido está muy atado a su estructura (período/pieza/versión/multi-media/rollback) que entregables NO
 necesita. Extraer algo compartido arrastraría esa complejidad o requeriría cirugía sobre contenido (que ya
