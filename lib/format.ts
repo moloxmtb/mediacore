@@ -3,6 +3,7 @@ import type {
   ClientSegment,
   ClientStatus,
   Contract,
+  DeliverableApproval,
   DeliverableStatus,
   InvitationStatus,
   ProjectStatus,
@@ -176,4 +177,21 @@ export function deliverableStatusBadge(status: DeliverableStatus): string {
     : status === "entregado"
       ? "b-accent"
       : "b-warn";
+}
+
+// ---------- Aprobación de entregables (ciclo del cliente) ----------
+// "En corrección" se DERIVA de borrador + respondió antes (respondedAt), no es un
+// valor del enum: borrador tras un pedido de cambios/rechazo = está en corrección.
+export function deliverableApprovalLabel(status: DeliverableApproval, respondedAt: string | null): string {
+  if (status === "borrador") return respondedAt ? "En corrección" : "Borrador";
+  return {
+    enviado: "En revisión",
+    aprobado: "Aprobado",
+    cambios_solicitados: "Cambios solicitados",
+    rechazado: "Rechazado",
+  }[status];
+}
+export function deliverableApprovalBadge(status: DeliverableApproval, respondedAt: string | null): string {
+  if (status === "borrador") return respondedAt ? "b-warn" : "b-idle";
+  return status === "aprobado" ? "b-ok" : status === "rechazado" ? "b-bad" : status === "enviado" ? "b-accent" : "b-warn";
 }

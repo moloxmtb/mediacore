@@ -93,4 +93,24 @@ export async function signMinuta(
   return map[path] ?? null;
 }
 
-export { BUCKET as CONTENT_BUCKET, FACTURAS_BUCKET, MINUTAS_BUCKET };
+const ENTREGABLES_BUCKET = "entregables";
+
+/**
+ * Firma una URL (corta) del bucket privado 'entregables'. Los llamadores solo
+ * pasan rutas que ya pasaron RLS (SELECT de deliverable_files limitado a staff o
+ * cliente con entregable enviado). `download` fuerza el nombre de descarga.
+ */
+export async function signEntregable(
+  path: string | null,
+  downloadName?: string | null,
+  expiresIn = 120,
+): Promise<string | null> {
+  if (!path) return null;
+  const admin = createAdminClient();
+  const { data } = await admin.storage
+    .from(ENTREGABLES_BUCKET)
+    .createSignedUrl(path, expiresIn, downloadName ? { download: downloadName } : undefined);
+  return data?.signedUrl ?? null;
+}
+
+export { BUCKET as CONTENT_BUCKET, FACTURAS_BUCKET, MINUTAS_BUCKET, ENTREGABLES_BUCKET };

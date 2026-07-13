@@ -10,6 +10,14 @@ export type ClientStatus = "activo" | "propuesta" | "inactivo";
 export type CurrencyKind = "UF" | "CLP";
 export type ProjectStatus = "activo" | "pausado" | "cerrado";
 export type DeliverableStatus = "en_proceso" | "entregado" | "aprobado";
+// Ciclo de aprobación del cliente (Entregables). "En corrección" NO es un valor
+// del enum: se deriva de borrador + responded_at (ver lib/format).
+export type DeliverableApproval =
+  | "borrador"
+  | "enviado"
+  | "aprobado"
+  | "cambios_solicitados"
+  | "rechazado";
 export type ContractModality = "proyecto" | "plazo_fijo" | "retainer";
 export type InstallmentStatus =
   | "proyectada"
