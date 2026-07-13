@@ -1265,12 +1265,12 @@ asignado solo a Real Data; portal owner de Cliente Prueba 2), 11/11:
   Todo el andamiaje de prueba (ruta dev temporal, exención de middleware, cuenta ejecutivo de prueba) se eliminó
   al terminar; base y árbol de git limpios.
 
-### PIEZA 3 — Consolidación reuniones + bitácora + entregables (COMPLETA, A–E · v1.11)
+### PIEZA 3 — Consolidación reuniones + bitácora + entregables (COMPLETA, A–E · DESPLEGADA v1.12)
 Reencuadre del scope original ("cruce con Gantt"): en vez de acoplar tareas a la Gantt, se construyó la
 consolidación de reuniones/bitácora bajo el norte de "dos lentes sobre objetos tipados" (calendario hacia
 adelante / bitácora hacia atrás). Todo DERIVADO de fuentes que ya existen — cero estado nuevo salvo la minuta.
 
-Fases (commiteadas local en `main`, verificadas con smoke pos/neg de sesiones reales + pase end-to-end de UI):
+Fases (desplegadas en v1.12; verificadas con smoke pos/neg de sesiones reales + pase end-to-end de UI):
 - **A** `da50494` — modelo `meeting_minutes` + `meeting_minute_items` (1:1 con el `calendar_event`; `client_id`
   denormalizado) + RLS con **visibilidad DERIVADA del evento** (funciones security definer, sin copia que
   desincronizar; blindaje en fila, ítem y objeto de Storage) + bucket privado `minutas`.
@@ -1283,6 +1283,8 @@ Fases (commiteadas local en `main`, verificadas con smoke pos/neg de sesiones re
   nueva; `lib/bitacora.ts` puro) + **fix de fuga de notify** en `crearAccion` (notifica solo si `visible_to_client`).
 - **E** `e63671c` — portal `/portal`: pantalla única de 3 zonas (Te toca a ti / Lo que viene / Lo que ha pasado),
   reusa `mergeBitacora` con minuta descargable; internas cortadas por la RLS del cliente en cada fuente.
+- **Fix reuniones de Google** `55f5610` — reconocer eventos de Google Calendar como reuniones documentables
+  (marcar `kind` + enlace calendario→detalle), con marca **durable ante el re-sync** de Google. Desplegado v1.12.
 
 **Deudas anotadas (no bloquean; pendientes de decisión/acción):**
 1. **Puente pendientes→tareas DIFERIDO** (era el "cruce Gantt" original). La estructura quedó lista:
@@ -1303,14 +1305,24 @@ Fases (commiteadas local en `main`, verificadas con smoke pos/neg de sesiones re
 
 ---
 
-## 🗂️ Flujo de aprobación en ENTREGABLES (DISEÑO CERRADO 2026-07-09, por construir)
+## 🗂️ Flujo de aprobación en ENTREGABLES (COMPLETO · Fases 1-3 · DESPLEGADO v1.12)
 
 Ismael quiere que ENTREGABLES (manuales, reportes, piezas grandes — distinto de CONTENIDO = posts) tenga
 flujo de aprobación del cliente. Diagnóstico confirmó: HOY inexistente para el cliente (solo ve/descarga link;
 tabla deliverables sin estado de aprobación/comentario/versiones manejables por cliente).
 
-ESTADO: Fase 1 (modelo + RLS + bloqueo de archivo en dos niveles + RPC de respuesta) HECHA y verificada
-(smoke 11/11, commit 1dfc621). Pendientes: Fase 2 (UI admin) y Fase 3 (UI cliente).
+ESTADO: COMPLETO y desplegado en v1.12, verificado con smokes de sesiones reales (cliente desechable) +
+pase end-to-end de UI.
+- **Fase 1** `1dfc621` — modelo (enum `deliverable_approval`, campos de estado/comentario/respuesta) + RLS +
+  bloqueo de archivo en DOS niveles (fila `deliverable_files` + objeto de Storage, gate por estado) + RPC
+  `deliverable_client_respond`.
+- **Fase 2** `dd58b28` — UI admin: crear borrador, enviar al cliente, reemplazar con re-bloqueo, ver respuesta;
+  estado "En corrección" DERIVADO (borrador + responded_at), no un enum guardado.
+- **Fase 3** `0713d7d` — UI cliente: sección `/portal/entregables` + "Te toca a ti" + aprobar/pedir cambios/
+  rechazar (RPC), lenguaje de cliente sin jerga. Marcador `en_flujo_aprobacion` (solo `crearBorrador` lo marca)
+  para distinguir el flujo nuevo de los legacy → un legacy nunca le aparece al cliente.
+Pendiente (no bloquea): **Fase 4** — notificación al equipo cuando el cliente responde (owner + staff asignado
+vía `staff_sees_client`, patrón Fase D), aún sin construir; se absorberá en el sistema de notificaciones de abajo.
 
 DECISIÓN DE ARQUITECTURA: implementación SEPARADA (opción B), no compartir con contenido. Razón: el flujo
 de contenido está muy atado a su estructura (período/pieza/versión/multi-media/rollback) que entregables NO
