@@ -1300,3 +1300,51 @@ Fases (commiteadas local en `main`, verificadas con smoke pos/neg de sesiones re
 ## Prompt de arranque para Claude Code
 
 > Voy a construir una app Next.js (App Router, TypeScript) con Supabase y Tailwind, en Vercel. Es un panel de gestión de clientes con dos caras —panel interno de administración y portal de cliente en solo lectura— separadas por Row Level Security. La carta Gantt combina fases del proyecto con eventos de Google Calendar (sincronización bidireccional, un calendario de Google por cliente), y al abrir una barra muestra un modal con acciones, entregables y resultados. Adjunto `schema.sql`, `PLAN.md` y el prototipo visual `panel-colormedia.html`. Partamos por la Fase 1: crea el proyecto, conecta Supabase, deja el login por email y el `middleware.ts` que enruta según el rol del perfil. No avances a otras fases hasta que la Fase 1 funcione end to end.
+
+---
+
+## 🗂️ Flujo de aprobación en ENTREGABLES (DISEÑO CERRADO 2026-07-09, por construir)
+
+Ismael quiere que ENTREGABLES (manuales, reportes, piezas grandes — distinto de CONTENIDO = posts) tenga
+flujo de aprobación del cliente. Diagnóstico confirmó: HOY inexistente para el cliente (solo ve/descarga link;
+tabla deliverables sin estado de aprobación/comentario/versiones manejables por cliente).
+
+DECISIÓN DE ARQUITECTURA: implementación SEPARADA (opción B), no compartir con contenido. Razón: el flujo
+de contenido está muy atado a su estructura (período/pieza/versión/multi-media/rollback) que entregables NO
+necesita. Extraer algo compartido arrastraría esa complejidad o requeriría cirugía sobre contenido (que ya
+funciona en prod). Un flujo propio y LIVIANO para entregables es mejor diseño, no deuda — cada objeto con el
+flujo que su naturaleza pide. Lo que SÍ se reusa: el patrón de SEGURIDAD (RLS cliente, canActOnClient) y el
+patrón de notificación de Fase D.
+
+Ciclo de vida (cerrado con Ismael):
+
+1. BORRADOR (Ismael crea + sube archivo) — el cliente ve TÍTULO/TIPO ("En preparación: X") pero NO el archivo.
+   ⚠️ El archivo bloqueado a NIVEL DE DATOS (RLS fila + Storage objeto, patrón minutas) — NO solo botón oculto.
+2. ENVIADO A REVISIÓN (botón "enviar al cliente", explícito — Ismael decide cuándo) → desbloquea el archivo,
+   cliente puede abrir y responder.
+3. Cliente responde: APROBADO / CAMBIOS SOLICITADOS / RECHAZADO. Comentario OPCIONAL en los tres.
+   cambios = ajustar sobre lo mismo; rechazar = más grave, rehacer. Significados distintos a propósito.
+4. Cambios/rechazo → Ismael corrige, REEMPLAZA el archivo (SIN historial de versiones — pisa la anterior),
+   reenvía → vuelve a revisión.
+5. Aprobado → cerrado.
+
+Reglas transversales:
+
+- Notificación al equipo cuando el cliente responde: PUNTUAL por ahora, respetando permisos/visibilidad (patrón
+  Fase D: notificar solo a quien ve el dato). ⚠️ MARCADA PARA INTEGRAR al sistema de notificaciones (proyecto
+  separado) después — hacerla BIEN desde el arranque para que integrarla sea reconectar, no rehacer.
+- Reemplazo de archivo atómico (si la subida falla, no perder la anterior sin tener la nueva).
+- Seguridad: cliente solo actúa sobre SUS entregables; archivo de borrador bloqueado en fila Y Storage.
+
+Primer paso construcción: Code diseña modelo (campos nuevos en deliverables: estado, comentario_cliente,
+visible/enviado) + RLS + la acción de bloqueo de archivo en borrador. Mostrar SQL antes de correr.
+
+## 🔔 PENDIENTE — Sistema de notificaciones manuales (mencionado 2026-07-09, sin diseñar)
+
+Ismael quiere un botón "enviar notificación" para empujar avisos manualmente ante muchos eventos (tarea
+asignada, vencimiento de pago, etc.) a los usuarios que tengan PERMISO de ver esa info, con confirmación de
+envío. ⚠️ PUNTO CRÍTICO DE SEGURIDAD: notificar sobre algo = revelar que existe. La notificación DEBE respetar
+exactamente los permisos de visibilidad del dato (misma fuga que cerramos en Fase D con crearAccion). "Notificar
+a quien tenga acceso" = calcular, por tipo de evento, quién puede ver ese dato según su rol, y notificar solo a
+esos. Es un sistema de permisos de notificación, no un botón. La notificación de entregables (arriba) es el
+primer caso que este sistema absorberá. POR DISEÑAR a fondo cuando Ismael lo priorice.
