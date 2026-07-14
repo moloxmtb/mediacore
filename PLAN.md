@@ -1305,14 +1305,14 @@ Fases (desplegadas en v1.12; verificadas con smoke pos/neg de sesiones reales + 
 
 ---
 
-## 🗂️ Flujo de aprobación en ENTREGABLES (COMPLETO · Fases 1-3 · DESPLEGADO v1.12)
+## 🗂️ Flujo de aprobación en ENTREGABLES (COMPLETO · Fases 1-4 · DESPLEGADO v1.12–v1.13)
 
 Ismael quiere que ENTREGABLES (manuales, reportes, piezas grandes — distinto de CONTENIDO = posts) tenga
 flujo de aprobación del cliente. Diagnóstico confirmó: HOY inexistente para el cliente (solo ve/descarga link;
 tabla deliverables sin estado de aprobación/comentario/versiones manejables por cliente).
 
-ESTADO: COMPLETO y desplegado en v1.12, verificado con smokes de sesiones reales (cliente desechable) +
-pase end-to-end de UI.
+ESTADO: COMPLETO (Fases 1-4), verificado con smokes de sesiones reales (cliente desechable) + pase
+end-to-end de UI. Fases 1-3 desplegadas en v1.12; Fase 4 (motor de notificaciones) desplegada en v1.13.
 - **Fase 1** `1dfc621` — modelo (enum `deliverable_approval`, campos de estado/comentario/respuesta) + RLS +
   bloqueo de archivo en DOS niveles (fila `deliverable_files` + objeto de Storage, gate por estado) + RPC
   `deliverable_client_respond`.
@@ -1321,8 +1321,15 @@ pase end-to-end de UI.
 - **Fase 3** `0713d7d` — UI cliente: sección `/portal/entregables` + "Te toca a ti" + aprobar/pedir cambios/
   rechazar (RPC), lenguaje de cliente sin jerga. Marcador `en_flujo_aprobacion` (solo `crearBorrador` lo marca)
   para distinguir el flujo nuevo de los legacy → un legacy nunca le aparece al cliente.
-Pendiente (no bloquea): **Fase 4** — notificación al equipo cuando el cliente responde (owner + staff asignado
-vía `staff_sees_client`, patrón Fase D), aún sin construir; se absorberá en el sistema de notificaciones de abajo.
+- **Fase 4** `5bbf6fb` (desplegada v1.13) — MOTOR de notificaciones por PERMISO + aviso al equipo cuando el
+  cliente responde. `resolveClientStaff(clientId)` = owners (`admin_role='owner'`, ven a todos) ∪ asignados
+  (`admin_assignments`), resueltos a correos: el equivalente server-side y por-conjunto de `staff_sees_client`
+  (NO la lista global de `notifyEvent`, que era la fuga de Pieza 3 — ese motor viejo queda intacto).
+  `notifyDeliverableResponse` avisa SOLO a quien puede ver el cliente; se dispara desde la acción del portal
+  recién cuando la RPC confirmó (best-effort). Sin toggle: el permiso es el único filtro, el aviso siempre
+  llega a quien corresponde. `resolveClientStaff` es reutilizable para los próximos casos del sistema de
+  notificaciones (ver bloque de abajo). Verificado: smoke 12/12 + pase end-to-end con la función real corriendo
+  por el enganche (cara negativa en el envío real: staff no asignado nunca entra a los destinatarios).
 
 DECISIÓN DE ARQUITECTURA: implementación SEPARADA (opción B), no compartir con contenido. Razón: el flujo
 de contenido está muy atado a su estructura (período/pieza/versión/multi-media/rollback) que entregables NO
