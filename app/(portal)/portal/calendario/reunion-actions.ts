@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionProfile } from "@/lib/auth";
 import { sendEmail } from "@/lib/mail";
 import { appUrl } from "@/lib/app-url";
+import { meetingRequestEmail } from "@/lib/email/templates";
 
 export type FormState = { error: string | null; ok?: boolean };
 
@@ -47,9 +48,10 @@ export async function solicitarReunion(
   // Aviso al admin (correos internos configurados). Best-effort.
   try {
     const admin = createAdminClient();
-    const [{ data: cfg }, { data: cli }] = await Promise.all([
+    const [{ data: cfg }, { data: cli }, { data: prof }] = await Promise.all([
       admin.from("notification_config").select("internal_emails").eq("id", 1).maybeSingle(),
       admin.from("clients").select("name").eq("id", session.clientId).maybeSingle(),
+      admin.from("profiles").select("full_name").eq("id", session.userId).maybeSingle(),
     ]);
     const to = String(cfg?.internal_emails ?? "")
       .split(/[,;\s]+/)
@@ -59,24 +61,15 @@ export async function solicitarReunion(
       const when = preferred_at
         ? new Date(preferred_at).toLocaleString("es-CL", { dateStyle: "long", timeStyle: "short" })
         : "sin preferencia";
-      const base = appUrl();
-      await sendEmail({
-        to,
-        subject: `Solicitud de reunión · ${cli?.name ?? "Cliente"} (urgencia ${URGENCY_LABEL[urgency]})`,
-        html: `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#1a1d23">
-          <div style="border-left:4px solid #3dbdcb;padding:16px 20px;background:#f6f8f9;border-radius:8px">
-            <h2 style="margin:0 0 8px;font-size:17px">Nueva solicitud de reunión</h2>
-            <div style="font-size:14px;color:#444;line-height:1.6">
-              <b>Cliente:</b> ${cli?.name ?? "—"}<br/>
-              <b>Solicitó:</b> ${session.email ?? "—"}<br/>
-              <b>Urgencia:</b> ${URGENCY_LABEL[urgency]}<br/>
-              <b>Preferida:</b> ${when}<br/>
-              <b>Motivo:</b> ${reason.replace(/</g, "&lt;")}
-            </div>
-            <a href="${base}/clientes/${session.clientId}" style="display:inline-block;margin-top:16px;background:#3dbdcb;color:#0c1013;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;font-size:14px">Ver en el panel</a>
-          </div>
-        </div>`,
+      const { subject, html } = meetingRequestEmail({
+        clientName: cli?.name ?? null,
+        requester: (prof?.full_name as string | null) ?? session.email ?? "Un usuario",
+        urgencyLabel: URGENCY_LABEL[urgency],
+        when,
+        reason,
+        url: `${appUrl()}/clientes/${session.clientId}`,
       });
+      await sendEmail({ to, subject, html });
     }
   } catch {
     // el correo es best-effort; la solicitud ya quedó registrada

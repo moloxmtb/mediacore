@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/mail";
 import { appUrl } from "@/lib/app-url";
+import { eventEmail, deliverableResponseEmail } from "@/lib/email/templates";
 
 export type NotifType = "accion" | "hito" | "reunion";
 
@@ -50,21 +51,10 @@ export async function computeRecipients(
   return { internal, client };
 }
 
-function wrap(title: string, body: string, cta: { href: string; label: string }): string {
-  return `
-  <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#1a1d23">
-    <div style="border-left:4px solid #3dbdcb;padding:16px 20px;background:#f6f8f9;border-radius:8px">
-      <h2 style="margin:0 0 8px;font-size:17px">${title}</h2>
-      <div style="font-size:14px;color:#444;line-height:1.5">${body}</div>
-      <a href="${cta.href}" style="display:inline-block;margin-top:16px;background:#3dbdcb;color:#0c1013;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;font-size:14px">${cta.label}</a>
-    </div>
-  </div>`;
-  // El pie automático lo agrega sendEmail (lib/mail.ts), centralizado.
-}
-
 /**
  * Notifica un evento por correo (best-effort). Un correo por destinatario, con
- * enlace al panel (interno) o al portal (cliente).
+ * enlace al panel (interno) o al portal (cliente). El marco/copy viven en
+ * lib/email (plantilla T2), acá solo se resuelven destinatarios y enlaces.
  */
 export async function notifyEvent(opts: {
   type: NotifType;
@@ -76,18 +66,32 @@ export async function notifyEvent(opts: {
   portalPath?: string;
 }): Promise<{ internal: number; client: number }> {
   const { internal, client } = await computeRecipients(opts.type, opts.clientId);
-  const label = opts.type === "accion" ? "Nueva acción" : opts.type === "reunion" ? "Nueva reunión" : "Nuevo hito";
-  const subject = `${label}${opts.clientName ? " · " + opts.clientName : ""}: ${opts.title}`;
 
   const base = appUrl();
   const panelHref = base + (opts.panelPath ?? "/");
   const portalHref = base + (opts.portalPath ?? "/portal");
 
-  for (const to of internal) {
-    await sendEmail({ to, subject, html: wrap(subject, opts.detail, { href: panelHref, label: "Ver en el panel" }) });
+  if (internal.length) {
+    const { subject, html } = eventEmail({
+      type: opts.type,
+      clientName: opts.clientName ?? null,
+      title: opts.title,
+      detail: opts.detail,
+      audience: "internal",
+      url: panelHref,
+    });
+    for (const to of internal) await sendEmail({ to, subject, html });
   }
-  for (const to of client) {
-    await sendEmail({ to, subject, html: wrap(subject, opts.detail, { href: portalHref, label: "Ver en tu portal" }) });
+  if (client.length) {
+    const { subject, html } = eventEmail({
+      type: opts.type,
+      clientName: opts.clientName ?? null,
+      title: opts.title,
+      detail: opts.detail,
+      audience: "client",
+      url: portalHref,
+    });
+    for (const to of client) await sendEmail({ to, subject, html });
   }
   return { internal: internal.length, client: client.length };
 }
@@ -99,7 +103,7 @@ export async function notifyEvent(opts: {
 //  LISTA GLOBAL, este motor calcula destinatarios por PERMISO REAL: solo quien
 //  puede ver al cliente. Es el equivalente server-side y por-conjunto de
 //  staff_sees_client(cid) = is_owner() OR asignado en admin_assignments.
-//  Reutiliza el transporte (sendEmail), la plantilla (wrap) y appUrl.
+//  Reutiliza el transporte (sendEmail) y la plantilla de marca (lib/email).
 // ============================================================
 
 /**
@@ -169,7 +173,6 @@ export async function notifyDeliverableResponse(opts: {
 
   const decision = d.approval_status as string;
   const decisionLabel = DELIV_DECISION_LABEL[decision] ?? decision;
-  const clientName = project?.clients?.name ?? null;
 
   let responder = "El cliente";
   if (d.responded_by) {
@@ -180,15 +183,15 @@ export async function notifyDeliverableResponse(opts: {
   const staff = await resolveClientStaff(clientId);
   if (!staff.length) return { sent: 0, recipients: 0 };
 
-  const subject = `Respuesta del cliente${clientName ? " · " + clientName : ""}: ${d.title} — ${decisionLabel}`;
-  const comment = (d.client_comment ?? "").trim();
-  const body = [
-    `<strong>${responder}</strong>${clientName ? " (" + clientName + ")" : ""} respondió el entregable <strong>&laquo;${d.title}&raquo;</strong>.`,
-    `Decisión: <strong>${decisionLabel}</strong>.`,
-    comment ? `Comentario: <em>&ldquo;${comment}&rdquo;</em>` : "",
-    project?.name ? `Proyecto: ${project.name}.` : "",
-  ].filter(Boolean).join("<br>");
-  const html = wrap(subject, body, { href: appUrl() + `/entregables/${opts.deliverableId}`, label: "Ver el entregable" });
+  const { subject, html } = deliverableResponseEmail({
+    clientName: project?.clients?.name ?? null,
+    title: d.title as string,
+    decisionLabel,
+    comment: d.client_comment as string | null,
+    projectName: project?.name ?? null,
+    responder,
+    url: appUrl() + `/entregables/${opts.deliverableId}`,
+  });
 
   let sent = 0;
   for (const r of staff) {
