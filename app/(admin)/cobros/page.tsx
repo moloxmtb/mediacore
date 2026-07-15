@@ -1,6 +1,7 @@
 import PageHeader from "@/components/PageHeader";
 import DeleteButton from "@/components/admin/DeleteButton";
 import CuotaEditForm from "@/components/admin/CuotaEditForm";
+import NotificarButton from "@/components/admin/NotificarButton";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdminRole } from "@/lib/auth";
 import { getLatestUf } from "@/lib/uf";
@@ -40,7 +41,10 @@ function today(): string {
 }
 
 export default async function CobrosPage() {
-  await requireAdminRole("cobros"); // owner-only (finanzas)
+  const session = await requireAdminRole("cobros"); // owner-only (finanzas)
+  // Belt-and-suspenders: la página ya es owner-only por requireAdminRole, pero el
+  // botón "notificar" (cobro = finanzas) se condiciona explícito a owner igual.
+  const isOwner = session.adminRole === "owner";
   const supabase = await createClient();
   const [{ data }, uf] = await Promise.all([
     supabase
@@ -279,6 +283,7 @@ export default async function CobrosPage() {
                               )}
                             </div>
                           )}
+                          {isOwner && <NotificarButton kind="cobro" id={r.id} />}
                         </div>
                       </td>
                     </tr>
