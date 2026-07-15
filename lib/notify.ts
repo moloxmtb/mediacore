@@ -144,6 +144,72 @@ export async function resolveClientStaff(
   return out;
 }
 
+/** Mapea filas {id, full_name} a {email, name} vía listUsers, dedup por correo. */
+async function emailsForProfiles(
+  admin: ReturnType<typeof createAdminClient>,
+  rows: { id: string; full_name: string | null }[],
+): Promise<{ email: string; name: string | null }[]> {
+  if (!rows.length) return [];
+  const { data: users } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  const emailById = new Map((users?.users ?? []).map((u) => [u.id, u.email]));
+  const seen = new Set<string>();
+  const out: { email: string; name: string | null }[] = [];
+  for (const r of rows) {
+    const email = emailById.get(r.id)?.toLowerCase();
+    if (email && !seen.has(email)) {
+      seen.add(email);
+      out.push({ email, name: r.full_name ?? null });
+    }
+  }
+  return out;
+}
+
+/**
+ * Staff que puede ver FINANZAS de un cliente = SOLO owners (`is_owner`,
+ * admin_role='owner'). NO usa resolveClientStaff: los ejecutivos/productores
+ * ASIGNADOS igual NO ven cobros — la RLS de contracts/installments quedó
+ * owner-only en el flip. Usar resolveClientStaff acá filtraría finanzas a quien
+ * la RLS le niega; por eso cobros tiene su propio resolutor.
+ *
+ * ⚠️ `clientId` se IGNORA A PROPÓSITO. El modelo asume un ÚNICO owner global
+ * (is_owner) que ve TODOS los clientes y TODOS los mundos, incluido finanzas —
+ * así que los owners son los mismos para cualquier cliente. Se recibe por
+ * simetría de firma con los otros resolutores y para no cambiar los llamadores
+ * si algún día hubiera owners scoped por cliente.
+ */
+export async function resolveOwnerOnly(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- se ignora a propósito (owner global); se recibe por simetría de firma
+  _clientId: string,
+): Promise<{ email: string; name: string | null }[]> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("profiles")
+    .select("id, full_name")
+    .eq("role", "admin")
+    .eq("admin_role", "owner");
+  return emailsForProfiles(admin, (data ?? []) as { id: string; full_name: string | null }[]);
+}
+
+/**
+ * Destinatarios del lado CLIENTE, según el "mundo" del objeto (calca el branch
+ * cliente de la RLS): world='content' → owner + content; world='finance' →
+ * owner + finance. Nunca cruza mundos (finanzas jamás a content, y viceversa).
+ */
+export async function resolveClientRecipients(
+  clientId: string,
+  world: "content" | "finance",
+): Promise<{ email: string; name: string | null }[]> {
+  const roles = world === "finance" ? ["owner", "finance"] : ["owner", "content"];
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("profiles")
+    .select("id, full_name")
+    .eq("client_id", clientId)
+    .eq("role", "client")
+    .in("client_role", roles);
+  return emailsForProfiles(admin, (data ?? []) as { id: string; full_name: string | null }[]);
+}
+
 const DELIV_DECISION_LABEL: Record<string, string> = {
   aprobado: "Aprobado",
   cambios_solicitados: "Pidió cambios",

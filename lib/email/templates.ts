@@ -126,6 +126,35 @@ export function eventEmail(v: {
   };
 }
 
+/**
+ * Notificación MANUAL contextual (botón "notificar" dentro de un objeto).
+ * `objectLabel` es la etiqueta en mayúsculas (TAREA, COBRO, …). El `message`
+ * del admin es OPCIONAL y va SIEMPRE por `esc()` (dato de usuario). `audience`
+ * elige el CTA (panel para equipo, portal para cliente).
+ */
+export function manualNotifyEmail(v: {
+  objectLabel: string;
+  title: string;
+  message: string | null;
+  url: string;
+  audience: "equipo" | "cliente";
+}): BuiltEmail {
+  const msg = (v.message ?? "").trim();
+  const line =
+    msg !== ""
+      ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#3d3a35;">${esc(msg)}</p>`
+      : `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#3d3a35;">${v.audience === "cliente" ? "Tienes una novedad de Color Media." : "Aviso interno sobre este objeto."}</p>`;
+  return {
+    subject: `${v.audience === "cliente" ? "Color Media" : "Aviso interno"} · ${v.title}`,
+    html: emailShell({
+      label: v.objectLabel,
+      title: esc(v.title),
+      bodyHtml: line,
+      cta: { text: v.audience === "equipo" ? "Ver en el panel" : "Ver en tu portal", url: v.url },
+    }),
+  };
+}
+
 /** T4 · Solicitud de reunión (cliente → equipo). */
 export function meetingRequestEmail(v: {
   clientName: string | null;
