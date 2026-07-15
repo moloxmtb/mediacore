@@ -282,18 +282,25 @@ de Color Media y al equipo del cliente.
   - **ESTADO:** cuenta creada, dominio colormedia.cl VERIFICADO en Resend (DNS en HostGator /
     cPanel Zone Editor; registros DKIM `resend._domainkey`, MX y TXT `send` agregados sin tocar
     los MX de Google Workspace existentes). Falta pasar la API key (`re_...`) a Claude Code.
-  - **Identidad de correo (ACTUALIZADO 2026-07-06, en producción):** centralizada en `lib/mail.ts`.
-    - `from`: `Notificaciones Color Media <notificaciones@colormedia.cl>` (Resend verifica el dominio,
-      no la dirección; la casilla `notificaciones@` no necesita existir como buzón).
-    - `reply_to`: `marketing@colormedia.cl` (casilla real que Ismael lee).
-    - **Pie único** en todo correo (antes duplicado en `notify.ts` y `reunion-actions.ts`, ya eliminado):
-      estilo secundario gris, texto de no-responder que apunta a `marketing@colormedia.cl`.
-    - **`MAIL_FROM` jubilada:** `from` fijo en el helper (más seguro que env var). Borrada de `.env.local`
-      y de Vercel. El código VIEJO usaba `MAIL_FROM ?? marketing@` como fallback → mientras los commits no
-      estuvieron pusheados, producción envió desde `marketing@` sin la variable. Resuelto al pushear `069cd2a`.
-    - **Confirmar en producción con Opción A:** reenviar una invitación desde el sitio en vivo y verificar
-      que el From sea `notificaciones@` (un envío por script local NO lo confirma — corre código local, no
-      el runtime de Vercel).
+  - **Identidad y plantilla de correo (REDISEÑADO CON MARCA · DESPLEGADO v1.14, commit `67b508f`):**
+    marco visual con identidad Color Media, centralizado en `lib/mail.ts` + `lib/email/`.
+    - **Plantilla base única `emailShell`** (`lib/email/shell.ts`): los 3 builders de HTML duplicados
+      (`wrap` en notify.ts, `inviteHtml` en invite.ts, el inline de reunion-actions) FUSIONADOS en uno.
+      Header claro con logo de marca (por URL, no base64), franja de acento coral, paleta Tinta `#131313` /
+      Hueso `#F1EDE6` / Coral `#FF4A2E` (coral solo señal). HTML de correo compatible: tablas, estilos inline,
+      ghost-table de Outlook, ancho fluido (max-width 520). Helpers `esc()` y `dataRows()`.
+    - **Los 6 correos** (`lib/email/templates.ts`, funciones puras): C1 invitación portal, C2 recuperación,
+      T3 invitación equipo, T1 respuesta de entregable (Fase 4), T2 evento (acción/hito/reunión, CTA según
+      destinatario), T4 solicitud de reunión. `esc()` en TODA variable de usuario (anti-inyección/roturas);
+      los subjects van sin escapar (texto plano).
+    - `from`: `Color Media <notificaciones@colormedia.cl>` (antes "Notificaciones Color Media"). `reply_to`:
+      `hola@colormedia.cl` (antes `marketing@`; unificado con el contacto visible del pie). El **pie** ahora
+      vive DENTRO de `emailShell` (única fuente) — ya no se anexa en `mail.ts`.
+    - Solo template + texto: la lógica de destinatarios NO se tocó (Fase 4 por permiso real; eventos de
+      Pieza 3 y solicitud de reunión por lista global). Verificado: 6 renders reales + envío de prueba a
+      Gmail (los 6 `delivered`).
+    - **`MAIL_FROM` jubilada:** `from` fijo en el helper (más seguro que env var), borrada de `.env.local`
+      y de Vercel.
 - Es la infraestructura base compartida: habilita también las invitaciones de usuario
   (funcionalidad 3) — se construyen juntas sobre Resend.
 - Definir con precisión qué eventos disparan correo, para no saturar (probablemente
@@ -527,12 +534,10 @@ cliente). Se apoya en el manejo de imágenes/Storage ya construido para la aprob
 - **Logo del cliente en su portal**, junto al de Color Media (co-branding en la cara del cliente).
 - **Favicon/ícono por empresa:** ícono pequeño de cada cliente donde se lo menciona en el panel
   (tablas, fichas, listados), para identificación visual rápida.
-- **Plantillas de correo con marca:** los correos automáticos (invitación, notificaciones) son
-  otra superficie de marca. La invitación es el PRIMER correo que recibe el cliente del sistema.
-  Al construir el correo (funcionalidad 2), Claude Code hace plantillas simples y funcionales;
-  el diseño con identidad (logo, colores, tono, firma) se trabaja aquí, junto con el resto de la
-  identidad, para que quede coherente de una vez. Nivel objetivo: intermedio (marca cuidada, sin
-  sobrediseñar).
+- **Plantillas de correo con marca — HECHO (DESPLEGADO v1.14, commit `67b508f`):** los 6 correos
+  automáticos rediseñados con identidad Color Media sobre una plantilla base única `emailShell` (ver
+  "Identidad y plantilla de correo" en la sección de Notificaciones). Logo, paleta de marca, franja
+  coral, `esc()` de variables. Verificado con render real + envío de prueba a Gmail.
 - Requiere: campo de logo por cliente (subida desde el panel), logo global de Color Media, y
   aplicarlos en los lugares correspondientes de panel, portal y correos.
 
