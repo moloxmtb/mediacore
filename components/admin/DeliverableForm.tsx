@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSlideOverAutoClose } from "@/components/admin/SlideOver";
 import type { FormState } from "@/app/(admin)/entregables/actions";
 import type { Deliverable, Phase } from "@/lib/types";
 import { DELIVERABLE_STATUS_LABELS } from "@/lib/format";
@@ -21,6 +22,7 @@ export default function DeliverableForm({
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initial);
+  useSlideOverAutoClose(state.ok);
 
   return (
     <form action={formAction} className="form" style={{ maxWidth: "none" }}>

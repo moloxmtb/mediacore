@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSlideOverAutoClose } from "@/components/admin/SlideOver";
 import type { FormState } from "@/app/(admin)/acciones/actions";
 import type { Action, Phase } from "@/lib/types";
 
@@ -32,6 +33,7 @@ export default function ActionForm({
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initial);
+  useSlideOverAutoClose(state.ok);
 
   return (
     <form action={formAction} className="form" style={{ maxWidth: "none" }}>

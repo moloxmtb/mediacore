@@ -2080,3 +2080,211 @@ tbody tr:hover {
     scroll-behavior: auto;
   }
 }
+
+/* ============================================================
+   SISTEMA DE DISEÑO v2 (Media Core) — scopeado en .dsx
+   El color SIEMPRE significa algo: sección/objeto, estado o cliente.
+   Se aplica sólo dentro de .dsx para no migrar el resto todavía.
+   ============================================================ */
+:root {
+  /* Color por SECCIÓN / OBJETO (tono fijo por tipo) */
+  --sec-clientes: #5aa2ee;   /* azul */
+  --sec-proyectos: #9b87e6;  /* violeta */
+  --sec-calendario: #7d89f2; /* índigo (calendario/hitos) */
+  --sec-tareas: #3fc3d6;     /* cyan */
+  --sec-contenido: #c77fd0;  /* magenta */
+  --sec-entregables: #d879b4;/* rosado */
+  --sec-bitacora: #8c96b5;   /* gris azulado */
+  --sec-cobros: #35c9c0;     /* teal */
+  /* Color por ESTADO (semántico) */
+  --st-ok: #3ecf7a;
+  --st-wait: #d99a3c;
+  --st-bad: #e0607a;
+  --st-neutral: #4a565b;
+}
+
+.dsx {
+  --surface-page: #0a0e10;
+  --surface-panel: #0e1417;
+  --surface-field: #161e23;
+  --tx-1: #e8eaea;
+  --tx-2: #8a9499;
+  --tx-3: #5c666b;
+  --sec: #8a9499; /* default neutro; cada .dbox lo sobrescribe */
+  background: var(--surface-page);
+  color: var(--tx-1);
+  padding: 22px 26px 60px;
+  min-height: 100%;
+}
+.dsx .dback {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--tx-2); font-size: 13px; text-decoration: none; margin-bottom: 18px;
+}
+.dsx .dback:hover { color: var(--tx-1); }
+.dsx .dstack { display: flex; flex-direction: column; gap: 18px; }
+
+/* ---------- Recuadro / panel ---------- */
+.dsx .dbox {
+  background: var(--surface-panel);
+  border: 0.5px solid rgba(255,255,255,.06);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.dsx .dbox-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 13px 16px;
+  background: color-mix(in srgb, var(--sec) 10%, transparent);
+  border-bottom: 0.5px solid rgba(255,255,255,.06);
+}
+.dsx .dbox-head .dh-ico { color: var(--sec); display: inline-flex; }
+.dsx .dbox-head .dh-ico svg { width: 17px; height: 17px; display: block; }
+.dsx .dbox-head h3 {
+  margin: 0; font-size: 14px; font-weight: 600; letter-spacing: .1px;
+  color: color-mix(in srgb, var(--sec) 72%, #ffffff);
+}
+.dsx .dbox-head .dcount {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  color: var(--sec);
+  background: color-mix(in srgb, var(--sec) 16%, transparent);
+  border-radius: 20px; padding: 2px 9px; line-height: 1.4;
+}
+.dsx .dbox-head .dhead-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.dsx .dbox-body { padding: 16px; }
+.dsx .dbox-body + .dbox-body { border-top: 0.5px solid rgba(255,255,255,.06); }
+
+/* Cabecera colapsable */
+.dsx .dbox-head-toggle { cursor: pointer; user-select: none; }
+.dsx .dbox-head-toggle:hover { background: color-mix(in srgb, var(--sec) 15%, transparent); }
+.dsx .dbox-caret { color: var(--sec); display: inline-flex; opacity: .85; margin-right: -2px; }
+.dsx .dbox-caret svg { width: 15px; height: 15px; display: block; transition: transform .15s ease; }
+.dsx .dbox-head-toggle.is-open .dbox-caret svg { transform: rotate(90deg); }
+.dsx .dcollapse-ctl { display: flex; gap: 8px; justify-content: flex-end; margin: -2px 0 2px; }
+
+/* ---------- Botones (un primario por contexto, en tono de sección) ---------- */
+.dsx .dbtn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1;
+  padding: 7px 12px; border-radius: 8px; cursor: pointer;
+  background: transparent; color: var(--tx-1);
+  border: 0.5px solid rgba(255,255,255,.18);
+  text-decoration: none; transition: background .12s, border-color .12s;
+}
+.dsx .dbtn:hover { background: rgba(255,255,255,.05); }
+.dsx .dbtn-primary {
+  border: none;
+  background: var(--sec); color: #0a0e10;
+}
+.dsx .dbtn-primary:hover { background: color-mix(in srgb, var(--sec) 88%, #ffffff); }
+.dsx .dbtn-sm { padding: 5px 10px; font-size: 12px; }
+
+/* Overrides para los form components compartidos (usan .btn dentro de .dsx) */
+.dsx .btn { border-radius: 8px; border: 0.5px solid rgba(255,255,255,.18); background: transparent; color: var(--tx-1); }
+.dsx .btn:hover { background: rgba(255,255,255,.05); }
+.dsx .btn-primary { border: none; background: var(--sec); color: #0a0e10; }
+.dsx .btn-primary:hover { background: color-mix(in srgb, var(--sec) 88%, #ffffff); }
+
+/* ---------- Campos de texto visibles ---------- */
+.dsx input:not([type=checkbox]):not([type=radio]):not([type=file]),
+.dsx select,
+.dsx textarea {
+  background: var(--surface-field);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 8px;
+  color: var(--tx-1);
+  padding: 9px 11px; font-size: 13.5px;
+  transition: border-color .12s, box-shadow .12s;
+}
+.dsx input:not([type=checkbox]):not([type=radio]):not([type=file]):focus,
+.dsx select:focus,
+.dsx textarea:focus {
+  outline: none;
+  border: 1.5px solid var(--sec);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sec) 16%, transparent);
+}
+.dsx label { color: var(--tx-2); font-size: 12px; }
+
+/* ---------- Tabla ---------- */
+.dsx .dtable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dsx .dtable thead th {
+  text-align: left; padding: 8px 14px;
+  font-size: 10.5px; letter-spacing: .8px; text-transform: uppercase;
+  color: var(--tx-3); font-weight: 600; font-family: var(--font-mono);
+  border-bottom: 0.5px solid rgba(255,255,255,.06);
+}
+.dsx .dtable td { padding: 10px 14px; border-bottom: 0.5px solid rgba(255,255,255,.045); color: var(--tx-1); }
+.dsx .dtable tbody tr:last-child td { border-bottom: none; }
+.dsx .dtable .num { text-align: right; font-family: var(--font-mono); }
+.dsx .dtable .mut { color: var(--tx-2); }
+.dsx .dtable .mono { font-family: var(--font-mono); }
+/* Borde izquierdo por estado */
+.dsx .drow > td:first-child { border-left: 3px solid var(--st, transparent); }
+
+/* ---------- Chip de ESTADO (semántico) ---------- */
+.dsx .dchip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; font-weight: 600; line-height: 1;
+  padding: 4px 9px; border-radius: 6px;
+  background: color-mix(in srgb, var(--st) 15%, transparent);
+  color: color-mix(in srgb, var(--st) 70%, #ffffff);
+}
+.dsx .dchip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--st); }
+
+/* ---------- Chip de TIPO (pill borde, sin relleno) ---------- */
+.dsx .dtype {
+  display: inline-flex; align-items: center;
+  font-size: 11px; font-weight: 500; line-height: 1;
+  padding: 3px 9px; border-radius: 20px;
+  border: 0.5px solid rgba(255,255,255,.18); color: var(--tx-2);
+}
+
+/* ---------- Identidad de cliente (cuadradito) ---------- */
+.dsx .cli { display: inline-flex; align-items: center; gap: 8px; }
+.dsx .cli-sq { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+
+/* ---------- Acciones por fila (iconos) ---------- */
+.dsx .dacts { display: inline-flex; gap: 4px; align-items: center; justify-content: flex-end; }
+.dsx .dact {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 7px; cursor: pointer;
+  background: transparent; border: none; color: var(--tx-2);
+  transition: background .12s, color .12s;
+}
+.dsx .dact svg { width: 15px; height: 15px; }
+.dsx .dact:hover { background: rgba(255,255,255,.06); color: var(--tx-1); }
+.dsx .dact-del:hover { color: var(--st-bad); background: color-mix(in srgb, var(--st-bad) 14%, transparent); }
+.dsx .dact[data-tip] { position: relative; }
+.dsx .dact[data-tip]:hover::after {
+  content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); right: 0;
+  white-space: nowrap; font-size: 11px; font-family: var(--font-sans);
+  background: #05080a; color: var(--tx-1); border: 0.5px solid rgba(255,255,255,.1);
+  padding: 4px 8px; border-radius: 6px; pointer-events: none; z-index: 5;
+}
+
+/* ---------- Estado vacío ---------- */
+.dsx .dempty {
+  padding: 26px 16px; text-align: center; color: var(--tx-2); font-size: 13px;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+
+/* ---------- Slide-over (crear/editar) ---------- */
+.dsx .so-overlay {
+  position: fixed; inset: 0; background: rgba(3,6,8,.6);
+  z-index: 60; animation: so-fade .14s ease;
+}
+.dsx .so-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 92vw);
+  background: var(--surface-panel); border-left: 0.5px solid rgba(255,255,255,.1);
+  z-index: 61; display: flex; flex-direction: column;
+  box-shadow: -20px 0 50px rgba(0,0,0,.4); animation: so-slide .18s ease;
+}
+.dsx .so-head {
+  display: flex; align-items: center; gap: 10px; padding: 16px 20px;
+  border-bottom: 0.5px solid rgba(255,255,255,.06);
+  background: color-mix(in srgb, var(--sec) 10%, transparent);
+}
+.dsx .so-head h4 { margin: 0; font-size: 14px; font-weight: 600; color: color-mix(in srgb, var(--sec) 72%, #ffffff); }
+.dsx .so-close { margin-left: auto; background: transparent; border: none; color: var(--tx-2); cursor: pointer; font-size: 20px; line-height: 1; }
+.dsx .so-close:hover { color: var(--tx-1); }
+.dsx .so-body { padding: 20px; overflow-y: auto; }
+@keyframes so-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes so-slide { from { transform: translateX(20px); opacity: .4; } to { transform: none; opacity: 1; } }

@@ -8,11 +8,12 @@ import ActionForm from "@/components/admin/ActionForm";
 import EventForm from "@/components/admin/EventForm";
 import DeleteButton from "@/components/admin/DeleteButton";
 import NotificarButton from "@/components/admin/NotificarButton";
+import SlideOver from "@/components/admin/SlideOver";
+import { CollapsibleBox, CollapseControl } from "@/components/admin/CollapsibleBox";
 import { createClient } from "@/lib/supabase/server";
 import {
   DELIVERABLE_STATUS_LABELS,
   PROJECT_STATUS_LABELS,
-  deliverableStatusBadge,
   formatDate,
   formatDateTime,
 } from "@/lib/format";
@@ -20,16 +21,13 @@ import type {
   Action,
   CalendarEvent,
   Deliverable,
+  DeliverableStatus,
   Phase,
   Project,
 } from "@/lib/types";
 import { actualizarProyecto, eliminarProyecto } from "../actions";
 import { actualizarFase, crearFase, eliminarFase } from "../actions";
-import {
-  actualizarHito,
-  crearHito,
-  eliminarHito,
-} from "../hitos-actions";
+import { actualizarHito, crearHito, eliminarHito } from "../hitos-actions";
 import {
   actualizarEntregable,
   crearEntregable,
@@ -40,6 +38,59 @@ import {
   crearAccion,
   eliminarAccion,
 } from "@/app/(admin)/acciones/actions";
+
+// Tono fijo por sección/objeto (brief v2).
+const SEC = {
+  ficha: "#8a9499", // neutro (identidad de la página)
+  proyectos: "#9b87e6", // violeta
+  entregables: "#d879b4", // rosado (objeto global)
+  bitacora: "#8c96b5", // gris azulado (objeto global)
+  hitos: "#7d89f2", // índigo (objeto global)
+} as const;
+
+const ST: Record<string, string> = {
+  ok: "var(--st-ok)",
+  wait: "var(--st-wait)",
+  bad: "var(--st-bad)",
+  neutral: "var(--st-neutral)",
+};
+
+// ---- iconos ----
+const IcoDoc = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></svg>
+);
+const IcoBars = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M4 7h11M4 12h16M4 17h7" /></svg>
+);
+const IcoPackage = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8" /></svg>
+);
+const IcoList = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
+);
+const IcoFlag = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M4 21V4M4 4h13l-2 4 2 4H4" /></svg>
+);
+const IcoPencil = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+);
+
+function StateChip({ state, label }: { state: string; label: string }) {
+  return (
+    <span className="dchip" style={{ ["--st" as string]: ST[state] }}>
+      {label}
+    </span>
+  );
+}
+
+// Envuelto en helper de módulo (el server component renderiza una vez por request).
+function nowMs(): number {
+  return Date.now();
+}
+
+const phaseState = (pr: number) => (pr >= 100 ? "ok" : pr > 0 ? "wait" : "neutral");
+const delivState = (s: DeliverableStatus) =>
+  s === "aprobado" ? "ok" : s === "entregado" ? "wait" : "neutral";
 
 export default async function ProyectoDetallePage({
   params,
@@ -59,27 +110,10 @@ export default async function ProyectoDetallePage({
   ] = await Promise.all([
     supabase.from("projects").select("*").eq("id", id).maybeSingle(),
     supabase.from("clients").select("id, name").order("name", { ascending: true }),
-    supabase
-      .from("phases")
-      .select("*")
-      .eq("project_id", id)
-      .order("sort_order", { ascending: true })
-      .order("start_date", { ascending: true }),
-    supabase
-      .from("deliverables")
-      .select("*")
-      .eq("project_id", id)
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("actions")
-      .select("*")
-      .eq("project_id", id)
-      .order("action_date", { ascending: false }),
-    supabase
-      .from("calendar_events")
-      .select("*")
-      .eq("project_id", id)
-      .order("starts_at", { ascending: true }),
+    supabase.from("phases").select("*").eq("project_id", id).order("sort_order").order("start_date"),
+    supabase.from("deliverables").select("*").eq("project_id", id).order("created_at"),
+    supabase.from("actions").select("*").eq("project_id", id).order("action_date", { ascending: false }),
+    supabase.from("calendar_events").select("*").eq("project_id", id).order("starts_at"),
   ]);
 
   if (!project) notFound();
@@ -89,37 +123,30 @@ export default async function ProyectoDetallePage({
   const actions = (actionsData ?? []) as Action[];
   const events = (eventsData ?? []) as CalendarEvent[];
   const phaseOptions = phases.map((ph) => ({ id: ph.id, name: ph.name }));
-  const phaseName = (pid: string | null) =>
-    pid ? (phases.find((x) => x.id === pid)?.name ?? "—") : "—";
+  const phaseName = (pid: string | null) => (pid ? phases.find((x) => x.id === pid)?.name ?? "—" : "—");
+  const now = nowMs();
 
   return (
     <>
-      <PageHeader
-        title={p.name}
-        subtitle={`Proyecto · ${PROJECT_STATUS_LABELS[p.status]}`}
-      />
-      <div className="app-content">
-        <Link href="/proyectos" className="back-link">
-          ← Volver a proyectos
-        </Link>
+      <PageHeader title={p.name} subtitle={`Proyecto · ${PROJECT_STATUS_LABELS[p.status]}`} />
+      <div className="dsx">
+        <Link href="/proyectos" className="dback">← Volver a proyectos</Link>
 
-        <div className="stack">
-          {/* Ficha */}
-          <div className="card">
-            <div className="card-head">
-              <h3>Ficha del proyecto</h3>
-              <Link href={`/gantt?p=${p.id}`} className="btn btn-sm">
-                Ver en la Gantt
-              </Link>
-            </div>
-            <div className="card-body">
-              <ProjectForm
-                action={actualizarProyecto}
-                clients={clients ?? []}
-                project={p}
-                submitLabel="Guardar cambios"
-              />
-              <div style={{ marginTop: "18px", borderTop: "1px solid var(--border-soft)", paddingTop: "16px" }}>
+        <CollapseControl />
+
+        <div className="dstack">
+          {/* ---------- Ficha (NEUTRO) ---------- */}
+          <CollapsibleBox
+            id="ficha"
+            defaultOpen
+            sec={SEC.ficha}
+            icon={<IcoDoc />}
+            title="Ficha del proyecto"
+            actions={<Link href={`/gantt?p=${p.id}`} className="dbtn dbtn-sm">Ver en la Gantt</Link>}
+          >
+            <div className="dbox-body">
+              <ProjectForm action={actualizarProyecto} clients={clients ?? []} project={p} submitLabel="Guardar cambios" />
+              <div style={{ marginTop: "18px", borderTop: "0.5px solid rgba(255,255,255,.06)", paddingTop: "16px" }}>
                 <DeleteButton
                   action={eliminarProyecto}
                   hidden={{ id: p.id }}
@@ -128,303 +155,180 @@ export default async function ProyectoDetallePage({
                 />
               </div>
             </div>
-          </div>
+          </CollapsibleBox>
 
-          {/* Fases */}
-          <div className="card">
-            <div className="card-head">
-              <h3>Fases (barras de la Gantt)</h3>
-              <span className="tag">{phases.length}</span>
-            </div>
+          {/* ---------- Fases (VIOLETA) ---------- */}
+          <CollapsibleBox
+            id="fases"
+            defaultOpen={false}
+            sec={SEC.proyectos}
+            icon={<IcoBars />}
+            title="Fases"
+            count={phases.length}
+            actions={
+              <SlideOver title="Nueva fase" sec={SEC.proyectos} triggerClass="dbtn dbtn-primary dbtn-sm" trigger={<>+ Agregar</>}>
+                <PhaseForm action={crearFase} projectId={p.id} submitLabel="Crear fase" />
+              </SlideOver>
+            }
+          >
             {phases.length ? (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Fase</th>
-                    <th>Rango</th>
-                    <th className="num">Avance</th>
-                    <th className="num">Orden</th>
-                  </tr>
-                </thead>
+              <table className="dtable">
+                <thead><tr><th>Fase</th><th>Rango</th><th className="num">Avance</th><th className="num">Orden</th><th></th></tr></thead>
                 <tbody>
                   {phases.map((ph) => (
-                    <tr key={ph.id}>
+                    <tr key={ph.id} className="drow" style={{ ["--st" as string]: ST[phaseState(ph.progress)] }}>
                       <td>{ph.name}</td>
-                      <td className="mono" style={{ color: "var(--muted)" }}>
-                        {formatDate(ph.start_date)} → {formatDate(ph.end_date)}
-                      </td>
-                      <td className="num mono">{ph.progress}%</td>
-                      <td className="num mono" style={{ color: "var(--muted)" }}>
-                        {ph.sort_order}
+                      <td className="mono mut">{formatDate(ph.start_date)} → {formatDate(ph.end_date)}</td>
+                      <td className="num">{ph.progress}%</td>
+                      <td className="num mut">{ph.sort_order}</td>
+                      <td className="num">
+                        <div className="dacts">
+                          <SlideOver title={`Editar · ${ph.name}`} sec={SEC.proyectos} triggerClass="dact" triggerTip="Editar" trigger={<IcoPencil />}>
+                            <PhaseForm action={actualizarFase} projectId={p.id} phase={ph} submitLabel="Guardar fase" />
+                          </SlideOver>
+                          <DeleteButton icon action={eliminarFase} hidden={{ id: ph.id, project_id: p.id }} label="Eliminar" confirm="¿Eliminar esta fase?" />
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             ) : (
-              <div className="empty">Aún no hay fases. Agrega la primera.</div>
+              <div className="dempty">Aún no hay fases. Agrégalas con “+ Agregar”.</div>
             )}
-            <div className="card-body" style={{ borderTop: "1px solid var(--border-soft)", display: "flex", flexDirection: "column", gap: "10px" }}>
-              {phases.map((ph) => (
-                <details key={ph.id}>
-                  <summary className="btn btn-sm">Editar · {ph.name}</summary>
-                  <div style={{ padding: "16px 2px 6px" }}>
-                    <PhaseForm
-                      action={actualizarFase}
-                      projectId={p.id}
-                      phase={ph}
-                      submitLabel="Guardar fase"
-                    />
-                    <div style={{ marginTop: "12px" }}>
-                      <DeleteButton
-                        action={eliminarFase}
-                        hidden={{ id: ph.id, project_id: p.id }}
-                        label="Eliminar fase"
-                        confirm="¿Eliminar esta fase?"
-                      />
-                    </div>
-                  </div>
-                </details>
-              ))}
-              <details>
-                <summary className="btn btn-sm btn-primary" style={{ width: "fit-content" }}>
-                  + Agregar fase
-                </summary>
-                <div style={{ padding: "16px 2px 6px" }}>
-                  <PhaseForm action={crearFase} projectId={p.id} submitLabel="Crear fase" />
-                </div>
-              </details>
-            </div>
-          </div>
+          </CollapsibleBox>
 
-          {/* Entregables */}
-          <div className="card">
-            <div className="card-head">
-              <h3>Entregables</h3>
-              <span className="tag">{deliverables.length}</span>
-            </div>
+          {/* ---------- Entregables (ROSADO, objeto global) ---------- */}
+          <CollapsibleBox
+            id="entregables"
+            defaultOpen={false}
+            sec={SEC.entregables}
+            icon={<IcoPackage />}
+            title="Entregables"
+            count={deliverables.length}
+            actions={
+              <SlideOver title="Nuevo entregable" sec={SEC.entregables} triggerClass="dbtn dbtn-primary dbtn-sm" trigger={<>+ Agregar</>}>
+                <DeliverableForm action={crearEntregable} projectId={p.id} phases={phaseOptions} submitLabel="Crear entregable" />
+              </SlideOver>
+            }
+          >
             {deliverables.length ? (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Entregable</th>
-                    <th>Fase</th>
-                    <th>Estado</th>
-                    <th>Visible</th>
-                  </tr>
-                </thead>
+              <table className="dtable">
+                <thead><tr><th>Entregable</th><th>Fase</th><th>Estado</th><th>Visible</th><th></th></tr></thead>
                 <tbody>
                   {deliverables.map((d) => (
-                    <tr key={d.id}>
+                    <tr key={d.id} className="drow" style={{ ["--st" as string]: ST[delivState(d.status)] }}>
                       <td>{d.title}</td>
-                      <td style={{ color: "var(--muted)" }}>{phaseName(d.phase_id)}</td>
-                      <td>
-                        <span className={`badge ${deliverableStatusBadge(d.status)}`}>
-                          {DELIVERABLE_STATUS_LABELS[d.status]}
-                        </span>
-                      </td>
-                      <td className="mono" style={{ color: "var(--faint)" }}>
-                        {d.visible_to_client ? "sí" : "no"}
+                      <td className="mut">{phaseName(d.phase_id)}</td>
+                      <td><StateChip state={delivState(d.status)} label={DELIVERABLE_STATUS_LABELS[d.status]} /></td>
+                      <td>{d.visible_to_client ? <span className="dtype">Visible</span> : <span className="dtype">Interno</span>}</td>
+                      <td className="num">
+                        <div className="dacts">
+                          <SlideOver title={`Editar · ${d.title}`} sec={SEC.entregables} triggerClass="dact" triggerTip="Editar" trigger={<IcoPencil />}>
+                            <DeliverableForm action={actualizarEntregable} projectId={p.id} phases={phaseOptions} deliverable={d} submitLabel="Guardar entregable" />
+                          </SlideOver>
+                          <DeleteButton icon action={eliminarEntregable} hidden={{ id: d.id, project_id: p.id }} label="Eliminar" confirm="¿Eliminar este entregable?" />
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             ) : (
-              <div className="empty">Sin entregables todavía.</div>
+              <div className="dempty">Sin entregables todavía.</div>
             )}
-            <div className="card-body" style={{ borderTop: "1px solid var(--border-soft)", display: "flex", flexDirection: "column", gap: "10px" }}>
-              {deliverables.map((d) => (
-                <details key={d.id}>
-                  <summary className="btn btn-sm">Editar · {d.title}</summary>
-                  <div style={{ padding: "16px 2px 6px" }}>
-                    <DeliverableForm
-                      action={actualizarEntregable}
-                      projectId={p.id}
-                      phases={phaseOptions}
-                      deliverable={d}
-                      submitLabel="Guardar entregable"
-                    />
-                    <div style={{ marginTop: "12px" }}>
-                      <DeleteButton
-                        action={eliminarEntregable}
-                        hidden={{ id: d.id, project_id: p.id }}
-                        label="Eliminar entregable"
-                        confirm="¿Eliminar este entregable?"
-                      />
-                    </div>
-                  </div>
-                </details>
-              ))}
-              <details>
-                <summary className="btn btn-sm btn-primary" style={{ width: "fit-content" }}>
-                  + Agregar entregable
-                </summary>
-                <div style={{ padding: "16px 2px 6px" }}>
-                  <DeliverableForm
-                    action={crearEntregable}
-                    projectId={p.id}
-                    phases={phaseOptions}
-                    submitLabel="Crear entregable"
-                  />
-                </div>
-              </details>
-            </div>
-          </div>
+          </CollapsibleBox>
 
-          {/* Acciones */}
-          <div className="card">
-            <div className="card-head">
-              <h3>Bitácora de acciones</h3>
-              <span className="tag">{actions.length}</span>
-            </div>
+          {/* ---------- Bitácora de acciones (GRIS AZULADO, objeto global) ---------- */}
+          <CollapsibleBox
+            id="bitacora"
+            defaultOpen={false}
+            sec={SEC.bitacora}
+            icon={<IcoList />}
+            title="Bitácora de acciones"
+            count={actions.length}
+            actions={
+              <SlideOver title="Registrar acción" sec={SEC.bitacora} triggerClass="dbtn dbtn-primary dbtn-sm" trigger={<>+ Agregar</>}>
+                <ActionForm action={crearAccion} clientId={p.client_id} projectId={p.id} phases={phaseOptions} submitLabel="Registrar acción" />
+              </SlideOver>
+            }
+          >
             {actions.length ? (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Acción</th>
-                    <th>Fase</th>
-                    <th>Tipo</th>
-                  </tr>
-                </thead>
+              <table className="dtable">
+                <thead><tr><th>Fecha</th><th>Acción</th><th>Fase</th><th>Tipo</th><th></th></tr></thead>
                 <tbody>
                   {actions.map((a) => (
-                    <tr key={a.id}>
-                      <td className="mono" style={{ color: "var(--muted)" }}>
-                        {formatDate(a.action_date)}
-                      </td>
+                    <tr key={a.id} className="drow" style={{ ["--st" as string]: a.visible_to_client ? "transparent" : ST.neutral }}>
+                      <td className="mono mut">{formatDate(a.action_date)}</td>
                       <td>{a.title}</td>
-                      <td style={{ color: "var(--muted)" }}>{phaseName(a.phase_id)}</td>
-                      <td>{a.kind ? <span className="tag">{a.kind}</span> : "—"}</td>
+                      <td className="mut">{phaseName(a.phase_id)}</td>
+                      <td>{a.kind ? <span className="dtype">{a.kind}</span> : "—"}</td>
+                      <td className="num">
+                        <div className="dacts">
+                          <SlideOver title={`Editar · ${a.title}`} sec={SEC.bitacora} triggerClass="dact" triggerTip="Editar" trigger={<IcoPencil />}>
+                            <ActionForm action={actualizarAccion} clientId={p.client_id} projectId={p.id} phases={phaseOptions} actionRecord={a} submitLabel="Guardar acción" />
+                          </SlideOver>
+                          <DeleteButton icon action={eliminarAccion} hidden={{ id: a.id, project_id: p.id }} label="Eliminar" confirm="¿Eliminar esta acción?" />
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             ) : (
-              <div className="empty">Sin acciones registradas todavía.</div>
+              <div className="dempty">Sin acciones registradas todavía.</div>
             )}
-            <div className="card-body" style={{ borderTop: "1px solid var(--border-soft)", display: "flex", flexDirection: "column", gap: "10px" }}>
-              {actions.map((a) => (
-                <details key={a.id}>
-                  <summary className="btn btn-sm">Editar · {a.title}</summary>
-                  <div style={{ padding: "16px 2px 6px" }}>
-                    <ActionForm
-                      action={actualizarAccion}
-                      clientId={p.client_id}
-                      projectId={p.id}
-                      phases={phaseOptions}
-                      actionRecord={a}
-                      submitLabel="Guardar acción"
-                    />
-                    <div style={{ marginTop: "12px" }}>
-                      <DeleteButton
-                        action={eliminarAccion}
-                        hidden={{ id: a.id, project_id: p.id }}
-                        label="Eliminar acción"
-                        confirm="¿Eliminar esta acción?"
-                      />
-                    </div>
-                  </div>
-                </details>
-              ))}
-              <details>
-                <summary className="btn btn-sm btn-primary" style={{ width: "fit-content" }}>
-                  + Registrar acción
-                </summary>
-                <div style={{ padding: "16px 2px 6px" }}>
-                  <ActionForm
-                    action={crearAccion}
-                    clientId={p.client_id}
-                    projectId={p.id}
-                    phases={phaseOptions}
-                    submitLabel="Registrar acción"
-                  />
-                </div>
-              </details>
-            </div>
-          </div>
+          </CollapsibleBox>
 
-          {/* Hitos (calendario) */}
-          <div className="card">
-            <div className="card-head">
-              <h3>Hitos (calendario)</h3>
-              <span className="tag">{events.length}</span>
-            </div>
+          {/* ---------- Hitos (ÍNDIGO, objeto global) ---------- */}
+          <CollapsibleBox
+            id="hitos"
+            defaultOpen={false}
+            sec={SEC.hitos}
+            icon={<IcoFlag />}
+            title="Hitos"
+            count={events.length}
+            actions={
+              <SlideOver title="Nuevo hito" sec={SEC.hitos} triggerClass="dbtn dbtn-primary dbtn-sm" trigger={<>+ Agregar</>}>
+                <EventForm action={crearHito} clientId={p.client_id} projectId={p.id} submitLabel="Crear hito" />
+              </SlideOver>
+            }
+          >
             {events.length ? (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Hito</th>
-                    <th>Cuándo</th>
-                    <th>Tipo</th>
-                    <th>Origen</th>
-                  </tr>
-                </thead>
+              <table className="dtable">
+                <thead><tr><th>Hito</th><th>Cuándo</th><th>Estado</th><th>Origen</th><th></th></tr></thead>
                 <tbody>
-                  {events.map((ev) => (
-                    <tr key={ev.id}>
-                      <td>{ev.title}</td>
-                      <td className="mono" style={{ color: "var(--muted)" }}>
-                        {formatDateTime(ev.starts_at)}
-                      </td>
-                      <td>{ev.kind ? <span className="tag">{ev.kind}</span> : "—"}</td>
-                      <td>
-                        <span className={`badge ${ev.source === "google" ? "b-accent" : "b-idle"}`}>
-                          {ev.source === "google" ? "Google" : "panel"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {events.map((ev) => {
+                    const past = new Date(ev.starts_at).getTime() < now;
+                    const st = past ? "ok" : "neutral";
+                    return (
+                      <tr key={ev.id} className="drow" style={{ ["--st" as string]: ST[st] }}>
+                        <td>{ev.title}</td>
+                        <td className="mono mut">{formatDateTime(ev.starts_at)}</td>
+                        <td><StateChip state={st} label={past ? "Cumplido" : "Pendiente"} /></td>
+                        <td><span className="dtype">{ev.source === "google" ? "Google" : "panel"}</span></td>
+                        <td className="num">
+                          <div className="dacts">
+                            <SlideOver title={`Editar · ${ev.title}`} sec={SEC.hitos} triggerClass="dact" triggerTip="Editar" trigger={<IcoPencil />}>
+                              <EventForm action={actualizarHito} clientId={p.client_id} projectId={p.id} event={ev} submitLabel="Guardar hito" />
+                              <div style={{ marginTop: "14px", borderTop: "0.5px solid rgba(255,255,255,.06)", paddingTop: "12px" }}>
+                                <NotificarButton kind="hito" id={ev.id} />
+                              </div>
+                            </SlideOver>
+                            <DeleteButton icon action={eliminarHito} hidden={{ id: ev.id, project_id: p.id }} label="Eliminar" confirm="¿Eliminar este hito? Si está en Google, también se borra allí." />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             ) : (
-              <div className="empty">
-                Sin hitos todavía. Los que crees aquí se escriben también en el
-                calendario del cliente (si está mapeado y conectado).
+              <div className="dempty">
+                Sin hitos todavía. Los que crees aquí se escriben también en el calendario del cliente (si está mapeado y conectado).
               </div>
             )}
-            <div className="card-body" style={{ borderTop: "1px solid var(--border-soft)", display: "flex", flexDirection: "column", gap: "10px" }}>
-              {events.map((ev) => (
-                <details key={ev.id}>
-                  <summary className="btn btn-sm">Editar · {ev.title}</summary>
-                  <div style={{ padding: "16px 2px 6px" }}>
-                    <EventForm
-                      action={actualizarHito}
-                      clientId={p.client_id}
-                      projectId={p.id}
-                      event={ev}
-                      submitLabel="Guardar hito"
-                    />
-                    <div style={{ marginTop: "12px", display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-                      <DeleteButton
-                        action={eliminarHito}
-                        hidden={{ id: ev.id, project_id: p.id }}
-                        label="Eliminar hito"
-                        confirm="¿Eliminar este hito? Si está en Google, también se borra allí."
-                      />
-                      {/* Notificar: render incondicional — la RLS (por proyecto) ya
-                          limitó a clientes accionables por el actor. */}
-                      <NotificarButton kind="hito" id={ev.id} />
-                    </div>
-                  </div>
-                </details>
-              ))}
-              <details>
-                <summary className="btn btn-sm btn-primary" style={{ width: "fit-content" }}>
-                  + Agregar hito
-                </summary>
-                <div style={{ padding: "16px 2px 6px" }}>
-                  <EventForm
-                    action={crearHito}
-                    clientId={p.client_id}
-                    projectId={p.id}
-                    submitLabel="Crear hito"
-                  />
-                </div>
-              </details>
-            </div>
-          </div>
+          </CollapsibleBox>
         </div>
       </div>
     </>

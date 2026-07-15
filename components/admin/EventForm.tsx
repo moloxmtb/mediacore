@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSlideOverAutoClose } from "@/components/admin/SlideOver";
 import type { FormState } from "@/app/(admin)/proyectos/hitos-actions";
 import type { CalendarEvent } from "@/lib/types";
 
@@ -28,6 +29,7 @@ export default function EventForm({
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initial);
+  useSlideOverAutoClose(state.ok);
 
   return (
     <form action={formAction} className="form" style={{ maxWidth: "none" }}>
