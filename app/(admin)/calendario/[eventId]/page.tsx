@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import DeleteButton from "@/components/admin/DeleteButton";
+import NotificarButton from "@/components/admin/NotificarButton";
 import { requireAdminRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { signMinuta } from "@/lib/storage";
@@ -162,6 +163,13 @@ export default async function EventoDetallePage({
                   <span className="hint">Disponible solo mientras no tenga minuta ni pendientes.</span>
                 </div>
               )}
+
+              {/* Notificar: render incondicional — la RLS ya limitó el evento a
+                  staff que puede actuar sobre el cliente (canActOnClient). El gate
+                  de cliente (visible_to_client del evento) lo aplica el motor. */}
+              <div style={{ marginTop: "14px", borderTop: "1px solid var(--border-soft)", paddingTop: "12px" }}>
+                <NotificarButton kind="reunion" id={eventId} />
+              </div>
             </div>
           </div>
 

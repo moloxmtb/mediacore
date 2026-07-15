@@ -7,6 +7,7 @@ import DeliverableForm from "@/components/admin/DeliverableForm";
 import ActionForm from "@/components/admin/ActionForm";
 import EventForm from "@/components/admin/EventForm";
 import DeleteButton from "@/components/admin/DeleteButton";
+import NotificarButton from "@/components/admin/NotificarButton";
 import { createClient } from "@/lib/supabase/server";
 import {
   DELIVERABLE_STATUS_LABELS,
@@ -395,13 +396,16 @@ export default async function ProyectoDetallePage({
                       event={ev}
                       submitLabel="Guardar hito"
                     />
-                    <div style={{ marginTop: "12px" }}>
+                    <div style={{ marginTop: "12px", display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
                       <DeleteButton
                         action={eliminarHito}
                         hidden={{ id: ev.id, project_id: p.id }}
                         label="Eliminar hito"
                         confirm="¿Eliminar este hito? Si está en Google, también se borra allí."
                       />
+                      {/* Notificar: render incondicional — la RLS (por proyecto) ya
+                          limitó a clientes accionables por el actor. */}
+                      <NotificarButton kind="hito" id={ev.id} />
                     </div>
                   </div>
                 </details>

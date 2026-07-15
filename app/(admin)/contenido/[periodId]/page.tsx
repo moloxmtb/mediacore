@@ -6,6 +6,7 @@ import CopyForm from "@/components/admin/content/CopyForm";
 import RehacerForm from "@/components/admin/content/RehacerForm";
 import MediaEditor, { type EditorItem } from "@/components/admin/content/MediaEditor";
 import DeleteButton from "@/components/admin/DeleteButton";
+import NotificarButton from "@/components/admin/NotificarButton";
 import { createClient } from "@/lib/supabase/server";
 import { signImages } from "@/lib/storage";
 import {
@@ -187,6 +188,9 @@ export default async function PeriodoDetalle({ params }: { params: Promise<{ per
                       </form>
                     </details>
                     <DeleteButton action={eliminarPieza} hidden={{ id: p.id, period_id: period.id }} label="Eliminar pieza" confirm="¿Eliminar esta pieza y su historial?" />
+                    {/* Notificar: render incondicional — la RLS ya limitó las piezas
+                        a clientes accionables por el actor (canActOnClient). */}
+                    <NotificarButton kind="contenido" id={p.id} />
                   </div>
 
                   {/* Historial de versiones */}

@@ -4,6 +4,7 @@ import PageHeader from "@/components/PageHeader";
 import { requireAdminRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import NotificarButton from "@/components/admin/NotificarButton";
 import { signEntregable } from "@/lib/storage";
 import { deliverableApprovalLabel, deliverableApprovalBadge, formatDateTime } from "@/lib/format";
 import type { DeliverableApproval } from "@/lib/types";
@@ -92,6 +93,9 @@ export default async function EntregableDetallePage({
                   <input type="file" name="file" required />
                   <button className="btn btn-sm" type="submit">{file ? "Reemplazar archivo" : "Subir archivo"}</button>
                 </form>
+                {/* Notificar: render incondicional — la RLS ya limitó el acceso a la
+                    ficha a staff que puede actuar sobre el cliente (canActOnClient). */}
+                <NotificarButton kind="entregable" id={id} />
               </div>
               <p className="hint" style={{ marginTop: "10px" }}>
                 Reemplazar el archivo lo re-bloquea al cliente (vuelve a borrador); tenés que volver a

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import TareaForm from "@/components/admin/TareaForm";
+import NotificarButton from "@/components/admin/NotificarButton";
 import { requireAdminRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -209,6 +210,10 @@ export default async function TareasPage({
                               <button className="btn btn-sm" type="submit">Reabrir</button>
                             </form>
                           )}
+                          {/* Notificar: render incondicional — la RLS ya limitó las
+                              filas a clientes que el actor puede ver = puede actuar
+                              (canActOnClient). No es owner-only como cobros. */}
+                          <NotificarButton kind="tarea" id={t.id} />
                         </div>
                       </td>
                     </tr>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import NotaBitacoraForm from "@/components/admin/NotaBitacoraForm";
+import NotificarButton from "@/components/admin/NotificarButton";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdminRole } from "@/lib/auth";
 import { formatDate, formatDateTime, DELIVERABLE_STATUS_LABELS } from "@/lib/format";
@@ -163,6 +164,15 @@ export default async function BitacoraPage({
                             {it.detail ? ` · ${it.detail}` : ""}
                             {it.kind === "reunion" ? ` · ${formatDateTime(it.sortKey)}` : ""}
                           </div>
+                          {/* Notificar solo las NOTAS (tabla actions = objeto bitácora);
+                              el resto del timeline se notifica por su propio kind. La
+                              key es "a"+id → id = key.slice(1). Render incondicional:
+                              la RLS ya limitó a clientes accionables (canActOnClient). */}
+                          {it.kind === "nota" && (
+                            <div style={{ marginTop: "6px" }}>
+                              <NotificarButton kind="bitacora" id={it.key.slice(1)} />
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
