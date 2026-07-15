@@ -1366,7 +1366,21 @@ Reglas transversales:
 Primer paso construcción: Code diseña modelo (campos nuevos en deliverables: estado, comentario_cliente,
 visible/enviado) + RLS + la acción de bloqueo de archivo en borrador. Mostrar SQL antes de correr.
 
-## 🔔 PENDIENTE — Sistema de notificaciones manuales (mencionado 2026-07-09, sin diseñar)
+## 🔔 Sistema de notificaciones manuales — HECHO (DESPLEGADO v1.15)
+
+**v1.15 — Notificaciones manuales contextuales (7 objetos).** Botón "Notificar" en cada objeto (tarea, reunión,
+entregable, cobro, contenido, bitácora, hito) con selector Equipo/Cliente sin preselección. Principio: el
+destinatario calca el predicado de lectura de la RLS; el gate de visibilidad de cliente se aplica antes de
+resolver destinatarios (gates literales a la RLS en los 7). Resolutores: `resolveClientStaff` (los 6) +
+`resolveOwnerOnly` (cobro, staff) + `resolveClientRecipients(clientId, world)` (content para los 6, finance para
+cobro). Guard de actor: cobro → `isSessionOwner`; los 6 → `canActOnClient`. Doble muro en cobro (página
+owner-only + render owner-only). Correos vía `manualNotifyEmail` sobre `emailShell`, con `esc()` en mensaje y
+título. Cobertura: smoke 20/20 con motor real (`a630233`), guard de actor cobro probado end-to-end, guard
+`canActOnClient` de los 6 probado end-to-end. Rollout: cobro `185f44b`, los 6 `e5e5984`.
+
+---
+
+**Origen / requisito (cumplido por v1.15):**
 
 Ismael quiere un botón "enviar notificación" para empujar avisos manualmente ante muchos eventos (tarea
 asignada, vencimiento de pago, etc.) a los usuarios que tengan PERMISO de ver esa info, con confirmación de
