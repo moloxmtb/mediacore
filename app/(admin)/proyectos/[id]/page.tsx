@@ -10,10 +10,13 @@ import DeleteButton from "@/components/admin/DeleteButton";
 import NotificarButton from "@/components/admin/NotificarButton";
 import SlideOver from "@/components/admin/SlideOver";
 import { CollapsibleBox, CollapseControl } from "@/components/admin/CollapsibleBox";
+import StateChip from "@/components/admin/StateChip";
+import { stStyle as st, phaseTone, deliverableTone, hitoTone } from "@/lib/estado";
 import { createClient } from "@/lib/supabase/server";
 import {
   DELIVERABLE_STATUS_LABELS,
   PROJECT_STATUS_LABELS,
+  deliverableApprovalLabel,
   formatDate,
   formatDateTime,
 } from "@/lib/format";
@@ -21,10 +24,17 @@ import type {
   Action,
   CalendarEvent,
   Deliverable,
-  DeliverableStatus,
+  DeliverableApproval,
   Phase,
   Project,
 } from "@/lib/types";
+
+/** select("*") trae los campos del flujo de aprobación, que el tipo base no declara. */
+type DeliverableRow = Deliverable & {
+  approval_status: DeliverableApproval | null;
+  en_flujo_aprobacion: boolean | null;
+  responded_at: string | null;
+};
 import { actualizarProyecto, eliminarProyecto } from "../actions";
 import { actualizarFase, crearFase, eliminarFase } from "../actions";
 import { actualizarHito, crearHito, eliminarHito } from "../hitos-actions";
@@ -48,12 +58,6 @@ const SEC = {
   hitos: "#7d89f2", // índigo (objeto global)
 } as const;
 
-const ST: Record<string, string> = {
-  ok: "var(--st-ok)",
-  wait: "var(--st-wait)",
-  bad: "var(--st-bad)",
-  neutral: "var(--st-neutral)",
-};
 
 // ---- iconos ----
 const IcoDoc = () => (
@@ -75,22 +79,12 @@ const IcoPencil = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
 );
 
-function StateChip({ state, label }: { state: string; label: string }) {
-  return (
-    <span className="dchip" style={{ ["--st" as string]: ST[state] }}>
-      {label}
-    </span>
-  );
-}
 
 // Envuelto en helper de módulo (el server component renderiza una vez por request).
 function nowMs(): number {
   return Date.now();
 }
 
-const phaseState = (pr: number) => (pr >= 100 ? "ok" : pr > 0 ? "wait" : "neutral");
-const delivState = (s: DeliverableStatus) =>
-  s === "aprobado" ? "ok" : s === "entregado" ? "wait" : "neutral";
 
 export default async function ProyectoDetallePage({
   params,
@@ -119,7 +113,7 @@ export default async function ProyectoDetallePage({
   if (!project) notFound();
   const p = project as Project;
   const phases = (phasesData ?? []) as Phase[];
-  const deliverables = (delivData ?? []) as Deliverable[];
+  const deliverables = (delivData ?? []) as DeliverableRow[];
   const actions = (actionsData ?? []) as Action[];
   const events = (eventsData ?? []) as CalendarEvent[];
   const phaseOptions = phases.map((ph) => ({ id: ph.id, name: ph.name }));
@@ -176,7 +170,7 @@ export default async function ProyectoDetallePage({
                 <thead><tr><th>Fase</th><th>Rango</th><th className="num">Avance</th><th className="num">Orden</th><th></th></tr></thead>
                 <tbody>
                   {phases.map((ph) => (
-                    <tr key={ph.id} className="drow" style={{ ["--st" as string]: ST[phaseState(ph.progress)] }}>
+                    <tr key={ph.id} className="drow" style={st(phaseTone(ph.progress))}>
                       <td>{ph.name}</td>
                       <td className="mono mut">{formatDate(ph.start_date)} → {formatDate(ph.end_date)}</td>
                       <td className="num">{ph.progress}%</td>
@@ -217,10 +211,10 @@ export default async function ProyectoDetallePage({
                 <thead><tr><th>Entregable</th><th>Fase</th><th>Estado</th><th>Visible</th><th></th></tr></thead>
                 <tbody>
                   {deliverables.map((d) => (
-                    <tr key={d.id} className="drow" style={{ ["--st" as string]: ST[delivState(d.status)] }}>
+                    <tr key={d.id} className="drow" style={st(deliverableTone(d))}>
                       <td>{d.title}</td>
                       <td className="mut">{phaseName(d.phase_id)}</td>
-                      <td><StateChip state={delivState(d.status)} label={DELIVERABLE_STATUS_LABELS[d.status]} /></td>
+                      <td><StateChip tone={deliverableTone(d)} label={d.en_flujo_aprobacion && d.approval_status ? deliverableApprovalLabel(d.approval_status, d.responded_at) : DELIVERABLE_STATUS_LABELS[d.status]} /></td>
                       <td>{d.visible_to_client ? <span className="dtype">Visible</span> : <span className="dtype">Interno</span>}</td>
                       <td className="num">
                         <div className="dacts">
@@ -258,7 +252,7 @@ export default async function ProyectoDetallePage({
                 <thead><tr><th>Fecha</th><th>Acción</th><th>Fase</th><th>Tipo</th><th></th></tr></thead>
                 <tbody>
                   {actions.map((a) => (
-                    <tr key={a.id} className="drow" style={{ ["--st" as string]: a.visible_to_client ? "transparent" : ST.neutral }}>
+                    <tr key={a.id}>
                       <td className="mono mut">{formatDate(a.action_date)}</td>
                       <td>{a.title}</td>
                       <td className="mut">{phaseName(a.phase_id)}</td>
@@ -300,12 +294,12 @@ export default async function ProyectoDetallePage({
                 <tbody>
                   {events.map((ev) => {
                     const past = new Date(ev.starts_at).getTime() < now;
-                    const st = past ? "ok" : "neutral";
+                    const tone = hitoTone(ev.starts_at, now);
                     return (
-                      <tr key={ev.id} className="drow" style={{ ["--st" as string]: ST[st] }}>
+                      <tr key={ev.id} className="drow" style={st(tone)}>
                         <td>{ev.title}</td>
                         <td className="mono mut">{formatDateTime(ev.starts_at)}</td>
-                        <td><StateChip state={st} label={past ? "Cumplido" : "Pendiente"} /></td>
+                        <td><StateChip tone={tone} label={past ? "Cumplido" : "Próximo"} /></td>
                         <td><span className="dtype">{ev.source === "google" ? "Google" : "panel"}</span></td>
                         <td className="num">
                           <div className="dacts">

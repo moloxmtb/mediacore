@@ -17,7 +17,8 @@ import {
   MODALITY_LABELS,
   totalUF,
 } from "@/lib/billing";
-import type { ContractModality, Installment, InstallmentStatus } from "@/lib/types";
+import { stStyle as st, installmentTone, todaySantiago } from "@/lib/estado";
+import type { ContractModality, Installment } from "@/lib/types";
 import {
   actualizarCuota,
   anularCuota,
@@ -37,28 +38,6 @@ type Row = Installment & {
 
 const SEC_COBROS = "var(--sec-cobros)";
 
-// Estado (installment_status) → tono semántico, según MAPA-ESTADOS-COLORES.md §8a:
-// proyectada gris · facturada ámbar · pagada verde · vencida rojo · anulada gris.
-const ST: Record<"ok" | "wait" | "bad" | "neutral", string> = {
-  ok: "var(--st-ok)",
-  wait: "var(--st-wait)",
-  bad: "var(--st-bad)",
-  neutral: "var(--st-neutral)",
-};
-const STATUS_TONE: Record<InstallmentStatus, keyof typeof ST> = {
-  proyectada: "neutral",
-  facturada: "wait",
-  pagada: "ok",
-  vencida: "bad",
-  anulada: "neutral",
-};
-const st = (v: string): CSSProperties => ({ ["--st" as string]: v }) as CSSProperties;
-
-function today(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(
-    new Date(),
-  );
-}
 
 /* ---------- Iconos (línea, 24x24) ---------- */
 const IcoDoc = () => (
@@ -113,7 +92,7 @@ export default async function CobrosPage() {
   ]);
 
   const rows = (data ?? []) as unknown as Row[];
-  const t = today();
+  const t = todaySantiago();
 
   // Firma corta de los PDF ya archivados (se archivan por cuota).
   const pdfUrls = await signInvoices(
@@ -153,15 +132,15 @@ export default async function CobrosPage() {
 
         {/* Resumen: tarjetas de fondo teñido completo por estado */}
         <div className="paygrid">
-          <div className="paycard" style={st(ST.ok)}>
+          <div className="paycard" style={st("ok")}>
             <span className="plabel">Pagado</span>
             <span className="pval">{formatCLP(pagado)}</span>
           </div>
-          <div className="paycard" style={st(ST.wait)}>
+          <div className="paycard" style={st("wait")}>
             <span className="plabel">Por cobrar</span>
             <span className="pval">{formatCLP(porCobrar)}</span>
           </div>
-          <div className="paycard" style={st(ST.bad)}>
+          <div className="paycard" style={st("bad")}>
             <span className="plabel">Vencido</span>
             <span className="pval">{formatCLP(vencido)}</span>
           </div>
@@ -194,7 +173,7 @@ export default async function CobrosPage() {
                   const approx = !clp?.frozen ? "≈ " : "";
                   const dueToday = isDueToday(r, t);
                   const overdue = isOverdue(r, t);
-                  const tone = ST[STATUS_TONE[r.status]];
+                  const tone = installmentTone[r.status];
                   const pdfUrl = r.invoice_pdf_path ? pdfUrls[r.invoice_pdf_path] : undefined;
                   return (
                     <tr key={r.id} className="drow" style={st(tone)}>
@@ -238,10 +217,10 @@ export default async function CobrosPage() {
                       <td>
                         <span className="mono mut" style={{ whiteSpace: "nowrap" }}>{formatDate(r.due_date)}</span>
                         {dueToday && (
-                          <span className="dchip" style={{ ...st(ST.wait), marginLeft: "6px" }}>vence hoy</span>
+                          <span className="dchip" style={{ ...st("wait"), marginLeft: "6px" }}>vence hoy</span>
                         )}
                         {overdue && (
-                          <span className="dchip" style={{ ...st(ST.bad), marginLeft: "6px" }}>atrasada</span>
+                          <span className="dchip" style={{ ...st("bad"), marginLeft: "6px" }}>atrasada</span>
                         )}
                       </td>
                       <td>
