@@ -1,15 +1,17 @@
+import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import NotaBitacoraForm from "@/components/admin/NotaBitacoraForm";
 import NotificarButton from "@/components/admin/NotificarButton";
+import SlideOver from "@/components/admin/SlideOver";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdminRole } from "@/lib/auth";
 import { formatDate, formatDateTime, DELIVERABLE_STATUS_LABELS } from "@/lib/format";
 import {
   mergeBitacora,
   BITACORA_KIND_LABELS,
-  bitacoraKindBadge,
   type BitacoraEntry,
+  type BitacoraKind,
 } from "@/lib/bitacora";
 import type { DeliverableStatus } from "@/lib/types";
 
@@ -22,7 +24,28 @@ function ymdMonthsAgo(base: string, months: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-const DEFAULT_COLOR = "#3dbdcb";
+const DEFAULT_COLOR = "var(--tx-3)";
+const SEC = "var(--sec-bitacora)";
+
+/* MAPA §9: la bitácora NO lleva semáforo (es log de hechos consumados). Se
+   distingue por ICONO según kind, en color neutro. */
+const IcoLog = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
+);
+const KIND_ICON: Record<BitacoraKind, ReactNode> = {
+  reunion: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /></svg>
+  ),
+  entrega: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8" /></svg>
+  ),
+  hito: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 21V4M4 4h13l-2 4 2 4H4" /></svg>
+  ),
+  nota: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h4" /></svg>
+  ),
+};
 
 export default async function BitacoraPage({
   searchParams,
@@ -115,76 +138,89 @@ export default async function BitacoraPage({
   const qp = (v: Record<string, string>) => "?" + new URLSearchParams({ ...(filtro ? { cliente: filtro } : {}), desde, ...v }).toString();
   const masAtras = ymdMonthsAgo(desde, 6);
 
+  const nuevaNota = (
+    <SlideOver title="Agregar nota" sec={SEC} triggerClass="dbtn dbtn-primary dbtn-sm" trigger={<>+ Agregar nota</>}>
+      <NotaBitacoraForm clients={clients} defaultDate={today} />
+    </SlideOver>
+  );
+
   return (
     <>
       <PageHeader title="Bitácora" subtitle="Lo que ya pasó: reuniones, entregas, hitos y notas" />
-      <div className="app-content">
-        <div className="stack">
-          {/* Agregar nota a mano */}
-          <div className="card">
-            <div className="card-head"><h3>Agregar nota</h3></div>
-            <div className="card-body">
-              <NotaBitacoraForm clients={clients} defaultDate={today} />
+      <div className="app-content" style={{ ["--sec" as string]: SEC } as CSSProperties}>
+        {/* Filtro por cliente (identidad = cuadradito, no estado) */}
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
+          <Link href={qp({ cliente: "" })} className={`dtype${!filtro ? " is-on" : ""}`} style={!filtro ? { borderColor: "var(--sec)", color: "var(--sec)" } : undefined}>Todos</Link>
+          {clients.map((c) => (
+            <Link
+              key={c.id}
+              href={filtro === c.id ? qp({ cliente: "" }) : qp({ cliente: c.id })}
+              className="dtype"
+              style={{ gap: "6px", ...(filtro === c.id ? { borderColor: "var(--sec)", color: "var(--sec)" } : {}) }}
+            >
+              <span className="cli-sq" style={{ background: c.accent_color ?? DEFAULT_COLOR, width: "8px", height: "8px" }} />
+              {c.name}
+            </Link>
+          ))}
+        </div>
+
+        <div className="dbox">
+          <div className="dbox-head">
+            <span className="dh-ico"><IcoLog /></span>
+            <h3>Línea de tiempo</h3>
+            <span className="dcount">{timeline.length}</span>
+            <div className="dhead-actions">
+              <span className="mut mono" style={{ fontSize: "11px" }}>desde {formatDate(desde)}</span>
+              {nuevaNota}
             </div>
           </div>
 
-          {/* Filtro por cliente */}
-          <div className="cal-legend">
-            <Link href={qp({ cliente: "" })} className={`client-chip${!filtro ? " active" : ""}`}>Todos</Link>
-            {clients.map((c) => (
-              <Link key={c.id} href={filtro === c.id ? qp({ cliente: "" }) : qp({ cliente: c.id })} className={`client-chip${filtro === c.id ? " active" : ""}`}>
-                <span className="cal-dot" style={{ background: c.accent_color ?? DEFAULT_COLOR }} />
-                {c.name}
-              </Link>
-            ))}
-          </div>
-
-          {/* Timeline */}
-          <div className="card">
-            <div className="card-head">
-              <h3>Línea de tiempo</h3>
-              <span className="tag">{timeline.length} · desde {formatDate(desde)}</span>
-            </div>
-            {timeline.length ? (
-              <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                {[...byDay.entries()].map(([date, its]) => (
-                  <div key={date}>
-                    <div className="lista-fecha">{formatDate(date)}</div>
-                    {its.map((it) => (
-                      <div key={it.key} className="lista-row">
-                        <span className="cal-dot" style={{ background: colorOf(it.clientId) }} />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: "13.5px", fontWeight: 500, display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                            <span className={`badge ${bitacoraKindBadge(it.kind)}`}>{BITACORA_KIND_LABELS[it.kind]}</span>
-                            {it.href ? <Link href={it.href} className="row-link">{it.title}</Link> : it.title}
-                            {it.interna && <span className="badge b-idle">Interna</span>}
-                          </div>
-                          <div className="meta">
-                            {nameOf(it.clientId)}
-                            {it.detail ? ` · ${it.detail}` : ""}
-                            {it.kind === "reunion" ? ` · ${formatDateTime(it.sortKey)}` : ""}
-                          </div>
-                          {/* Notificar solo las NOTAS (tabla actions = objeto bitácora);
-                              el resto del timeline se notifica por su propio kind. La
-                              key es "a"+id → id = key.slice(1). Render incondicional:
-                              la RLS ya limitó a clientes accionables (canActOnClient). */}
-                          {it.kind === "nota" && (
-                            <div style={{ marginTop: "6px" }}>
-                              <NotificarButton kind="bitacora" id={it.key.slice(1)} />
-                            </div>
-                          )}
+          {timeline.length ? (
+            <div className="dbox-body" style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+              {[...byDay.entries()].map(([date, its]) => (
+                <div key={date}>
+                  <div className="mono" style={{ fontSize: "11px", color: "var(--tx-3)", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: "8px" }}>
+                    {formatDate(date)}
+                  </div>
+                  {its.map((it) => (
+                    <div key={it.key} style={{ display: "flex", gap: "10px", alignItems: "flex-start", padding: "9px 0", borderBottom: "0.5px solid rgba(255,255,255,.045)" }}>
+                      {/* Icono por kind, en neutro (MAPA §9: el log no lleva semáforo) */}
+                      <span style={{ color: "var(--tx-3)", display: "inline-flex", width: "16px", height: "16px", flex: "none", marginTop: "2px" }}>
+                        {KIND_ICON[it.kind]}
+                      </span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: "13.5px", fontWeight: 500, display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                          <span className="dtype">{BITACORA_KIND_LABELS[it.kind]}</span>
+                          {it.href ? <Link href={it.href} className="row-link">{it.title}</Link> : it.title}
+                          {it.interna && <span className="dtype">Interna</span>}
+                        </div>
+                        <div className="mut" style={{ fontSize: "12px", marginTop: "3px", display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span className="cli-sq" style={{ background: colorOf(it.clientId), width: "8px", height: "8px" }} />
+                          {nameOf(it.clientId)}
+                          {it.detail ? ` · ${it.detail}` : ""}
+                          {it.kind === "reunion" ? ` · ${formatDateTime(it.sortKey)}` : ""}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="empty">Sin registros desde {formatDate(desde)}.</div>
-            )}
-            <div className="card-body" style={{ borderTop: "1px solid var(--border-soft)" }}>
-              <Link href={qp({ desde: masAtras })} className="btn btn-sm">Cargar 6 meses más (desde {formatDate(masAtras)})</Link>
+                      {/* Notificar solo las NOTAS (tabla actions = objeto bitácora); el
+                          resto del timeline se notifica por su propio kind. key = "a"+id. */}
+                      {it.kind === "nota" && (
+                        <div className="dacts">
+                          <NotificarButton kind="bitacora" id={it.key.slice(1)} icon sec={SEC} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
+          ) : (
+            <div className="dempty">
+              <span>Sin registros desde {formatDate(desde)}.</span>
+              {nuevaNota}
+            </div>
+          )}
+          <div className="dbox-body" style={{ borderTop: "0.5px solid var(--v2-line)" }}>
+            <Link href={qp({ desde: masAtras })} className="dbtn dbtn-sm">Cargar 6 meses más (desde {formatDate(masAtras)})</Link>
           </div>
         </div>
       </div>

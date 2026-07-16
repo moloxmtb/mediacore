@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSlideOverAutoClose } from "@/components/admin/SlideOver";
 import type { FormState } from "@/app/(admin)/contenido/actions";
 import { PERIOD_KIND_LABELS } from "@/lib/content";
 
@@ -14,6 +15,7 @@ export default function PeriodForm({
   clients: { id: string; name: string }[];
 }) {
   const [state, formAction, pending] = useActionState(action, initial);
+  useSlideOverAutoClose(state.ok);
   return (
     <form action={formAction} className="form">
       <div className="form-row">

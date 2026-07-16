@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSlideOverAutoClose } from "@/components/admin/SlideOver";
 import { crearAccion, type FormState } from "@/app/(admin)/acciones/actions";
 
 const initial: FormState = { error: null };
@@ -16,6 +17,7 @@ export default function NotaBitacoraForm({
   defaultDate: string;
 }) {
   const [state, formAction, pending] = useActionState(crearAccion, initial);
+  useSlideOverAutoClose(state.ok);
 
   return (
     <form action={formAction} className="form" style={{ maxWidth: "none" }}>
