@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSlideOverAutoClose } from "./SlideOver";
 import type { FormState } from "@/app/(admin)/clientes/actions";
 import type { Contract } from "@/lib/types";
 import { MODALITY_LABELS } from "@/lib/billing";
@@ -19,6 +20,7 @@ export default function ContractForm({
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initial);
+  useSlideOverAutoClose(state.ok);
 
   const netDefault =
     contract == null

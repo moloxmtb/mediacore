@@ -106,6 +106,14 @@ export const CLIENT_STATUS_LABELS: Record<ClientStatus, string> = {
   inactivo: "Inactivo",
 };
 
+// `Contract.status` es texto libre en la tabla: el consumidor cae al valor
+// crudo si aparece uno fuera de esta lista.
+export const CONTRACT_STATUS_LABELS: Record<string, string> = {
+  activo: "Activo",
+  pausado: "Pausado",
+  cerrado: "Cerrado",
+};
+
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   activo: "Activo",
   pausado: "Pausado",

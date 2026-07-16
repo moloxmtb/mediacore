@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSlideOverAutoClose } from "./SlideOver";
 import type { FormState } from "@/app/(admin)/clientes/contexto-actions";
 import type { ClientPlanItem } from "@/lib/types";
 
@@ -18,6 +19,7 @@ export default function PlanItemForm({
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initial);
+  useSlideOverAutoClose(state.ok);
   return (
     <form action={formAction} className="form" style={{ maxWidth: "none" }}>
       <input type="hidden" name="client_id" value={clientId} />

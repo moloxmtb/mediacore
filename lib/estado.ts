@@ -162,3 +162,14 @@ export const invitationTone: Record<InvitationStatus, Tone> = {
   rebotado: "bad",
   fallido: "bad",
 };
+
+/**
+ * Contratos: activo / pausado / cerrado. El MAPA no los cubre (§8 habla de
+ * CUOTAS, no del contrato), pero heredan la misma gramática de ciclo de vida
+ * que cliente y proyecto: vigente → verde, en pausa → ámbar, cerrado → gris.
+ * `Contract.status` es texto libre en la tabla, así que un valor desconocido
+ * cae a neutro en vez de romper.
+ */
+export function contractTone(status: string): Tone {
+  return status === "activo" ? "ok" : status === "pausado" ? "wait" : "neutral";
+}

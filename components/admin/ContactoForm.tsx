@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSlideOverAutoClose } from "./SlideOver";
 import type { FormState } from "@/app/(admin)/clientes/ficha-actions";
 import type { ClientContact } from "@/lib/types";
 
@@ -18,6 +19,7 @@ export default function ContactoForm({
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initial);
+  useSlideOverAutoClose(state.ok);
   return (
     <form action={formAction} className="form" style={{ maxWidth: "none" }}>
       <input type="hidden" name="client_id" value={clientId} />

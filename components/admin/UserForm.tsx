@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSlideOverAutoClose } from "./SlideOver";
 import type { FormState } from "@/app/(admin)/clientes/usuarios-actions";
 import { CLIENT_ROLE_LABELS } from "@/lib/format";
 
@@ -14,6 +15,7 @@ export default function UserForm({
   clientId: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initial);
+  useSlideOverAutoClose(state.ok);
   return (
     <form action={formAction} className="form" style={{ maxWidth: "none" }}>
       <input type="hidden" name="client_id" value={clientId} />
