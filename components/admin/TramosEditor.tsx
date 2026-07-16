@@ -108,7 +108,7 @@ export default function TramosEditor({
         ))}
       </div>
 
-      <button type="button" className="btn btn-sm" onClick={addTramo} style={{ width: "fit-content" }}>
+      <button type="button" className="dbtn dbtn-sm" onClick={addTramo} style={{ width: "fit-content" }}>
         + Agregar tramo
       </button>
 
@@ -133,7 +133,7 @@ export default function TramosEditor({
       </div>
 
       {state.error && <div className="form-error">{state.error}</div>}
-      {state.message && <span className="badge-soft">{state.message}</span>}
+      {state.message && <span className="dchip" style={{ ["--st" as string]: "var(--st-ok)" }}>{state.message}</span>}
       {state.needsConfirm && (
         <div className="form-error" style={{ background: "var(--warn-dim)", color: "var(--warn)", borderColor: "rgba(224,166,60,.3)" }}>
           Este contrato ya tiene {(state.counts?.proyectadas ?? 0) + (state.counts?.billed ?? 0)} cuotas
@@ -147,7 +147,7 @@ export default function TramosEditor({
           type="submit"
           name="confirm"
           value="generar"
-          className="btn btn-primary"
+          className="dbtn dbtn-primary"
           disabled={pending || !valid}
         >
           {pending ? "Generando…" : "Generar cuotas"}
@@ -157,7 +157,7 @@ export default function TramosEditor({
             type="submit"
             name="confirm"
             value="force"
-            className="btn btn-danger"
+            className="dbtn dbtn-danger"
             disabled={pending || !valid}
           >
             Borrar proyectadas y regenerar ({state.counts?.proyectadas ?? 0})

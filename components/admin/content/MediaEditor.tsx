@@ -62,7 +62,7 @@ function AddImageForm({ versionId }: { versionId: string }) {
       </div>
       {state.error && <div className="form-error">{state.error}</div>}
       <div className="form-actions">
-        <button className="btn btn-sm btn-primary" disabled={pending}>{pending ? "Subiendo…" : "Agregar imagen"}</button>
+        <button className="dbtn dbtn-primary dbtn-sm" disabled={pending}>{pending ? "Subiendo…" : "Agregar imagen"}</button>
       </div>
     </form>
   );

@@ -44,9 +44,9 @@ export default function NuevoEntregableForm({
       </div>
 
       {state.error && <div className="form-error">{state.error}</div>}
-      {state.ok && !state.error && <span className="badge-soft">Borrador creado (archivo bloqueado al cliente)</span>}
+      {state.ok && !state.error && <span className="dchip" style={{ ["--st" as string]: "var(--st-ok)" }}>Borrador creado (archivo bloqueado al cliente)</span>}
       <div className="form-actions">
-        <button className="btn btn-primary" disabled={pending || !projects.length}>
+        <button className="dbtn dbtn-primary" disabled={pending || !projects.length}>
           {pending ? "Creando…" : "Crear borrador"}
         </button>
       </div>

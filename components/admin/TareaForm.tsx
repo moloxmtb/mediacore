@@ -86,9 +86,9 @@ export default function TareaForm({
       </div>
 
       {state.error && <div className="form-error">{state.error}</div>}
-      {state.ok && !state.error && <span className="badge-soft">Tarea creada</span>}
+      {state.ok && !state.error && <span className="dchip" style={{ ["--st" as string]: "var(--st-ok)" }}>Tarea creada</span>}
       <div className="form-actions">
-        <button className="btn btn-primary" disabled={pending || !clients.length}>
+        <button className="dbtn dbtn-primary" disabled={pending || !clients.length}>
           {pending ? "Creando…" : "Crear tarea"}
         </button>
       </div>

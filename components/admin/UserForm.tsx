@@ -39,9 +39,9 @@ export default function UserForm({
         Se le enviará un correo con un enlace para que fije su contraseña.
       </span>
       {state.error && <div className="form-error">{state.error}</div>}
-      {state.ok && !state.error && <span className="badge-soft">Invitación enviada</span>}
+      {state.ok && !state.error && <span className="dchip" style={{ ["--st" as string]: "var(--st-ok)" }}>Invitación enviada</span>}
       <div className="form-actions">
-        <button className="btn btn-primary" disabled={pending}>
+        <button className="dbtn dbtn-primary" disabled={pending}>
           {pending ? "Invitando…" : "Invitar usuario"}
         </button>
       </div>

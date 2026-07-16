@@ -31,7 +31,7 @@ export default function AgendarSolicitudForm({
   return (
     <div style={{ display: "flex", gap: "8px", alignItems: "flex-start", flexWrap: "wrap" }}>
       <details>
-        <summary className="btn btn-sm btn-primary">Agendar</summary>
+        <summary className="dbtn dbtn-primary dbtn-sm">Agendar</summary>
         <form className="form" style={{ maxWidth: "none", marginTop: "8px", minWidth: "260px" }}>
           <input type="hidden" name="id" value={requestId} />
           <input type="hidden" name="client_id" value={clientId} />
@@ -45,7 +45,7 @@ export default function AgendarSolicitudForm({
           </div>
           <span className="hint">Crea el evento y lo sincroniza con el Google Calendar del cliente.</span>
           <div className="form-actions">
-            <button className="btn btn-sm btn-primary" formAction={agendarYCrearEvento}>Agendar y crear evento</button>
+            <button className="dbtn dbtn-primary dbtn-sm" formAction={agendarYCrearEvento}>Agendar y crear evento</button>
           </div>
         </form>
       </details>

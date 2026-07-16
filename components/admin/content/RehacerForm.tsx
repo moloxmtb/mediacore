@@ -12,7 +12,7 @@ export default function RehacerForm({ pieceId }: { pieceId: string }) {
   return (
     <form action={formAction} style={{ display: "inline-flex", flexDirection: "column", gap: "4px" }}>
       <input type="hidden" name="piece_id" value={pieceId} />
-      <button className="btn btn-sm" type="submit" disabled={pending}>
+      <button className="dbtn dbtn-sm" type="submit" disabled={pending}>
         {pending ? "Copiando medios…" : "Rehacer (nueva versión)"}
       </button>
       {state.error && <div className="form-error">{state.error}</div>}

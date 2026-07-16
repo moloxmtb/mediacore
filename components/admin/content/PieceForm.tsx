@@ -29,9 +29,9 @@ export default function PieceForm({
         <textarea name="body" placeholder="El texto que acompaña la pieza…" />
       </div>
       {state.error && <div className="form-error">{state.error}</div>}
-      {state.ok && <span className="badge-soft">Pieza creada — ahora agrégale medios</span>}
+      {state.ok && <span className="dchip" style={{ ["--st" as string]: "var(--st-ok)" }}>Pieza creada — ahora agrégale medios</span>}
       <div className="form-actions">
-        <button className="btn btn-primary" disabled={pending}>
+        <button className="dbtn dbtn-primary" disabled={pending}>
           {pending ? "Creando…" : submitLabel}
         </button>
       </div>

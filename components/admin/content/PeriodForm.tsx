@@ -59,7 +59,7 @@ export default function PeriodForm({
       </div>
       {state.error && <div className="form-error">{state.error}</div>}
       <div className="form-actions">
-        <button className="btn btn-primary" disabled={pending}>
+        <button className="dbtn dbtn-primary" disabled={pending}>
           {pending ? "Creando…" : "Crear período"}
         </button>
       </div>

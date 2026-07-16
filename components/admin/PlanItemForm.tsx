@@ -42,9 +42,9 @@ export default function PlanItemForm({
         <textarea name="description" defaultValue={item?.description ?? ""} placeholder="Qué incluye este ítem" />
       </div>
       {state.error && <div className="form-error">{state.error}</div>}
-      {state.ok && <span className="badge-soft">Ítem guardado</span>}
+      {state.ok && <span className="dchip" style={{ ["--st" as string]: "var(--st-ok)" }}>Ítem guardado</span>}
       <div className="form-actions">
-        <button className="btn btn-primary btn-sm" disabled={pending}>
+        <button className="dbtn dbtn-primary dbtn-sm" disabled={pending}>
           {pending ? "Guardando…" : submitLabel}
         </button>
       </div>

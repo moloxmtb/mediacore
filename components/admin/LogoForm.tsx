@@ -40,9 +40,9 @@ export default function LogoForm({
             </span>
           </div>
           {state.error && <div className="form-error">{state.error}</div>}
-          {state.ok && <span className="badge-soft">Logo guardado</span>}
+          {state.ok && <span className="dchip" style={{ ["--st" as string]: "var(--st-ok)" }}>Logo guardado</span>}
           <div className="form-actions">
-            <button className="btn btn-sm btn-primary" disabled={pending}>
+            <button className="dbtn dbtn-primary dbtn-sm" disabled={pending}>
               {pending ? "Subiendo…" : logoUrl ? "Reemplazar logo" : "Subir logo"}
             </button>
           </div>

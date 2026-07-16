@@ -40,7 +40,7 @@ export default function AddVideoForm({ versionId }: { versionId: string }) {
       </div>
       {state.error && <div className="form-error">{state.error}</div>}
       <div className="form-actions">
-        <button className="btn btn-sm btn-primary" disabled={pending || !parsed}>
+        <button className="dbtn dbtn-primary dbtn-sm" disabled={pending || !parsed}>
           {pending ? "Agregando…" : "Agregar video"}
         </button>
       </div>

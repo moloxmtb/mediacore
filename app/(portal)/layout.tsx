@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { redirect } from "next/navigation";
 import PortalNav from "@/components/portal/PortalNav";
 import Brand from "@/components/Brand";
@@ -108,7 +109,13 @@ export default async function PortalLayout({
         </>
       }
     >
-      {children}
+      {/* El portal comparte formularios con el panel (ficha, contactos, Gantt).
+          Esos botones ahora se pintan con `--sec`, el tono de sección del panel;
+          aquí no hay secciones de color, así que se ancla al acento del portal
+          para que sigan viéndose igual que siempre. */}
+      <div style={{ ["--sec" as string]: "var(--accent)" } as CSSProperties}>
+        {children}
+      </div>
       <SystemFooter />
     </AppShell>
   );
