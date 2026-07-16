@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { AdminRole } from "@/lib/types";
 import { canSeeAdminSection, type AdminSection } from "@/lib/admin-sections";
 
-type Item = { href: string; label: string; icon: ReactNode };
+// `sec`: color de sección (token --sec-* del sistema v2). Ausente = neutro.
+type Item = { href: string; label: string; icon: ReactNode; sec?: string };
 type Group = { label: string; items: Item[] };
 
 const groups: Group[] = [
@@ -28,6 +29,7 @@ const groups: Group[] = [
       {
         href: "/clientes",
         label: "Clientes",
+        sec: "var(--sec-clientes)",
         icon: (
           <svg viewBox="0 0 24 24">
             <circle cx="9" cy="7" r="3" />
@@ -40,6 +42,7 @@ const groups: Group[] = [
       {
         href: "/proyectos",
         label: "Proyectos",
+        sec: "var(--sec-proyectos)",
         icon: (
           <svg viewBox="0 0 24 24">
             <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -49,6 +52,7 @@ const groups: Group[] = [
       {
         href: "/gantt",
         label: "Carta Gantt",
+        sec: "var(--sec-proyectos)",
         icon: (
           <svg viewBox="0 0 24 24">
             <line x1="8" y1="6" x2="21" y2="6" />
@@ -60,6 +64,7 @@ const groups: Group[] = [
       {
         href: "/calendario",
         label: "Calendario",
+        sec: "var(--sec-calendario)",
         icon: (
           <svg viewBox="0 0 24 24">
             <rect x="3" y="4" width="18" height="18" rx="2" />
@@ -72,6 +77,7 @@ const groups: Group[] = [
       {
         href: "/entregables",
         label: "Entregables",
+        sec: "var(--sec-entregables)",
         icon: (
           <svg viewBox="0 0 24 24">
             <path d="M21 8v13H3V8" />
@@ -83,6 +89,7 @@ const groups: Group[] = [
       {
         href: "/contenido",
         label: "Contenido",
+        sec: "var(--sec-contenido)",
         icon: (
           <svg viewBox="0 0 24 24">
             <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -94,10 +101,27 @@ const groups: Group[] = [
       {
         href: "/tareas",
         label: "Tareas",
+        sec: "var(--sec-tareas)",
         icon: (
           <svg viewBox="0 0 24 24">
             <path d="M9 11l3 3L22 4" />
             <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+          </svg>
+        ),
+      },
+      {
+        // Historial de actividad — vive en Operación, no en Finanzas.
+        href: "/acciones",
+        label: "Bitácora",
+        sec: "var(--sec-bitacora)",
+        icon: (
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2v4" />
+            <path d="M12 18v4" />
+            <path d="m4.9 4.9 2.9 2.9" />
+            <path d="m16.2 16.2 2.9 2.9" />
+            <path d="M2 12h4" />
+            <path d="M18 12h4" />
           </svg>
         ),
       },
@@ -109,24 +133,11 @@ const groups: Group[] = [
       {
         href: "/cobros",
         label: "Cobros y contratos",
+        sec: "var(--sec-cobros)",
         icon: (
           <svg viewBox="0 0 24 24">
             <rect x="2" y="5" width="20" height="14" rx="2" />
             <line x1="2" y1="10" x2="22" y2="10" />
-          </svg>
-        ),
-      },
-      {
-        href: "/acciones",
-        label: "Bitácora",
-        icon: (
-          <svg viewBox="0 0 24 24">
-            <path d="M12 2v4" />
-            <path d="M12 18v4" />
-            <path d="m4.9 4.9 2.9 2.9" />
-            <path d="m16.2 16.2 2.9 2.9" />
-            <path d="M2 12h4" />
-            <path d="M18 12h4" />
           </svg>
         ),
       },
@@ -186,6 +197,7 @@ export default function AdminNav({ adminRole }: { adminRole: AdminRole | null })
                   key={item.href}
                   href={item.href}
                   className={`nav-item${active ? " active" : ""}`}
+                  style={item.sec ? ({ "--nav-sec": item.sec } as CSSProperties) : undefined}
                 >
                   {item.icon}
                   {item.label}

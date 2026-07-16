@@ -58,7 +58,7 @@ html {
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--surface-page);
   color: var(--text);
   font-family: var(--font-plex-sans), system-ui, sans-serif;
   font-size: 14px;
@@ -143,11 +143,12 @@ h3 {
   display: grid;
   grid-template-columns: 232px 1fr;
   min-height: 100vh;
+  background: var(--surface-page);
 }
 
 .sidebar {
-  background: var(--panel);
-  border-right: 1px solid var(--border);
+  background: var(--surface-panel);
+  border-right: 0.5px solid var(--v2-line);
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -158,7 +159,7 @@ h3 {
 .sidebar-brand {
   display: flex;
   align-items: stretch;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 0.5px solid var(--v2-line);
 }
 .sidebar-brand .brand-txt {
   padding: 20px 18px;
@@ -185,19 +186,23 @@ h3 {
   flex: 1;
 }
 .nav-label {
-  color: var(--faint);
+  color: var(--tx-3);
   font-size: 10px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   padding: 14px 10px 6px;
 }
 .nav-item {
+  /* --nav-sec: color de la sección (lo inyecta AdminNav por ítem). Los ítems
+     neutros (Resumen, Sistema) no lo definen → caen a este default. */
+  --nav-sec: var(--tx-2);
+  position: relative;
   display: flex;
   align-items: center;
   gap: 11px;
   padding: 9px 10px;
   border-radius: 8px;
-  color: var(--muted);
+  color: var(--tx-2);
   cursor: pointer;
   border: none;
   background: none;
@@ -210,26 +215,39 @@ h3 {
     background 0.12s,
     color 0.12s;
 }
+/* Icono coloreado por su sección; el rótulo se mantiene neutro. */
 .nav-item svg {
   width: 17px;
   height: 17px;
   flex-shrink: 0;
+  color: var(--nav-sec);
   stroke: currentColor;
   fill: none;
   stroke-width: 1.6;
 }
 .nav-item:hover {
-  background: var(--panel-2);
-  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--tx-1);
 }
+/* Activo: tinte del tono de la sección + barra izquierda de su color. */
 .nav-item.active {
-  background: var(--accent-dim);
-  color: var(--accent);
+  background: color-mix(in srgb, var(--nav-sec) 13%, transparent);
+  color: var(--tx-1);
+}
+.nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--nav-sec);
 }
 
 .sidebar-who {
   padding: 14px 18px;
-  border-top: 1px solid var(--border);
+  border-top: 0.5px solid var(--v2-line);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -258,7 +276,7 @@ h3 {
 /* Identidad de la empresa del cliente (señal de pertenencia) */
 .sidebar-client {
   padding: 14px 18px 16px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 0.5px solid var(--v2-line);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -318,6 +336,7 @@ h3 {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  background: var(--surface-page);
 }
 
 /* ---------- Shell responsive: barra superior + drawer (SOLO móvil) ----------
@@ -1093,19 +1112,20 @@ a.cal-daynum-link:hover {
   justify-content: space-between;
   gap: 16px;
   padding: 18px 30px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 0.5px solid var(--v2-line);
   position: sticky;
   top: 0;
-  background: rgba(19, 21, 25, 0.82);
+  background: rgba(14, 20, 23, 0.82);
   backdrop-filter: blur(10px);
   z-index: 5;
 }
 .app-header h1 {
   font-size: 20px;
+  color: var(--tx-1);
 }
 .app-header p {
   margin: 2px 0 0;
-  color: var(--muted);
+  color: var(--tx-2);
   font-size: 12.5px;
 }
 .app-content {
@@ -2020,8 +2040,8 @@ tbody tr:hover {
     height: 56px;
     z-index: 50;
     padding: 0 12px;
-    background: var(--panel);
-    border-bottom: 1px solid var(--border);
+    background: var(--surface-panel);
+    border-bottom: 0.5px solid var(--v2-line);
   }
 
   /* El MISMO sidebar se vuelve drawer off-canvas (entra desde la izquierda). */
@@ -2082,9 +2102,13 @@ tbody tr:hover {
 }
 
 /* ============================================================
-   SISTEMA DE DISEÑO v2 (Media Core) — scopeado en .dsx
+   SISTEMA DE DISEÑO v2 (Media Core) — clases base
    El color SIEMPRE significa algo: sección/objeto, estado o cliente.
-   Se aplica sólo dentro de .dsx para no migrar el resto todavía.
+   Las clases de componente (d*, so-*, cli-sq, pay*) son BASE (sin scope): sus
+   nombres son únicos y no colisionan con las clases legacy. Los overrides de
+   campos/botones se acotan a sus contenedores v2 (.dbox, .so-panel) para no
+   tocar las páginas aún sin migrar. `.dsx` se mantiene como wrapper de página
+   (fondo/padding) para el piloto que todavía lo usa.
    ============================================================ */
 :root {
   /* Color por SECCIÓN / OBJETO (tono fijo por tipo) */
@@ -2101,92 +2125,120 @@ tbody tr:hover {
   --st-wait: #d99a3c;
   --st-bad: #e0607a;
   --st-neutral: #4a565b;
-}
-
-.dsx {
+  /* Superficies y neutros v2 (chrome compartido, promovidos desde .dsx para
+     que el shell —body, sidebar, header— los use, no solo el contenido .dsx) */
   --surface-page: #0a0e10;
   --surface-panel: #0e1417;
   --surface-field: #161e23;
   --tx-1: #e8eaea;
   --tx-2: #8a9499;
   --tx-3: #5c666b;
-  --sec: #8a9499; /* default neutro; cada .dbox lo sobrescribe */
+  --v2-line: rgba(255, 255, 255, 0.07);
+  --sec: #8a9499; /* tono de sección por defecto; cada página/box lo sobrescribe */
+}
+
+/* Wrapper de página del piloto (aún en .dsx). Las páginas migradas no lo usan:
+   toman el fondo de .app-main y fijan --sec en su propio contenedor. */
+.dsx {
   background: var(--surface-page);
   color: var(--tx-1);
   padding: 22px 26px 60px;
   min-height: 100%;
 }
-.dsx .dback {
+.dback {
   display: inline-flex; align-items: center; gap: 6px;
   color: var(--tx-2); font-size: 13px; text-decoration: none; margin-bottom: 18px;
 }
-.dsx .dback:hover { color: var(--tx-1); }
-.dsx .dstack { display: flex; flex-direction: column; gap: 18px; }
+.dback:hover { color: var(--tx-1); }
+.dstack { display: flex; flex-direction: column; gap: 18px; }
 
 /* ---------- Recuadro / panel ---------- */
-.dsx .dbox {
+.dbox {
   background: var(--surface-panel);
   border: 0.5px solid rgba(255,255,255,.06);
   border-radius: 12px;
   overflow: hidden;
 }
-.dsx .dbox-head {
+.dbox-head {
   display: flex; align-items: center; gap: 10px;
   padding: 13px 16px;
   background: color-mix(in srgb, var(--sec) 10%, transparent);
   border-bottom: 0.5px solid rgba(255,255,255,.06);
 }
-.dsx .dbox-head .dh-ico { color: var(--sec); display: inline-flex; }
-.dsx .dbox-head .dh-ico svg { width: 17px; height: 17px; display: block; }
-.dsx .dbox-head h3 {
+.dbox-head .dh-ico { color: var(--sec); display: inline-flex; }
+.dbox-head .dh-ico svg { width: 17px; height: 17px; display: block; }
+.dbox-head h3 {
   margin: 0; font-size: 14px; font-weight: 600; letter-spacing: .1px;
   color: color-mix(in srgb, var(--sec) 72%, #ffffff);
 }
-.dsx .dbox-head .dcount {
+.dbox-head .dcount {
   font-family: var(--font-mono); font-size: 11px; font-weight: 600;
   color: var(--sec);
   background: color-mix(in srgb, var(--sec) 16%, transparent);
   border-radius: 20px; padding: 2px 9px; line-height: 1.4;
 }
-.dsx .dbox-head .dhead-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-.dsx .dbox-body { padding: 16px; }
-.dsx .dbox-body + .dbox-body { border-top: 0.5px solid rgba(255,255,255,.06); }
+.dbox-head .dhead-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.dbox-body { padding: 16px; }
+.dbox-body + .dbox-body { border-top: 0.5px solid rgba(255,255,255,.06); }
 
 /* Cabecera colapsable */
-.dsx .dbox-head-toggle { cursor: pointer; user-select: none; }
-.dsx .dbox-head-toggle:hover { background: color-mix(in srgb, var(--sec) 15%, transparent); }
-.dsx .dbox-caret { color: var(--sec); display: inline-flex; opacity: .85; margin-right: -2px; }
-.dsx .dbox-caret svg { width: 15px; height: 15px; display: block; transition: transform .15s ease; }
-.dsx .dbox-head-toggle.is-open .dbox-caret svg { transform: rotate(90deg); }
-.dsx .dcollapse-ctl { display: flex; gap: 8px; justify-content: flex-end; margin: -2px 0 2px; }
+.dbox-head-toggle { cursor: pointer; user-select: none; }
+.dbox-head-toggle:hover { background: color-mix(in srgb, var(--sec) 15%, transparent); }
+.dbox-caret { color: var(--sec); display: inline-flex; opacity: .85; margin-right: -2px; }
+.dbox-caret svg { width: 15px; height: 15px; display: block; transition: transform .15s ease; }
+.dbox-head-toggle.is-open .dbox-caret svg { transform: rotate(90deg); }
+.dcollapse-ctl { display: flex; gap: 8px; justify-content: flex-end; margin: -2px 0 2px; }
+
+/* ---------- Tarjetas de resumen por ESTADO (fondo teñido completo) ----------
+   Cada tarjeta fija --st (ok/wait/bad); el fondo entero se tiñe con ese tono. */
+.paygrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.paycard {
+  background: color-mix(in srgb, var(--st) 14%, var(--surface-panel));
+  border: 0.5px solid color-mix(in srgb, var(--st) 34%, transparent);
+  border-radius: 12px; padding: 15px 18px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.paycard .plabel {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 600;
+  color: color-mix(in srgb, var(--st) 64%, #ffffff);
+}
+.paycard .plabel::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--st); }
+.paycard .pval {
+  font-family: var(--font-mono); font-size: 25px; font-weight: 600;
+  letter-spacing: -.01em; color: var(--tx-1); line-height: 1;
+}
 
 /* ---------- Botones (un primario por contexto, en tono de sección) ---------- */
-.dsx .dbtn {
+.dbtn {
   display: inline-flex; align-items: center; gap: 6px;
   font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1;
   padding: 7px 12px; border-radius: 8px; cursor: pointer;
   background: transparent; color: var(--tx-1);
   border: 0.5px solid rgba(255,255,255,.18);
-  text-decoration: none; transition: background .12s, border-color .12s;
+  text-decoration: none; white-space: nowrap; transition: background .12s, border-color .12s;
 }
-.dsx .dbtn:hover { background: rgba(255,255,255,.05); }
-.dsx .dbtn-primary {
+.dbtn:hover { background: rgba(255,255,255,.05); }
+.dbtn-primary {
   border: none;
   background: var(--sec); color: #0a0e10;
 }
-.dsx .dbtn-primary:hover { background: color-mix(in srgb, var(--sec) 88%, #ffffff); }
-.dsx .dbtn-sm { padding: 5px 10px; font-size: 12px; }
+.dbtn-primary:hover { background: color-mix(in srgb, var(--sec) 88%, #ffffff); }
+.dbtn-sm { padding: 5px 10px; font-size: 12px; }
 
-/* Overrides para los form components compartidos (usan .btn dentro de .dsx) */
-.dsx .btn { border-radius: 8px; border: 0.5px solid rgba(255,255,255,.18); background: transparent; color: var(--tx-1); }
-.dsx .btn:hover { background: rgba(255,255,255,.05); }
-.dsx .btn-primary { border: none; background: var(--sec); color: #0a0e10; }
-.dsx .btn-primary:hover { background: color-mix(in srgb, var(--sec) 88%, #ffffff); }
+/* Overrides para los form components compartidos (.btn dentro de cajas v2) */
+.dbox .btn, .so-panel .btn { border-radius: 8px; border: 0.5px solid rgba(255,255,255,.18); background: transparent; color: var(--tx-1); }
+.dbox .btn:hover, .so-panel .btn:hover { background: rgba(255,255,255,.05); }
+.dbox .btn-primary, .so-panel .btn-primary { border: none; background: var(--sec); color: #0a0e10; }
+.dbox .btn-primary:hover, .so-panel .btn-primary:hover { background: color-mix(in srgb, var(--sec) 88%, #ffffff); }
 
-/* ---------- Campos de texto visibles ---------- */
-.dsx input:not([type=checkbox]):not([type=radio]):not([type=file]),
-.dsx select,
-.dsx textarea {
+/* ---------- Campos de texto visibles (dentro de cajas / slide-overs v2) ---------- */
+.dbox input:not([type=checkbox]):not([type=radio]):not([type=file]),
+.dbox select,
+.dbox textarea,
+.so-panel input:not([type=checkbox]):not([type=radio]):not([type=file]),
+.so-panel select,
+.so-panel textarea {
   background: var(--surface-field);
   border: 1px solid rgba(255,255,255,.15);
   border-radius: 8px;
@@ -2194,66 +2246,72 @@ tbody tr:hover {
   padding: 9px 11px; font-size: 13.5px;
   transition: border-color .12s, box-shadow .12s;
 }
-.dsx input:not([type=checkbox]):not([type=radio]):not([type=file]):focus,
-.dsx select:focus,
-.dsx textarea:focus {
+.dbox input:not([type=checkbox]):not([type=radio]):not([type=file]):focus,
+.dbox select:focus,
+.dbox textarea:focus,
+.so-panel input:not([type=checkbox]):not([type=radio]):not([type=file]):focus,
+.so-panel select:focus,
+.so-panel textarea:focus {
   outline: none;
   border: 1.5px solid var(--sec);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--sec) 16%, transparent);
 }
-.dsx label { color: var(--tx-2); font-size: 12px; }
+.dbox label, .so-panel label { color: var(--tx-2); font-size: 12px; }
 
 /* ---------- Tabla ---------- */
-.dsx .dtable { width: 100%; border-collapse: collapse; font-size: 13px; }
-.dsx .dtable thead th {
+.dtable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dtable thead th {
   text-align: left; padding: 8px 14px;
   font-size: 10.5px; letter-spacing: .8px; text-transform: uppercase;
   color: var(--tx-3); font-weight: 600; font-family: var(--font-mono);
   border-bottom: 0.5px solid rgba(255,255,255,.06);
 }
-.dsx .dtable td { padding: 10px 14px; border-bottom: 0.5px solid rgba(255,255,255,.045); color: var(--tx-1); }
-.dsx .dtable tbody tr:last-child td { border-bottom: none; }
-.dsx .dtable .num { text-align: right; font-family: var(--font-mono); }
-.dsx .dtable .mut { color: var(--tx-2); }
-.dsx .dtable .mono { font-family: var(--font-mono); }
+.dtable td { padding: 10px 14px; border-bottom: 0.5px solid rgba(255,255,255,.045); color: var(--tx-1); vertical-align: middle; }
+.dtable tbody tr { transition: background .1s; }
+.dtable tbody tr:hover { background: rgba(255,255,255,.022); }
+.dtable tbody tr:last-child td { border-bottom: none; }
+.dtable .num { text-align: right; font-family: var(--font-mono); }
+.dtable .mut { color: var(--tx-2); }
+.dtable .mono { font-family: var(--font-mono); }
 /* Borde izquierdo por estado */
-.dsx .drow > td:first-child { border-left: 3px solid var(--st, transparent); }
+.drow > td:first-child { border-left: 3px solid var(--st, transparent); }
 
 /* ---------- Chip de ESTADO (semántico) ---------- */
-.dsx .dchip {
+.dchip {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 11.5px; font-weight: 600; line-height: 1;
   padding: 4px 9px; border-radius: 6px;
   background: color-mix(in srgb, var(--st) 15%, transparent);
   color: color-mix(in srgb, var(--st) 70%, #ffffff);
 }
-.dsx .dchip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--st); }
+.dchip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--st); }
 
 /* ---------- Chip de TIPO (pill borde, sin relleno) ---------- */
-.dsx .dtype {
+.dtype {
   display: inline-flex; align-items: center;
   font-size: 11px; font-weight: 500; line-height: 1;
   padding: 3px 9px; border-radius: 20px;
   border: 0.5px solid rgba(255,255,255,.18); color: var(--tx-2);
 }
 
-/* ---------- Identidad de cliente (cuadradito) ---------- */
+/* ---------- Identidad de cliente (cuadradito) ----------
+   `.cli` se mantiene scopeada (colisiona con la legacy); `.cli-sq` es base. */
 .dsx .cli { display: inline-flex; align-items: center; gap: 8px; }
-.dsx .cli-sq { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+.cli-sq { width: 11px; height: 11px; border-radius: 3px; flex: none; }
 
 /* ---------- Acciones por fila (iconos) ---------- */
-.dsx .dacts { display: inline-flex; gap: 4px; align-items: center; justify-content: flex-end; }
-.dsx .dact {
+.dacts { display: inline-flex; gap: 4px; align-items: center; justify-content: flex-end; }
+.dact {
   display: inline-flex; align-items: center; justify-content: center;
   width: 28px; height: 28px; border-radius: 7px; cursor: pointer;
   background: transparent; border: none; color: var(--tx-2);
   transition: background .12s, color .12s;
 }
-.dsx .dact svg { width: 15px; height: 15px; }
-.dsx .dact:hover { background: rgba(255,255,255,.06); color: var(--tx-1); }
-.dsx .dact-del:hover { color: var(--st-bad); background: color-mix(in srgb, var(--st-bad) 14%, transparent); }
-.dsx .dact[data-tip] { position: relative; }
-.dsx .dact[data-tip]:hover::after {
+.dact svg { width: 15px; height: 15px; }
+.dact:hover { background: rgba(255,255,255,.06); color: var(--tx-1); }
+.dact-del:hover { color: var(--st-bad); background: color-mix(in srgb, var(--st-bad) 14%, transparent); }
+.dact[data-tip] { position: relative; }
+.dact[data-tip]:hover::after {
   content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); right: 0;
   white-space: nowrap; font-size: 11px; font-family: var(--font-sans);
   background: #05080a; color: var(--tx-1); border: 0.5px solid rgba(255,255,255,.1);
@@ -2261,30 +2319,32 @@ tbody tr:hover {
 }
 
 /* ---------- Estado vacío ---------- */
-.dsx .dempty {
+.dempty {
   padding: 26px 16px; text-align: center; color: var(--tx-2); font-size: 13px;
   display: flex; flex-direction: column; align-items: center; gap: 12px;
 }
 
 /* ---------- Slide-over (crear/editar) ---------- */
-.dsx .so-overlay {
+.so-overlay {
   position: fixed; inset: 0; background: rgba(3,6,8,.6);
   z-index: 60; animation: so-fade .14s ease;
 }
-.dsx .so-panel {
+.so-panel {
   position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 92vw);
   background: var(--surface-panel); border-left: 0.5px solid rgba(255,255,255,.1);
   z-index: 61; display: flex; flex-direction: column;
   box-shadow: -20px 0 50px rgba(0,0,0,.4); animation: so-slide .18s ease;
 }
-.dsx .so-head {
+.so-head {
   display: flex; align-items: center; gap: 10px; padding: 16px 20px;
   border-bottom: 0.5px solid rgba(255,255,255,.06);
   background: color-mix(in srgb, var(--sec) 10%, transparent);
 }
-.dsx .so-head h4 { margin: 0; font-size: 14px; font-weight: 600; color: color-mix(in srgb, var(--sec) 72%, #ffffff); }
-.dsx .so-close { margin-left: auto; background: transparent; border: none; color: var(--tx-2); cursor: pointer; font-size: 20px; line-height: 1; }
-.dsx .so-close:hover { color: var(--tx-1); }
-.dsx .so-body { padding: 20px; overflow-y: auto; }
+.so-head h4 { margin: 0; font-size: 14px; font-weight: 600; color: color-mix(in srgb, var(--sec) 72%, #ffffff); }
+.so-close { margin-left: auto; background: transparent; border: none; color: var(--tx-2); cursor: pointer; font-size: 20px; line-height: 1; }
+.so-close:hover { color: var(--tx-1); }
+.so-body { padding: 20px; overflow-y: auto; }
+.so-form { display: flex; flex-direction: column; gap: 12px; }
+.so-form label { display: block; margin-bottom: 5px; }
 @keyframes so-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes so-slide { from { transform: translateX(20px); opacity: .4; } to { transform: none; opacity: 1; } }

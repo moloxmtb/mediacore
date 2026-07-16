@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import type { FormState } from "@/app/(admin)/cobros/actions";
 import type { Installment } from "@/lib/types";
+import { useSlideOverAutoClose } from "@/components/admin/SlideOver";
 
 const initial: FormState = { error: null };
 
@@ -14,6 +15,7 @@ export default function CuotaEditForm({
   installment: Installment;
 }) {
   const [state, formAction, pending] = useActionState(action, initial);
+  useSlideOverAutoClose(state.ok); // cierra el slide-over al guardar (no-op fuera de él)
   const netDefault =
     installment.currency === "UF"
       ? (installment.net_uf ?? "")
