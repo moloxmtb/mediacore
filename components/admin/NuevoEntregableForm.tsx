@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSlideOverAutoClose } from "@/components/admin/SlideOver";
 import { crearBorrador, type FormState } from "@/app/(admin)/entregables/aprobacion-actions";
 
 const initial: FormState = { error: null };
@@ -13,6 +14,7 @@ export default function NuevoEntregableForm({
   projects: { id: string; name: string; clientName: string }[];
 }) {
   const [state, formAction, pending] = useActionState(crearBorrador, initial);
+  useSlideOverAutoClose(state.ok);
 
   return (
     <form action={formAction} className="form" style={{ maxWidth: "none" }}>

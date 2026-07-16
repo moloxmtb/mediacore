@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { useSlideOverAutoClose } from "@/components/admin/SlideOver";
 import { crearTarea, type FormState } from "@/app/(admin)/tareas/actions";
 import type { TaskType } from "@/lib/types";
 
@@ -20,6 +21,7 @@ export default function TareaForm({
   portalByClient: Record<string, Person[]>;
 }) {
   const [state, formAction, pending] = useActionState(crearTarea, initial);
+  useSlideOverAutoClose(state.ok);
   const [empresa, setEmpresa] = useState(clients[0]?.id ?? "");
   const [tipo, setTipo] = useState<TaskType>("interna");
   const [responsable, setResponsable] = useState("");

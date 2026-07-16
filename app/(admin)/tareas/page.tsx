@@ -1,16 +1,19 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import TareaForm from "@/components/admin/TareaForm";
 import NotificarButton from "@/components/admin/NotificarButton";
+import SlideOver from "@/components/admin/SlideOver";
+import StateChip from "@/components/admin/StateChip";
 import { requireAdminRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   TASK_TYPE_LABELS,
   TASK_STATUS_LABELS,
-  taskStatusBadge,
   formatDate,
 } from "@/lib/format";
+import { stStyle as st, taskTone, todaySantiago } from "@/lib/estado";
 import type { TaskStatus, TaskType } from "@/lib/types";
 import { marcarHecha, confirmarTarea, reabrirTarea } from "./actions";
 
@@ -27,6 +30,14 @@ type Row = {
 };
 
 const ESTADOS: TaskStatus[] = ["pendiente", "hecha", "confirmada"];
+const SEC = "var(--sec-tareas)";
+
+const IcoCheck = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 11l3 3L22 4" />
+    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+  </svg>
+);
 
 export default async function TareasPage({
   searchParams,
@@ -89,145 +100,138 @@ export default async function TareasPage({
   const { data } = await q;
   const rows = (data ?? []) as unknown as Row[];
 
+  const hoy = todaySantiago();
+
   return (
     <>
       <PageHeader title="Tareas" subtitle="Pendientes internas y del cliente" />
-      <div className="app-content">
-        <div className="stack">
-          {/* Crear tarea */}
-          <div className="card">
-            <div className="card-head">
-              <h3>Nueva tarea</h3>
-            </div>
-            <div className="card-body">
-              <TareaForm
-                clients={clients}
-                internalMembers={internalMembers}
-                portalByClient={portalByClient}
-              />
+      <div className="app-content" style={{ ["--sec" as string]: SEC } as CSSProperties}>
+        <div className="dbox">
+          <div className="dbox-head">
+            <span className="dh-ico"><IcoCheck /></span>
+            <h3>Todas las tareas</h3>
+            <span className="dcount">{rows.length}</span>
+            <div className="dhead-actions">
+              <SlideOver title="Nueva tarea" sec={SEC} triggerClass="dbtn dbtn-primary dbtn-sm" trigger={<>+ Nueva tarea</>}>
+                <TareaForm clients={clients} internalMembers={internalMembers} portalByClient={portalByClient} />
+              </SlideOver>
             </div>
           </div>
 
-          {/* Lista + filtros */}
-          <div className="card">
-            <div className="card-head">
-              <h3>Todas las tareas</h3>
-              <span className="tag">{rows.length} registros</span>
-            </div>
+          {/* Filtros (GET: se reflejan en la URL) */}
+          <div className="dbox-body" style={{ borderBottom: "0.5px solid var(--v2-line)" }}>
+            <form method="get" style={{ display: "flex", gap: "14px", flexWrap: "wrap", alignItems: "flex-end" }}>
+              <div>
+                <label style={{ display: "block", marginBottom: "5px" }}>Estado</label>
+                <select name="estado" defaultValue={estadoFilter}>
+                  <option value="">Todos</option>
+                  {ESTADOS.map((e) => (
+                    <option key={e} value={e}>{TASK_STATUS_LABELS[e]}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: "block", marginBottom: "5px" }}>Empresa</label>
+                <select name="empresa" defaultValue={empresaFilter}>
+                  <option value="">Todas</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <button className="dbtn dbtn-sm" type="submit">Filtrar</button>
+              {(estadoFilter || empresaFilter) && (
+                <Link href="/tareas" className="dbtn dbtn-sm">Limpiar</Link>
+              )}
+            </form>
+          </div>
 
-            {/* Filtros (GET: se reflejan en la URL) */}
-            <div className="card-body" style={{ borderBottom: "1px solid var(--border-soft)" }}>
-              <form method="get" style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "flex-end" }}>
-                <div className="field" style={{ margin: 0 }}>
-                  <label>Estado</label>
-                  <select name="estado" defaultValue={estadoFilter}>
-                    <option value="">Todos</option>
-                    {ESTADOS.map((e) => (
-                      <option key={e} value={e}>{TASK_STATUS_LABELS[e]}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field" style={{ margin: 0 }}>
-                  <label>Empresa</label>
-                  <select name="empresa" defaultValue={empresaFilter}>
-                    <option value="">Todas</option>
-                    {clients.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <button className="btn btn-sm" type="submit">Filtrar</button>
-                {(estadoFilter || empresaFilter) && (
-                  <Link href="/tareas" className="btn btn-sm">Limpiar</Link>
-                )}
-              </form>
-            </div>
-
-            {rows.length ? (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Tarea</th>
-                    <th>Empresa</th>
-                    <th>Tipo</th>
-                    <th>Responsable</th>
-                    <th>Plazo</th>
-                    <th>Estado</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((t) => (
-                    <tr key={t.id}>
+          {rows.length ? (
+            <table className="dtable">
+              <thead>
+                <tr>
+                  <th>Tarea</th>
+                  <th>Empresa</th>
+                  <th>Tipo</th>
+                  <th>Responsable</th>
+                  <th>Plazo</th>
+                  <th>Estado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((t) => {
+                  // MAPA §3: pendiente vencida → rojo; hecha/confirmada → verde.
+                  const tone = taskTone(t.estado, t.plazo, hoy);
+                  const vencida = tone === "bad";
+                  return (
+                    <tr key={t.id} className="drow" style={st(tone)}>
                       <td>
                         <div style={{ fontWeight: 500 }}>{t.titulo}</div>
-                        {t.descripcion && (
-                          <div className="meta" style={{ marginTop: "2px" }}>{t.descripcion}</div>
-                        )}
+                        {t.descripcion && <div className="mut" style={{ marginTop: "2px", fontSize: "12px" }}>{t.descripcion}</div>}
                       </td>
                       <td>
-                        <Link href={`/clientes/${t.client_id}`} className="row-link">
-                          {t.clients?.name ?? "—"}
-                        </Link>
+                        <Link href={`/clientes/${t.client_id}`} className="row-link">{t.clients?.name ?? "—"}</Link>
                       </td>
+                      {/* Tipo (interna/cliente) = eje propio, pill de borde */}
+                      <td><span className="dtype">{TASK_TYPE_LABELS[t.tipo]}</span></td>
+                      <td className="mut">
+                        {t.responsable_id ? nameById.get(t.responsable_id) ?? "—" : <span className="mut">Sin asignar</span>}
+                      </td>
+                      <td className="mono mut">{formatDate(t.plazo)}</td>
                       <td>
-                        <span className="tag">{TASK_TYPE_LABELS[t.tipo]}</span>
-                      </td>
-                      <td style={{ color: "var(--muted)" }}>
-                        {t.responsable_id ? nameById.get(t.responsable_id) ?? "—" : <span className="meta">Sin asignar</span>}
-                      </td>
-                      <td className="mono" style={{ color: "var(--muted)" }}>
-                        {formatDate(t.plazo)}
-                      </td>
-                      <td>
-                        <span className={`badge ${taskStatusBadge(t.estado)}`}>
-                          {TASK_STATUS_LABELS[t.estado]}
-                        </span>
+                        <StateChip tone={tone} label={vencida ? "Atrasada" : TASK_STATUS_LABELS[t.estado]} />
                       </td>
                       <td className="num">
-                        <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", flexWrap: "wrap" }}>
+                        {/* Acción principal con texto en el tono; el resto, iconos. */}
+                        <div className="dacts">
                           {t.estado === "pendiente" && (
                             <form action={marcarHecha}>
                               <input type="hidden" name="id" value={t.id} />
-                              <button className="btn btn-sm" type="submit">Marcar hecha</button>
+                              <button className="dbtn dbtn-sm dbtn-primary" type="submit">Marcar hecha</button>
                             </form>
                           )}
                           {t.estado === "hecha" && (
                             <>
                               <form action={confirmarTarea}>
                                 <input type="hidden" name="id" value={t.id} />
-                                <button className="btn btn-sm btn-primary" type="submit">Confirmar</button>
+                                <button className="dbtn dbtn-sm dbtn-primary" type="submit">Confirmar</button>
                               </form>
                               <form action={reabrirTarea}>
                                 <input type="hidden" name="id" value={t.id} />
-                                <button className="btn btn-sm" type="submit">Reabrir</button>
+                                <button className="dact" data-tip="Reabrir" aria-label="Reabrir" type="submit">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>
+                                </button>
                               </form>
                             </>
                           )}
                           {t.estado === "confirmada" && (
                             <form action={reabrirTarea}>
                               <input type="hidden" name="id" value={t.id} />
-                              <button className="btn btn-sm" type="submit">Reabrir</button>
+                              <button className="dact" data-tip="Reabrir" aria-label="Reabrir" type="submit">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>
+                              </button>
                             </form>
                           )}
-                          {/* Notificar: render incondicional — la RLS ya limitó las
-                              filas a clientes que el actor puede ver = puede actuar
-                              (canActOnClient). No es owner-only como cobros. */}
-                          <NotificarButton kind="tarea" id={t.id} />
+                          {/* La RLS ya limitó las filas a clientes accionables (canActOnClient). */}
+                          <NotificarButton kind="tarea" id={t.id} icon sec={SEC} />
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <div className="empty">
-                {estadoFilter || empresaFilter
-                  ? "No hay tareas con esos filtros."
-                  : "Aún no hay tareas. Crea la primera arriba."}
-              </div>
-            )}
-          </div>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <div className="dempty">
+              <span>{estadoFilter || empresaFilter ? "No hay tareas con esos filtros." : "Aún no hay tareas."}</span>
+              {!estadoFilter && !empresaFilter && (
+                <SlideOver title="Nueva tarea" sec={SEC} triggerClass="dbtn dbtn-primary dbtn-sm" trigger={<>+ Nueva tarea</>}>
+                  <TareaForm clients={clients} internalMembers={internalMembers} portalByClient={portalByClient} />
+                </SlideOver>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </>
