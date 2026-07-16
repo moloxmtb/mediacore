@@ -2239,6 +2239,9 @@ tbody tr:hover {
 }
 .dbtn-primary:hover { background: color-mix(in srgb, var(--sec) 88%, #ffffff); }
 .dbtn-sm { padding: 5px 10px; font-size: 12px; }
+/* Acción destructiva con etiqueta de texto (cuando no cabe el icono papelera). */
+.dbtn-danger { border-color: color-mix(in srgb, var(--st-bad) 50%, transparent); color: var(--st-bad); }
+.dbtn-danger:hover { background: color-mix(in srgb, var(--st-bad) 12%, transparent); }
 
 /* Overrides para los form components compartidos (.btn dentro de cajas v2) */
 .dbox .btn, .so-panel .btn { border-radius: 8px; border: 0.5px solid rgba(255,255,255,.18); background: transparent; color: var(--tx-1); }

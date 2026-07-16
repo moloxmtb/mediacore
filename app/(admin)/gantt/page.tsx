@@ -1,7 +1,12 @@
+import type { CSSProperties } from "react";
+import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import GanttChart from "@/components/admin/GanttChart";
 import { createClient } from "@/lib/supabase/server";
 import type { Action, CalendarEvent, Deliverable, Phase } from "@/lib/types";
+
+// La Gantt es una vista de PROYECTOS: hereda su tono (el brief no le asigna uno propio).
+const SEC = "var(--sec-proyectos)";
 
 export default async function GanttPage({
   searchParams,
@@ -87,7 +92,7 @@ export default async function GanttPage({
         title="Carta Gantt"
         subtitle="Planificación y avance por proyecto"
       />
-      <div className="app-content">
+      <div className="app-content" style={{ ["--sec" as string]: SEC } as CSSProperties}>
         {projectList.length ? (
           <GanttChart
             projects={chips}
@@ -98,10 +103,10 @@ export default async function GanttPage({
             deliverablesByPhase={deliverablesByPhase}
           />
         ) : (
-          <div className="card">
-            <div className="empty">
-              Aún no hay proyectos. Crea uno y agrégale fases para ver su carta
-              Gantt.
+          <div className="dbox">
+            <div className="dempty">
+              <span>Aún no hay proyectos. Crea uno y agrégale fases para ver su carta Gantt.</span>
+              <Link href="/proyectos/nuevo" className="dbtn dbtn-primary dbtn-sm">+ Nuevo proyecto</Link>
             </div>
           </div>
         )}
