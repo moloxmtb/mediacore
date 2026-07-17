@@ -1389,3 +1389,27 @@ exactamente los permisos de visibilidad del dato (misma fuga que cerramos en Fas
 a quien tenga acceso" = calcular, por tipo de evento, quién puede ver ese dato según su rol, y notificar solo a
 esos. Es un sistema de permisos de notificación, no un botón. La notificación de entregables (arriba) es el
 primer caso que este sistema absorberá. POR DISEÑAR a fondo cuando Ismael lo priorice.
+
+## 🎨 Rediseño del sistema visual (v2) — HECHO (DESPLEGADO v1.16)
+
+**v1.16 — Rediseño del sistema visual (v2).** Color de dos capas: por sección/objeto +
+por estado (fuente única: MAPA-ESTADOS-COLORES.md + lib/estado.ts), identidad de
+cliente aparte. Recuadros con encabezado teñido por sección y colapsables donde hay
+varias secciones; acciones por fila como iconos con tooltip (botón con texto para la
+principal); panel slide-over para crear/editar; campos de texto visibles; tarjetas de
+métrica neutras vs de estado teñidas. Nav reagrupada (Bitácora a Operación) con iconos
+por sección. Aplicado a todo el panel + 404 con shell.
+
+Rollout en rama `rediseno-v2` (9 commits), mergeada a `main` con `--no-ff` en `e6ec2bd`
+para que el rediseño sea revertible como una unidad. Revisado página por página en la
+base de STAGING, con datos sintéticos que cubren cada estado del MAPA.
+
+Dos correcciones de fidelidad al MAPA que salieron del rollout: los entregables en flujo
+ahora colorean por `approval_status` (§6) —antes mostraban siempre el `status` legacy— y
+la bitácora perdió el semáforo (§9: no tiene estado, solo icono por tipo).
+
+Decisiones tomadas donde el MAPA no llegaba: `phaseTone` (deriva del avance) y
+`contractTone` (hereda la gramática de ciclo de vida); la SALUD de un sistema externo sí
+es estado (Google conectado, Resend activo), a diferencia de "campo lleno" en una ficha,
+que es eje de tipo. El rojo de hitos sigue sin ser derivable (§5 necesita un flag
+`cumplido`).
