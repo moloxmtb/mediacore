@@ -193,7 +193,10 @@ export default async function DashboardPage() {
                             </Link>
                           </td>
                           <td className="num">
-                            <div className="mono">
+                            {/* `.amount` no es del sistema de recuadros, pero la
+                                regla `.amount .uf` es la que baja la UF a su
+                                propia línea. Sin ella, el monto y la UF se pegan. */}
+                            <div className="amount mono">
                               {monthly != null ? formatCLP(monthly) : "—"}
                               {con?.currency === "UF" && (
                                 <span className="uf">{formatUF(con.net_uf)}</span>
