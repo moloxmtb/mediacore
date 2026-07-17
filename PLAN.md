@@ -1413,3 +1413,35 @@ Decisiones tomadas donde el MAPA no llegaba: `phaseTone` (deriva del avance) y
 es estado (Google conectado, Resend activo), a diferencia de "campo lleno" en una ficha,
 que es eje de tipo. El rojo de hitos sigue sin ser derivable (§5 necesita un flag
 `cumplido`).
+
+## 🪟 Rediseño del portal del cliente (v2 adaptado) — HECHO (DESPLEGADO v1.17)
+
+**v1.17 — Rediseño del portal del cliente (v2 adaptado).** El portal aplica el sistema
+visual v2 pero con UN SOLO acento (teal): a diferencia del panel, no usa color por
+sección/objeto (el cliente no piensa en dominios operativos). El color por ESTADO sí
+aplica, SUAVIZADO: el rojo se reserva —una tarea vencida se muestra "Pendiente" ámbar
+(sin "atrasada"), un rechazo del cliente va en gris. Excepción única: en Facturación la
+cuota vencida sí va en rojo (info accionable). Etiquetas cliente-facing en fuente única
+(lib/estado.ts: contentClient*/deliverableClient*/taskClient*), separadas de las internas.
+
+Navegación consolidada de 12 a 7:
+- **Inicio = tablero**: "Cómo va tu proyecto" (barra de avance %, próximo hito y reunión) +
+  "Te toca a ti" (aprobaciones/entregables/tareas con acción y punto ámbar) + "Lo que viene".
+- **Mi proyecto** ← Proyectos + Avance (Gantt en lectura) + Estrategia + la línea de tiempo
+  "Lo que ha pasado" (movida desde Inicio para preservarla, incluidas las minutas).
+- **Aprobaciones** ← Contenido + Entregables: lista única con pastilla de tipo, chip de
+  estado + borde izquierdo por estado, acciones y filtros Todo/Contenido/Entregables.
+- **Facturación** ← Finanzas + Tu plan + Datos de pago: tres tarjetas de estado ALINEADAS y
+  teñidas (corrige el bloque desalineado de prod), cuotas con chip+borde por estado.
+  GATE owner+finance vía requirePortalWorld("finance"): el rol content rebota por link
+  directo, no solo oculto en el nav (guard de servidor).
+- Calendario y Mi empresa migradas a clases base v2.
+
+Rutas viejas redirigen 308 a las nuevas (next.config). Revisado en staging por los tres
+roles del cliente (owner, content, finance); gate probado en ambas direcciones. Merge a
+main con --no-ff (0027915) para que el rediseño sea revertible como unidad.
+
+Decisiones tomadas donde el brief no llegaba: el historial "Lo que ha pasado" se movió a
+Mi proyecto (el brief no lo ubicaba; borrarlo perdía las minutas); el pago en línea (Flow)
+se conservó restilado (quitarlo sería regresión funcional, no cambio visual); las tareas
+del cliente viven en el tablero de Inicio (redirect de /portal/tareas → /portal).
