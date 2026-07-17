@@ -15,6 +15,18 @@ export function mailConfigured(): boolean {
 }
 
 /**
+ * Sink de correo para DEV: si `DEV_EMAIL_SINK` está definida (p.ej.
+ * "delivered@resend.dev"), TODO destinatario se reescribe a esa dirección, de
+ * modo que ningún correo pueda llegar a una persona real desde el entorno de
+ * desarrollo. En producción la variable no existe → los envíos van a su
+ * destinatario normal y esta función es transparente.
+ */
+export function emailSink(): string | null {
+  const s = process.env.DEV_EMAIL_SINK?.trim();
+  return s ? s : null;
+}
+
+/**
  * Envía un correo con Resend. Best-effort: si falla (o no está configurado),
  * registra en el log y devuelve { ok:false, ... } sin lanzar — nunca rompe la
  * acción que lo disparó. Devuelve el message-id cuando el envío se acepta.
@@ -35,13 +47,22 @@ export async function sendEmail(opts: {
     console.warn("[mail] RESEND_API_KEY no configurada; correo omitido:", opts.subject);
     return { ok: false, id: null, error: "RESEND_API_KEY no configurada" };
   }
+  // DEV: redirige todo destinatario al sink (ninguna persona real recibe correo).
+  const sink = emailSink();
+  const to = sink ?? opts.to;
+  const subject = sink ? `[DEV→sink] ${opts.subject}` : opts.subject;
+  if (sink) {
+    console.warn(
+      `[mail] DEV_EMAIL_SINK activo: destinatario original ${JSON.stringify(opts.to)} redirigido a ${sink} · "${opts.subject}"`,
+    );
+  }
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
     const { data, error } = await resend.emails.send({
       from: FROM,
       replyTo: REPLY_TO,
-      to: opts.to,
-      subject: opts.subject,
+      to,
+      subject,
       html: opts.html,
     });
     if (error) {
