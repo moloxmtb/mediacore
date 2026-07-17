@@ -49,7 +49,11 @@ export default function GanttChart({
   deliverablesByPhase: Record<string, GanttDeliverable[]>;
   basePath?: string;
 }) {
+  // `today` arranca null en SSR y se fija al montar en el cliente: así el 1er
+  // render coincide server/cliente (sin línea de "hoy") y el marcador aparece
+  // tras hidratar. Mismo patrón hidratación-seguro que CollapsibleBox.
   const [today, setToday] = useState<Date | null>(null);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setToday(new Date()), []);
 
   const [openPhaseId, setOpenPhaseId] = useState<string | null>(null);
