@@ -1,8 +1,11 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import ProjectForm from "@/components/admin/ProjectForm";
 import { createClient } from "@/lib/supabase/server";
 import { crearProyecto } from "../actions";
+
+const SEC = "var(--sec-proyectos)";
 
 export default async function NuevoProyectoPage({
   searchParams,
@@ -19,12 +22,10 @@ export default async function NuevoProyectoPage({
   return (
     <>
       <PageHeader title="Nuevo proyecto" subtitle="Alta de un proyecto para un cliente" />
-      <div className="app-content">
-        <Link href="/proyectos" className="back-link">
-          ← Volver a proyectos
-        </Link>
-        <div className="card">
-          <div className="card-body">
+      <div className="app-content" style={{ ["--sec" as string]: SEC } as CSSProperties}>
+        <Link href="/proyectos" className="dback">← Volver a proyectos</Link>
+        <div className="dbox">
+          <div className="dbox-body">
             <ProjectForm
               action={crearProyecto}
               clients={clients ?? []}

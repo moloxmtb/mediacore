@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSlideOverAutoClose } from "./SlideOver";
 import type { FormState } from "@/app/(admin)/clientes/actions";
 import type { Contract } from "@/lib/types";
 import { MODALITY_LABELS } from "@/lib/billing";
@@ -19,6 +20,7 @@ export default function ContractForm({
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initial);
+  useSlideOverAutoClose(state.ok);
 
   const netDefault =
     contract == null
@@ -138,10 +140,10 @@ export default function ContractForm({
       </div>
 
       {state.error && <div className="form-error">{state.error}</div>}
-      {state.ok && <span className="badge-soft">Contrato guardado</span>}
+      {state.ok && <span className="dchip" style={{ ["--st" as string]: "var(--st-ok)" }}>Contrato guardado</span>}
 
       <div className="form-actions">
-        <button className="btn btn-primary" disabled={pending}>
+        <button className="dbtn dbtn-primary" disabled={pending}>
           {pending ? "Guardando…" : submitLabel}
         </button>
       </div>

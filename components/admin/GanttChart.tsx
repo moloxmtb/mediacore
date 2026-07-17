@@ -5,16 +5,30 @@ import { useEffect, useMemo, useState } from "react";
 import { buildGantt, datePct } from "@/lib/gantt";
 import {
   DELIVERABLE_STATUS_LABELS,
-  deliverableStatusBadge,
+  deliverableApprovalLabel,
   formatDate,
   formatDateTime,
 } from "@/lib/format";
+import StateChip from "@/components/admin/StateChip";
+import { deliverableTone } from "@/lib/estado";
 import type {
   Action,
   CalendarEvent,
   Deliverable,
+  DeliverableApproval,
   Phase,
 } from "@/lib/types";
+
+/**
+ * `Deliverable` (lib/types) no declara las columnas del flujo de aprobación,
+ * pero la consulta las trae (select *). Se declaran opcionales aquí, igual que
+ * en la ficha de proyecto, para poder aplicar el MAPA §6 sin tocar el tipo base.
+ */
+type GanttDeliverable = Deliverable & {
+  en_flujo_aprobacion?: boolean | null;
+  approval_status?: DeliverableApproval | null;
+  responded_at?: string | null;
+};
 
 type ProjectChip = { id: string; name: string; clientName: string | null };
 
@@ -32,7 +46,7 @@ export default function GanttChart({
   phases: Phase[];
   events: CalendarEvent[];
   actionsByPhase: Record<string, Action[]>;
-  deliverablesByPhase: Record<string, Deliverable[]>;
+  deliverablesByPhase: Record<string, GanttDeliverable[]>;
   basePath?: string;
 }) {
   const [today, setToday] = useState<Date | null>(null);
@@ -169,7 +183,7 @@ export default function GanttChart({
         </div>
       ) : (
         <div className="gantt">
-          <div className="empty">
+          <div className="dempty">
             Este proyecto aún no tiene fases. Agrégalas desde la ficha del
             proyecto para dibujar la carta Gantt.
           </div>
@@ -212,7 +226,7 @@ function PhaseModal({
 }: {
   phase: Phase;
   actions: Action[];
-  deliverables: Deliverable[];
+  deliverables: GanttDeliverable[];
   events: CalendarEvent[];
   onClose: () => void;
 }) {
@@ -268,9 +282,14 @@ function PhaseModal({
                       d.title
                     )}
                   </span>
-                  <span className={`badge ${deliverableStatusBadge(d.status)}`}>
-                    {DELIVERABLE_STATUS_LABELS[d.status]}
-                  </span>
+                  <StateChip
+                    tone={deliverableTone(d)}
+                    label={
+                      d.en_flujo_aprobacion && d.approval_status
+                        ? deliverableApprovalLabel(d.approval_status, d.responded_at ?? null)
+                        : DELIVERABLE_STATUS_LABELS[d.status]
+                    }
+                  />
                 </div>
                 {d.description && <div className="di-desc">{d.description}</div>}
                 {d.result && <div className="di-result">{d.result}</div>}
@@ -325,10 +344,10 @@ function EventModal({
       </div>
       <div className="modal-body">
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <span className={`badge ${event.source === "google" ? "b-accent" : "b-idle"}`}>
+          <span className="dtype">
             {event.source === "google" ? "Google Calendar" : "Creado en el panel"}
           </span>
-          {event.kind && <span className="tag">{event.kind}</span>}
+          {event.kind && <span className="dtype">{event.kind}</span>}
         </div>
         {event.description && (
           <div className="di-desc" style={{ marginTop: "4px" }}>

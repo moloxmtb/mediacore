@@ -33,9 +33,9 @@ export default function MiembroForm() {
         tiene acceso al panel hasta que la acepte. Luego le asignas sus clientes.
       </span>
       {state.error && <div className="form-error">{state.error}</div>}
-      {state.ok && !state.error && <span className="badge-soft">Miembro invitado</span>}
+      {state.ok && !state.error && <span className="dchip" style={{ ["--st" as string]: "var(--st-ok)" }}>Miembro invitado</span>}
       <div className="form-actions">
-        <button className="btn btn-primary" disabled={pending}>
+        <button className="dbtn dbtn-primary" disabled={pending}>
           {pending ? "Invitando…" : "Invitar miembro"}
         </button>
       </div>

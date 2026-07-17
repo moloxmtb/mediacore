@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSlideOverAutoClose } from "./SlideOver";
 import type { FormState } from "@/app/(admin)/clientes/usuarios-actions";
 import { CLIENT_ROLE_LABELS } from "@/lib/format";
 
@@ -14,6 +15,7 @@ export default function UserForm({
   clientId: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initial);
+  useSlideOverAutoClose(state.ok);
   return (
     <form action={formAction} className="form" style={{ maxWidth: "none" }}>
       <input type="hidden" name="client_id" value={clientId} />
@@ -37,9 +39,9 @@ export default function UserForm({
         Se le enviará un correo con un enlace para que fije su contraseña.
       </span>
       {state.error && <div className="form-error">{state.error}</div>}
-      {state.ok && !state.error && <span className="badge-soft">Invitación enviada</span>}
+      {state.ok && !state.error && <span className="dchip" style={{ ["--st" as string]: "var(--st-ok)" }}>Invitación enviada</span>}
       <div className="form-actions">
-        <button className="btn btn-primary" disabled={pending}>
+        <button className="dbtn dbtn-primary" disabled={pending}>
           {pending ? "Invitando…" : "Invitar usuario"}
         </button>
       </div>

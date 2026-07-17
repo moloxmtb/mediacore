@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSlideOverAutoClose } from "./SlideOver";
 import type { FormState } from "@/app/(admin)/clientes/ficha-actions";
 import type { ClientContact } from "@/lib/types";
 
@@ -18,6 +19,7 @@ export default function ContactoForm({
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initial);
+  useSlideOverAutoClose(state.ok);
   return (
     <form action={formAction} className="form" style={{ maxWidth: "none" }}>
       <input type="hidden" name="client_id" value={clientId} />
@@ -43,9 +45,9 @@ export default function ContactoForm({
         </div>
       </div>
       {state.error && <div className="form-error">{state.error}</div>}
-      {state.ok && <span className="badge-soft">Contacto guardado</span>}
+      {state.ok && <span className="dchip" style={{ ["--st" as string]: "var(--st-ok)" }}>Contacto guardado</span>}
       <div className="form-actions">
-        <button className="btn btn-primary btn-sm" disabled={pending}>
+        <button className="dbtn dbtn-primary dbtn-sm" disabled={pending}>
           {pending ? "Guardando…" : submitLabel}
         </button>
       </div>

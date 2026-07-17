@@ -11,7 +11,7 @@ export default function DeleteButton({
   hidden: Record<string, string>;
   label?: string;
   confirm: string;
-  /** Variante ícono (tarro): para las acciones por fila del sistema v2 (.dsx). */
+  /** Variante ícono (tarro): para las acciones por fila del sistema v2. */
   icon?: boolean;
 }) {
   return (
@@ -33,7 +33,7 @@ export default function DeleteButton({
           </svg>
         </button>
       ) : (
-        <button type="submit" className="btn btn-danger btn-sm">
+        <button type="submit" className="dbtn dbtn-danger dbtn-sm">
           {label}
         </button>
       )}

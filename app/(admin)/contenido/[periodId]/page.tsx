@@ -7,13 +7,15 @@ import RehacerForm from "@/components/admin/content/RehacerForm";
 import MediaEditor, { type EditorItem } from "@/components/admin/content/MediaEditor";
 import DeleteButton from "@/components/admin/DeleteButton";
 import NotificarButton from "@/components/admin/NotificarButton";
+import type { CSSProperties } from "react";
+import StateChip from "@/components/admin/StateChip";
+import { stStyle as st, contentTone } from "@/lib/estado";
 import { createClient } from "@/lib/supabase/server";
 import { signImages } from "@/lib/storage";
 import {
   CONTENT_STATUS_LABELS,
   PERIOD_KIND_LABELS,
   REVIEW_KIND_LABELS,
-  contentStatusBadge,
 } from "@/lib/content";
 import { formatDateTime } from "@/lib/format";
 import type {
@@ -32,6 +34,14 @@ import {
   publicarPeriodo,
   rechazarPieza,
 } from "../actions";
+
+const SEC = "var(--sec-contenido)";
+
+const IcoImage = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" />
+  </svg>
+);
 
 export default async function PeriodoDetalle({ params }: { params: Promise<{ periodId: string }> }) {
   const { periodId } = await params;
@@ -89,21 +99,20 @@ export default async function PeriodoDetalle({ params }: { params: Promise<{ per
   return (
     <>
       <PageHeader title={period.label} subtitle={`${period.clients?.name ?? ""} · ${PERIOD_KIND_LABELS[period.kind]}`} />
-      <div className="app-content">
-        <Link href="/contenido" className="back-link">← Volver a contenido</Link>
+      <div className="app-content" style={{ ["--sec" as string]: SEC } as CSSProperties}>
+        <Link href="/contenido" className="dback">← Volver a contenido</Link>
 
-        <div className="page-actions" style={{ justifyContent: "space-between" }}>
-          <span className={`badge ${period.published ? "b-accent" : "b-idle"}`}>
-            {period.published ? "Publicado (el cliente lo ve)" : "Borrador (oculto al cliente)"}
-          </span>
-          <div style={{ display: "flex", gap: "10px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
+          {/* Visibilidad del período = eje TIPO (el semáforo vive en las piezas, MAPA §7) */}
+          <span className="dtype">{period.published ? "Publicado (el cliente lo ve)" : "Borrador (oculto al cliente)"}</span>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
             {!period.published && (
               <form action={publicarPeriodo}>
                 <input type="hidden" name="id" value={period.id} />
-                <button className="btn btn-sm btn-primary" type="submit">Publicar período</button>
+                <button className="dbtn dbtn-primary dbtn-sm" type="submit">Publicar período</button>
               </form>
             )}
-            <DeleteButton action={eliminarPeriodo} hidden={{ id: period.id }} label="Eliminar período" confirm="¿Eliminar el período y todas sus piezas?" />
+            <DeleteButton icon action={eliminarPeriodo} hidden={{ id: period.id }} label="Eliminar período" confirm="¿Eliminar el período y todas sus piezas?" />
           </div>
         </div>
 
@@ -118,12 +127,15 @@ export default async function PeriodoDetalle({ params }: { params: Promise<{ per
             const canProponer = period.published && p.status === "borrador";
 
             return (
-              <div className="card" key={p.id}>
-                <div className="card-head">
+              <div className="dbox" key={p.id} style={st(contentTone[p.status])}>
+                <div className="dbox-head">
+                  <span className="dh-ico"><IcoImage /></span>
                   <h3>{p.title}</h3>
-                  <span className={`badge ${contentStatusBadge(p.status)}`}>{CONTENT_STATUS_LABELS[p.status]}</span>
+                  <div className="dhead-actions">
+                    <StateChip tone={contentTone[p.status]} label={CONTENT_STATUS_LABELS[p.status]} />
+                  </div>
                 </div>
-                <div className="card-body">
+                <div className="dbox-body">
                   {/* MEDIOS */}
                   {editable && cur ? (
                     <MediaEditor
@@ -144,13 +156,13 @@ export default async function PeriodoDetalle({ params }: { params: Promise<{ per
                             )}
                           </div>
                           {m.kind === "video" && m.embed_url && (
-                            <a href={m.embed_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm" style={{ width: "100%" }}>Ver</a>
+                            <a href={m.embed_url} target="_blank" rel="noopener noreferrer" className="dbtn dbtn-sm" style={{ width: "100%" }}>Ver</a>
                           )}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="empty">Sin medios.</div>
+                    <div className="dempty">Sin medios.</div>
                   )}
 
                   {/* COPY */}
@@ -169,25 +181,25 @@ export default async function PeriodoDetalle({ params }: { params: Promise<{ per
                       <form action={proponerPieza}>
                         <input type="hidden" name="piece_id" value={p.id} />
                         <input type="hidden" name="period_id" value={period.id} />
-                        <button className="btn btn-sm btn-primary" type="submit">Proponer al cliente</button>
+                        <button className="dbtn dbtn-primary dbtn-sm" type="submit">Proponer al cliente</button>
                       </form>
                     )}
                     {p.status === "aprobada_cliente" && (
                       <form action={confirmarPieza}>
                         <input type="hidden" name="id" value={p.id} />
-                        <button className="btn btn-sm btn-primary" type="submit">Confirmar aprobación</button>
+                        <button className="dbtn dbtn-primary dbtn-sm" type="submit">Confirmar aprobación</button>
                       </form>
                     )}
                     {canRehacer && <RehacerForm pieceId={p.id} />}
                     <details>
-                      <summary className="btn btn-sm">Rechazar</summary>
+                      <summary className="dbtn dbtn-sm">Rechazar</summary>
                       <form action={rechazarPieza} style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "6px" }}>
                         <input type="hidden" name="id" value={p.id} />
                         <textarea name="comment" placeholder="Motivo (opcional)" />
-                        <button className="btn btn-sm btn-danger" type="submit">Rechazar pieza</button>
+                        <button className="dbtn dbtn-sm" type="submit" style={{ borderColor: "var(--st-bad)", color: "var(--st-bad)" }}>Rechazar pieza</button>
                       </form>
                     </details>
-                    <DeleteButton action={eliminarPieza} hidden={{ id: p.id, period_id: period.id }} label="Eliminar pieza" confirm="¿Eliminar esta pieza y su historial?" />
+                    <DeleteButton icon action={eliminarPieza} hidden={{ id: p.id, period_id: period.id }} label="Eliminar pieza" confirm="¿Eliminar esta pieza y su historial?" />
                     {/* Notificar: render incondicional — la RLS ya limitó las piezas
                         a clientes accionables por el actor (canActOnClient). */}
                     <NotificarButton kind="contenido" id={p.id} />
@@ -196,7 +208,7 @@ export default async function PeriodoDetalle({ params }: { params: Promise<{ per
                   {/* Historial de versiones */}
                   {pVersions.length > 1 && (
                     <details style={{ marginTop: "14px" }}>
-                      <summary className="btn btn-sm btn-ghost">Historial de versiones ({pVersions.length})</summary>
+                      <summary className="dbtn dbtn-sm">Historial de versiones ({pVersions.length})</summary>
                       <div style={{ marginTop: "8px" }}>
                         {pVersions.map((v) => (
                           <div key={v.id} className="meta" style={{ padding: "4px 0" }}>
@@ -212,7 +224,7 @@ export default async function PeriodoDetalle({ params }: { params: Promise<{ per
                     <div style={{ marginTop: "12px", borderTop: "1px solid var(--border-soft)", paddingTop: "10px" }}>
                       {pReviews.map((r) => (
                         <div key={r.id} style={{ fontSize: "12.5px", padding: "4px 0" }}>
-                          <span className={`badge ${r.actor === "client" ? "b-accent" : "b-idle"}`} style={{ marginRight: "6px" }}>
+                          <span className="dtype" style={{ marginRight: "6px" }}>
                             {r.actor === "client" ? "Cliente" : "Color Media"}
                           </span>
                           {REVIEW_KIND_LABELS[r.kind]}
@@ -229,9 +241,12 @@ export default async function PeriodoDetalle({ params }: { params: Promise<{ per
         </div>
 
         {/* Agregar pieza */}
-        <div className="card" style={{ marginTop: "20px" }}>
-          <div className="card-head"><h3>Agregar pieza</h3></div>
-          <div className="card-body">
+        <div className="dbox" style={{ marginTop: "18px" }}>
+          <div className="dbox-head">
+            <span className="dh-ico"><IcoImage /></span>
+            <h3>Agregar pieza</h3>
+          </div>
+          <div className="dbox-body">
             <PieceForm action={crearPieza} periodId={period.id} submitLabel="Crear pieza" />
           </div>
         </div>

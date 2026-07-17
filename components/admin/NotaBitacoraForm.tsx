@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSlideOverAutoClose } from "@/components/admin/SlideOver";
 import { crearAccion, type FormState } from "@/app/(admin)/acciones/actions";
 
 const initial: FormState = { error: null };
@@ -16,6 +17,7 @@ export default function NotaBitacoraForm({
   defaultDate: string;
 }) {
   const [state, formAction, pending] = useActionState(crearAccion, initial);
+  useSlideOverAutoClose(state.ok);
 
   return (
     <form action={formAction} className="form" style={{ maxWidth: "none" }}>
@@ -52,9 +54,9 @@ export default function NotaBitacoraForm({
       </label>
 
       {state.error && <div className="form-error">{state.error}</div>}
-      {state.ok && !state.error && <span className="badge-soft">Nota agregada</span>}
+      {state.ok && !state.error && <span className="dchip" style={{ ["--st" as string]: "var(--st-ok)" }}>Nota agregada</span>}
       <div className="form-actions">
-        <button className="btn btn-primary" disabled={pending || !clients.length}>
+        <button className="dbtn dbtn-primary" disabled={pending || !clients.length}>
           {pending ? "Guardando…" : "Agregar nota"}
         </button>
       </div>

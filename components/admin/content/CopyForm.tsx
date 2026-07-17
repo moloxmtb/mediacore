@@ -16,9 +16,9 @@ export default function CopyForm({ versionId, body }: { versionId: string; body:
         <textarea name="body" defaultValue={body ?? ""} placeholder="El texto que acompaña la pieza…" />
       </div>
       {state.error && <div className="form-error">{state.error}</div>}
-      {state.ok && <span className="badge-soft">Copy guardado</span>}
+      {state.ok && <span className="dchip" style={{ ["--st" as string]: "var(--st-ok)" }}>Copy guardado</span>}
       <div className="form-actions">
-        <button className="btn btn-sm btn-primary" disabled={pending}>{pending ? "Guardando…" : "Guardar copy"}</button>
+        <button className="dbtn dbtn-primary dbtn-sm" disabled={pending}>{pending ? "Guardando…" : "Guardar copy"}</button>
       </div>
     </form>
   );

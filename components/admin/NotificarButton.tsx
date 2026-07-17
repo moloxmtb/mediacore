@@ -33,14 +33,14 @@ function NotificarForm({ kind, id }: { kind: NotifyKind; id: string }) {
       <textarea name="message" rows={2} placeholder="Mensaje (opcional)…" style={{ width: "100%" }} />
 
       <div>
-        <button className="btn btn-sm btn-primary" type="submit" disabled={pending}>
+        <button className="dbtn dbtn-primary dbtn-sm" type="submit" disabled={pending}>
           {pending ? "Enviando…" : "Enviar aviso"}
         </button>
       </div>
 
       {state.error && <div className="form-error">{state.error}</div>}
       {state.ok && state.skipped && <div className="hint">{state.skipped}</div>}
-      {state.ok && !state.skipped && <span className="badge-soft">Aviso enviado ({state.sent})</span>}
+      {state.ok && !state.skipped && <span className="dchip" style={{ ["--st" as string]: "var(--st-ok)" }}>Aviso enviado ({state.sent})</span>}
     </form>
   );
 }
@@ -84,7 +84,7 @@ export default function NotificarButton({
 
   return (
     <details className="notificar">
-      <summary className="btn btn-sm">Notificar</summary>
+      <summary className="dbtn dbtn-sm">Notificar</summary>
       <NotificarForm kind={kind} id={id} />
     </details>
   );

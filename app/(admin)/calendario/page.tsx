@@ -1,5 +1,9 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
+import SlideOver from "@/components/admin/SlideOver";
+import StateChip from "@/components/admin/StateChip";
+import { reunionTone } from "@/lib/estado";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatDate, formatDateTime, REUNION_ESTADO_LABELS, reunionEstadoBadge } from "@/lib/format";
@@ -38,6 +42,12 @@ type CalItem = {
   request?: MeetingRequest;
   estado?: ReunionEstado; // solo reuniones (estado derivado)
 };
+
+const SEC = "var(--sec-calendario)";
+
+const IcoCal = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M3 10h18M8 2v4M16 2v4" /></svg>
+);
 
 const DEFAULT_COLOR = "#3dbdcb";
 
@@ -215,51 +225,51 @@ export default async function AdminCalendarioPage({
   return (
     <>
       <PageHeader title="Calendario" subtitle="Todos los clientes en una vista: reuniones, rodajes, entregas, hitos y solicitudes" />
-      <div className="app-content">
+      <div className="app-content" style={{ ["--sec" as string]: SEC } as CSSProperties}>
         <div className="stack">
           {/* Filtro por cliente (color por cliente) */}
-          <div className="cal-legend">
-            <Link href={qp({ cliente: "" })} className={`client-chip${!filtro ? " active" : ""}`}>Todos</Link>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <Link href={qp({ cliente: "" })} className="dtype" style={!filtro ? { borderColor: "var(--sec)", color: "var(--sec)" } : undefined}>Todos</Link>
             {clients.map((c) => (
               <Link
                 key={c.id}
                 href={filtro === c.id ? qp({ cliente: "" }) : qp({ cliente: c.id })}
-                className={`client-chip${filtro === c.id ? " active" : ""}`}
+                className="dtype"
+                style={{ gap: "6px", ...(filtro === c.id ? { borderColor: "var(--sec)", color: "var(--sec)" } : {}) }}
               >
-                <span className="cal-dot" style={{ background: c.accent_color ?? DEFAULT_COLOR }} />
+                <span className="cli-sq" style={{ background: c.accent_color ?? DEFAULT_COLOR, width: "8px", height: "8px" }} />
                 {c.name}
               </Link>
             ))}
           </div>
 
           {/* Interruptor de vista + agregar evento */}
-          <div className="page-actions" style={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
             <div className="seg">
               <Link href={qp({ vista: "mes" })} className={`seg-btn${vista === "mes" ? " active" : ""}`}>Mensual</Link>
               <Link href={qp({ vista: "lista" })} className={`seg-btn${vista === "lista" ? " active" : ""}`}>Lista</Link>
             </div>
             <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-              <span className="tag mono">{shown.length} eventos{filtro ? ` · ${nameOf(filtro)}` : ""}</span>
-              <details open={!!addDate}>
-                <summary className="btn btn-sm btn-primary" style={{ width: "fit-content" }}>Agregar evento</summary>
-                <div className="card" style={{ marginTop: "10px" }}>
-                  <div className="card-head"><h3>Nuevo evento{addDate ? ` · ${formatDate(addDate)}` : ""}</h3></div>
-                  <div className="card-body">
-                    <NuevoEventoForm clients={clients} defaultDate={addDate || undefined} />
-                  </div>
-                </div>
-              </details>
+              <span className="mono mut" style={{ fontSize: "11.5px" }}>{shown.length} eventos{filtro ? ` · ${nameOf(filtro)}` : ""}</span>
+              <SlideOver
+                title={`Nuevo evento${addDate ? ` · ${formatDate(addDate)}` : ""}`}
+                sec={SEC}
+                triggerClass="dbtn dbtn-primary dbtn-sm"
+                trigger={<>+ Agregar evento</>}
+              >
+                <NuevoEventoForm clients={clients} defaultDate={addDate || undefined} />
+              </SlideOver>
             </div>
           </div>
 
           {/* Lente hacia adelante: tres tiras derivadas (por agendar / próximas / por documentar) */}
           {porAgendar.length > 0 && (
-            <div className="card">
-              <div className="card-head"><h3>Por agendar</h3><span className="tag">{porAgendar.length}</span></div>
-              <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div className="dbox">
+              <div className="dbox-head"><span className="dh-ico"><IcoCal /></span><h3>Por agendar</h3><span className="dcount">{porAgendar.length}</span></div>
+              <div className="dbox-body" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {porAgendar.map((r) => (
                   <div key={r.id} className="lista-row">
-                    <span className="cal-dot" style={{ background: colorOf(r.client_id) }} />
+                    <span className="cli-sq" style={{ background: colorOf(r.client_id) }} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: "13.5px", fontWeight: 500 }}>{r.reason}</div>
                       <div className="meta">
@@ -275,19 +285,19 @@ export default async function AdminCalendarioPage({
           )}
 
           {proximasReuniones.length > 0 && (
-            <div className="card">
-              <div className="card-head"><h3>Próximas reuniones</h3><span className="tag">{proximasReuniones.length}</span></div>
-              <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div className="dbox">
+              <div className="dbox-head"><span className="dh-ico"><IcoCal /></span><h3>Próximas reuniones</h3><span className="dcount">{proximasReuniones.length}</span></div>
+              <div className="dbox-body" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 {proximasReuniones.map((r) => (
                   <div key={r.id} className="lista-row">
-                    <span className="cal-dot" style={{ background: colorOf(r.clientId) }} />
+                    <span className="cli-sq" style={{ background: colorOf(r.clientId) }} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: "13.5px", fontWeight: 500 }}>
                         <Link href={`/calendario/${r.id}`} className="row-link">{r.title}</Link>
                       </div>
-                      <div className="meta">{nameOf(r.clientId)} · {formatDateTime(r.starts_at)}</div>
+                      <div className="mut" style={{ fontSize: "12px" }}>{nameOf(r.clientId)} · {formatDateTime(r.starts_at)}</div>
                     </div>
-                    <span className={`badge ${reunionEstadoBadge(r.estado)}`}>{REUNION_ESTADO_LABELS[r.estado]}</span>
+                    <StateChip tone={reunionTone[r.estado]} label={REUNION_ESTADO_LABELS[r.estado]} />
                   </div>
                 ))}
               </div>
@@ -295,36 +305,37 @@ export default async function AdminCalendarioPage({
           )}
 
           {porDocumentar.length > 0 && (
-            <div className="card">
-              <div className="card-head"><h3>Por documentar</h3><span className="tag">{porDocumentar.length}</span></div>
-              <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div className="dbox">
+              <div className="dbox-head"><span className="dh-ico"><IcoCal /></span><h3>Por documentar</h3><span className="dcount">{porDocumentar.length}</span></div>
+              <div className="dbox-body" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 {porDocumentar.map((r) => (
                   <div key={r.id} className="lista-row">
-                    <span className="cal-dot" style={{ background: colorOf(r.clientId) }} />
+                    <span className="cli-sq" style={{ background: colorOf(r.clientId) }} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: "13.5px", fontWeight: 500 }}>
                         <Link href={`/calendario/${r.id}`} className="row-link">{r.title}</Link>
                       </div>
-                      <div className="meta">{nameOf(r.clientId)} · {formatDateTime(r.starts_at)}</div>
+                      <div className="mut" style={{ fontSize: "12px" }}>{nameOf(r.clientId)} · {formatDateTime(r.starts_at)}</div>
                     </div>
-                    <span className={`badge ${reunionEstadoBadge(r.estado)}`}>{REUNION_ESTADO_LABELS[r.estado]}</span>
+                    <StateChip tone={reunionTone[r.estado]} label={REUNION_ESTADO_LABELS[r.estado]} />
                   </div>
                 ))}
               </div>
-              <div className="card-body" style={{ borderTop: "1px solid var(--border-soft)" }}>
-                <p className="hint">Reuniones que ya pasaron y aún no tienen minuta. Entra a cada una para documentarla.</p>
+              <div className="dbox-body" style={{ borderTop: "0.5px solid var(--v2-line)" }}>
+                <p className="mut" style={{ fontSize: "12.5px", margin: 0 }}>Reuniones que ya pasaron y aún no tienen minuta. Entra a cada una para documentarla.</p>
               </div>
             </div>
           )}
 
           {vista === "mes" ? (
-            <div className="card">
-              <div className="card-head">
+            <div className="dbox">
+              <div className="dbox-head">
+                <span className="dh-ico"><IcoCal /></span>
                 <h3 style={{ textTransform: "capitalize" }}>{MESES[M - 1]} {Y}</h3>
-                <div style={{ display: "flex", gap: "6px" }}>
-                  <Link href={qp({ mes: prevMonth })} className="btn btn-sm">‹</Link>
-                  <Link href={qp({ mes: `${ty}-${pad(tm)}` })} className="btn btn-sm">Hoy</Link>
-                  <Link href={qp({ mes: nextMonth })} className="btn btn-sm">›</Link>
+                <div className="dhead-actions" style={{ display: "flex", gap: "6px" }}>
+                  <Link href={qp({ mes: prevMonth })} className="dbtn dbtn-sm">‹</Link>
+                  <Link href={qp({ mes: `${ty}-${pad(tm)}` })} className="dbtn dbtn-sm">Hoy</Link>
+                  <Link href={qp({ mes: nextMonth })} className="dbtn dbtn-sm">›</Link>
                 </div>
               </div>
               <div className="cal-grid">
@@ -352,10 +363,10 @@ export default async function AdminCalendarioPage({
               </div>
             </div>
           ) : (
-            <div className="card">
-              <div className="card-head"><h3>Próximos eventos</h3><span className="tag">{upcoming.length}</span></div>
+            <div className="dbox">
+              <div className="dbox-head"><span className="dh-ico"><IcoCal /></span><h3>Próximos eventos</h3><span className="dcount">{upcoming.length}</span></div>
               {upcoming.length ? (
-                <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div className="dbox-body" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   {[...listaByDay.entries()].map(([date, its]) => (
                     <div key={date}>
                       <div className="lista-fecha">{formatDate(date)}</div>
@@ -380,15 +391,15 @@ export default async function AdminCalendarioPage({
                   ))}
                 </div>
               ) : (
-                <div className="empty">No hay eventos próximos.</div>
+                <div className="dempty">No hay eventos próximos.</div>
               )}
             </div>
           )}
 
           {/* Próximos hitos (fases, todos los clientes) */}
           {phases.length > 0 && (
-            <div className="card">
-              <div className="card-head"><h3>Próximos hitos</h3><span className="tag">{phases.length}</span></div>
+            <div className="dbox">
+              <div className="dbox-head"><span className="dh-ico"><IcoCal /></span><h3>Próximos hitos</h3><span className="dcount">{phases.length}</span></div>
               <div className="hito-strip">
                 {phases.filter((h) => !filtro || h.projects?.client_id === filtro).map((h) => (
                   <Link key={h.id} href={`/proyectos/${h.project_id}`} className="hito-chip" style={{ borderLeftColor: colorOf(h.projects?.client_id ?? "") }}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSlideOverAutoClose } from "@/components/admin/SlideOver";
 import { crearBorrador, type FormState } from "@/app/(admin)/entregables/aprobacion-actions";
 
 const initial: FormState = { error: null };
@@ -13,6 +14,7 @@ export default function NuevoEntregableForm({
   projects: { id: string; name: string; clientName: string }[];
 }) {
   const [state, formAction, pending] = useActionState(crearBorrador, initial);
+  useSlideOverAutoClose(state.ok);
 
   return (
     <form action={formAction} className="form" style={{ maxWidth: "none" }}>
@@ -42,9 +44,9 @@ export default function NuevoEntregableForm({
       </div>
 
       {state.error && <div className="form-error">{state.error}</div>}
-      {state.ok && !state.error && <span className="badge-soft">Borrador creado (archivo bloqueado al cliente)</span>}
+      {state.ok && !state.error && <span className="dchip" style={{ ["--st" as string]: "var(--st-ok)" }}>Borrador creado (archivo bloqueado al cliente)</span>}
       <div className="form-actions">
-        <button className="btn btn-primary" disabled={pending || !projects.length}>
+        <button className="dbtn dbtn-primary" disabled={pending || !projects.length}>
           {pending ? "Creando…" : "Crear borrador"}
         </button>
       </div>

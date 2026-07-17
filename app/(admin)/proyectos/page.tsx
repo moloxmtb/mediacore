@@ -1,11 +1,10 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
+import StateChip from "@/components/admin/StateChip";
 import { createClient } from "@/lib/supabase/server";
-import {
-  PROJECT_STATUS_LABELS,
-  formatDate,
-  projectStatusBadge,
-} from "@/lib/format";
+import { PROJECT_STATUS_LABELS, formatDate } from "@/lib/format";
+import { stStyle as st, projectTone } from "@/lib/estado";
 import type { ProjectStatus } from "@/lib/types";
 
 type Row = {
@@ -17,6 +16,14 @@ type Row = {
   client_id: string;
   clients: { name: string; accent_color: string | null } | null;
 };
+
+const SEC = "var(--sec-proyectos)";
+
+const IcoFolder = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+  </svg>
+);
 
 export default async function ProyectosPage() {
   const supabase = await createClient();
@@ -30,21 +37,19 @@ export default async function ProyectosPage() {
   return (
     <>
       <PageHeader title="Proyectos" subtitle="Proyectos activos por cliente" />
-      <div className="app-content">
-        <div className="page-actions">
-          <Link href="/proyectos/nuevo" className="btn btn-primary">
-            + Nuevo proyecto
-          </Link>
-        </div>
-
-        <div className="card">
-          <div className="card-head">
+      <div className="app-content" style={{ ["--sec" as string]: SEC } as CSSProperties}>
+        <div className="dbox">
+          <div className="dbox-head">
+            <span className="dh-ico"><IcoFolder /></span>
             <h3>Todos los proyectos</h3>
-            <span className="tag">{rows.length} registros</span>
+            <span className="dcount">{rows.length}</span>
+            <div className="dhead-actions">
+              <Link href="/proyectos/nuevo" className="dbtn dbtn-primary dbtn-sm">+ Nuevo proyecto</Link>
+            </div>
           </div>
 
           {rows.length ? (
-            <table>
+            <table className="dtable">
               <thead>
                 <tr>
                   <th>Proyecto</th>
@@ -56,41 +61,28 @@ export default async function ProyectosPage() {
               </thead>
               <tbody>
                 {rows.map((p) => (
-                  <tr key={p.id}>
+                  <tr key={p.id} className="drow" style={st(projectTone[p.status])}>
                     <td>
-                      <Link href={`/proyectos/${p.id}`} className="row-link">
-                        {p.name}
+                      <Link href={`/proyectos/${p.id}`} className="row-link">{p.name}</Link>
+                    </td>
+                    <td>
+                      {/* Identidad de cliente: cuadradito, separado del color de estado */}
+                      <Link href={`/clientes/${p.client_id}`} className="row-link" style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                        <span className="cli-sq" style={{ background: p.clients?.accent_color ?? "var(--tx-3)" }} />
+                        {p.clients?.name ?? "—"}
                       </Link>
                     </td>
-                    <td>
-                      <Link href={`/clientes/${p.client_id}`} className="row-link">
-                        <div className="cli">
-                          <span
-                            className="dot"
-                            style={{ background: p.clients?.accent_color ?? "#3dbdcb" }}
-                          />
-                          {p.clients?.name ?? "—"}
-                        </div>
-                      </Link>
-                    </td>
-                    <td>
-                      <span className={`badge ${projectStatusBadge(p.status)}`}>
-                        {PROJECT_STATUS_LABELS[p.status]}
-                      </span>
-                    </td>
-                    <td className="mono" style={{ color: "var(--muted)" }}>
-                      {formatDate(p.start_date)}
-                    </td>
-                    <td className="mono" style={{ color: "var(--muted)" }}>
-                      {formatDate(p.end_date)}
-                    </td>
+                    <td><StateChip tone={projectTone[p.status]} label={PROJECT_STATUS_LABELS[p.status]} /></td>
+                    <td className="mono mut">{formatDate(p.start_date)}</td>
+                    <td className="mono mut">{formatDate(p.end_date)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           ) : (
-            <div className="empty">
-              Aún no hay proyectos. Crea el primero con “Nuevo proyecto”.
+            <div className="dempty">
+              <span>Aún no hay proyectos.</span>
+              <Link href="/proyectos/nuevo" className="dbtn dbtn-primary dbtn-sm">+ Nuevo proyecto</Link>
             </div>
           )}
         </div>
