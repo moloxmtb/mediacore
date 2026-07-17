@@ -67,6 +67,9 @@ export default async function PortalInicioPage() {
     if ((k === "hito" || k === "deadline") && e.project_id && !nextHitoByProject.has(e.project_id)) nextHitoByProject.set(e.project_id, e);
     if (k === "reunion" && e.project_id && !nextReunionByProject.has(e.project_id)) nextReunionByProject.set(e.project_id, e);
   }
+  // Próximo global (por si un evento no está atado a un proyecto): el cliente
+  // solo ve los suyos por RLS, así que el "próximo" global es igual de válido.
+  const globalNextHito = upcoming.find((e) => e.kind === "hito" || e.kind === "deadline");
   const proxReunion = upcoming.find((e) => e.kind === "reunion");
   let miAsistencia: boolean | null = null;
   if (proxReunion) {
@@ -88,8 +91,10 @@ export default async function PortalInicioPage() {
             <div className="dbox-body">
               {projects.length ? projects.map((p) => {
                 const pct = projectProgress(p.id);
-                const hito = nextHitoByProject.get(p.id);
-                const reunion = nextReunionByProject.get(p.id) ?? (proxReunion?.project_id === p.id ? proxReunion : undefined);
+                // Preferir el evento atado a ESTE proyecto; si no hay, caer al
+                // próximo global (útil para el caso típico de un solo proyecto).
+                const hito = nextHitoByProject.get(p.id) ?? globalNextHito;
+                const reunion = nextReunionByProject.get(p.id) ?? proxReunion;
                 return (
                   <div key={p.id} className="pcard">
                     <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "baseline" }}>
