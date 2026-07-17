@@ -64,7 +64,16 @@ function Grid({
   );
 }
 
-export default function ContentPieceViewer({ piece }: { piece: ViewerPiece }) {
+export default function ContentPieceViewer({
+  piece,
+  hideHeader = false,
+}: {
+  piece: ViewerPiece;
+  /** Aprobaciones (portal v2) envuelve la pieza con su propia cabecera
+   *  (pastilla de tipo + chip de estado cliente-facing); ahí se oculta la
+   *  interna para no duplicar título/estado. */
+  hideHeader?: boolean;
+}) {
   const [lb, setLb] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const open = (media: ViewerMedia[]) => (index: number) =>
@@ -74,12 +83,14 @@ export default function ContentPieceViewer({ piece }: { piece: ViewerPiece }) {
 
   return (
     <div className="pc">
-      <div className="pc-head">
-        <span className="pc-title">{piece.title}</span>
-        <span className={`badge ${contentStatusBadge(piece.status)}`}>
-          {CONTENT_STATUS_LABELS[piece.status]}
-        </span>
-      </div>
+      {!hideHeader && (
+        <div className="pc-head">
+          <span className="pc-title">{piece.title}</span>
+          <span className={`badge ${contentStatusBadge(piece.status)}`}>
+            {CONTENT_STATUS_LABELS[piece.status]}
+          </span>
+        </div>
+      )}
 
       {cur ? (
         <>

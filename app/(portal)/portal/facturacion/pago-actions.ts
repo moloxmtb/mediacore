@@ -20,13 +20,13 @@ import {
  */
 export async function iniciarPagoFlow(fd: FormData): Promise<void> {
   const installmentId = String(fd.get("installment_id") ?? "").trim();
-  if (!installmentId) redirect("/portal/finanzas?pago=error");
+  if (!installmentId) redirect("/portal/facturacion?pago=error");
 
   const session = await getSessionProfile();
   if (!session || session.role !== "client" || !canSeeFinance(session.clientRole)) {
-    redirect("/portal/finanzas?pago=error");
+    redirect("/portal/facturacion?pago=error");
   }
-  if (!flowConfigured()) redirect("/portal/finanzas?pago=noconfig");
+  if (!flowConfigured()) redirect("/portal/facturacion?pago=noconfig");
 
   const supabase = await createClient();
   // RLS: solo carga la cuota si es del propio cliente y el rol puede.
@@ -35,10 +35,10 @@ export async function iniciarPagoFlow(fd: FormData): Promise<void> {
     .select("id, client_id, number, status, total_clp")
     .eq("id", installmentId)
     .maybeSingle();
-  if (!cuota) redirect("/portal/finanzas?pago=error");
+  if (!cuota) redirect("/portal/facturacion?pago=error");
   if (cuota.status !== "facturada" || !cuota.total_clp) {
     // Solo se paga lo facturado (monto congelado). Nunca un estimado.
-    redirect("/portal/finanzas?pago=noestado");
+    redirect("/portal/facturacion?pago=noestado");
   }
 
   // Orden única por intento. commerce_order corto y trazable.
@@ -59,7 +59,7 @@ export async function iniciarPagoFlow(fd: FormData): Promise<void> {
     })
     .select("id")
     .single();
-  if (insErr || !pay) redirect("/portal/finanzas?pago=error");
+  if (insErr || !pay) redirect("/portal/facturacion?pago=error");
 
   // Las escrituras de estado/token las hace el servidor (service_role): la RLS
   // solo deja al cliente INSERT/SELECT sus pagos, no UPDATE.
@@ -87,9 +87,9 @@ export async function iniciarPagoFlow(fd: FormData): Promise<void> {
         "[flow] BLOQUEADO: deployment de producción con FLOW_API_URL de sandbox; pago NO creado.",
         { commerceOrder, apiUrl: flowApiUrl() },
       );
-      redirect("/portal/finanzas?pago=config");
+      redirect("/portal/facturacion?pago=config");
     }
-    redirect("/portal/finanzas?pago=error");
+    redirect("/portal/facturacion?pago=error");
   }
 
   await admin
@@ -103,7 +103,7 @@ export async function iniciarPagoFlow(fd: FormData): Promise<void> {
     })
     .eq("id", pay.id);
 
-  revalidatePath("/portal/finanzas");
+  revalidatePath("/portal/facturacion");
   // A la pasarela de Flow (la tarjeta nunca toca Media Core).
   redirect(`${flow.url}?token=${flow.token}`);
 }
@@ -114,11 +114,11 @@ export async function iniciarPagoFlow(fd: FormData): Promise<void> {
  */
 export async function verificarPagoFlow(fd: FormData): Promise<void> {
   const installmentId = String(fd.get("installment_id") ?? "").trim();
-  if (!installmentId) redirect("/portal/finanzas?pago=error");
+  if (!installmentId) redirect("/portal/facturacion?pago=error");
 
   const session = await getSessionProfile();
   if (!session || session.role !== "client" || !canSeeFinance(session.clientRole)) {
-    redirect("/portal/finanzas?pago=error");
+    redirect("/portal/facturacion?pago=error");
   }
 
   const supabase = await createClient();
@@ -135,9 +135,9 @@ export async function verificarPagoFlow(fd: FormData): Promise<void> {
     try {
       await applyFlowOutcome(pay.flow_token);
     } catch {
-      redirect("/portal/finanzas?pago=error");
+      redirect("/portal/facturacion?pago=error");
     }
   }
-  revalidatePath("/portal/finanzas");
-  redirect("/portal/finanzas?pago=verificado");
+  revalidatePath("/portal/facturacion");
+  redirect("/portal/facturacion?pago=verificado");
 }

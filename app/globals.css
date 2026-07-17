@@ -2209,6 +2209,38 @@ tbody tr:hover {
   letter-spacing: -.01em; color: var(--tx-1); line-height: 1;
 }
 
+/* ---------- Tablero de Inicio (portal) — "Cómo va tu proyecto" ---------- */
+.pcard {
+  background: var(--surface-panel);
+  border: 0.5px solid var(--v2-line);
+  border-radius: 12px; padding: 15px 18px;
+}
+.pcard + .pcard { margin-top: 10px; }
+.pcard .pc-name { font-weight: 600; font-size: 14.5px; }
+.pbar { height: 8px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 16%, transparent); overflow: hidden; margin: 10px 0 6px; }
+.pbar-fill { height: 100%; border-radius: 999px; background: var(--accent); }
+.pcard .pc-meta { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12.5px; color: var(--tx-2); margin-top: 8px; }
+.pcard .pc-meta b { color: var(--tx-1); font-weight: 600; }
+
+/* Punto de alerta (ámbar) en "Te toca a ti" */
+.tdot { width: 8px; height: 8px; border-radius: 50%; background: var(--st-wait); flex: none; }
+
+/* ---------- Aprobaciones (portal) — ítem unificado contenido+entregable ----------
+   Envoltorio con borde IZQUIERDO por estado (--st) y cabecera con pastilla de
+   TIPO + título + chip de estado. El cuerpo lo pone cada tipo (visor de
+   contenido o formulario de entregable). */
+.aprtabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.aprlist { display: flex; flex-direction: column; gap: 12px; }
+.apr-item {
+  background: var(--surface-panel);
+  border: 0.5px solid var(--v2-line);
+  border-left: 3px solid var(--st, var(--v2-line));
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.apr-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.apr-head .apr-title { font-weight: 600; font-size: 14px; flex: 1; min-width: 0; }
+
 /* ---------- Tarjeta de MÉTRICA (dashboard) ----------
    NEUTRA por definición: una métrica no es un estado. Solo las tarjetas de
    ESTADO (.paycard) llevan color teñido. */

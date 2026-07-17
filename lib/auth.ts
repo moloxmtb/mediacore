@@ -60,7 +60,7 @@ export function canEditFicha(role: ClientRole | null): boolean {
 /** Home del portal según el rol (finanzas puro no tiene mundo de contenido).
  *  El home de contenido es la pantalla única de 3 zonas en /portal. */
 export function portalHome(role: ClientRole | null): string {
-  return canSeeContent(role) ? "/portal" : "/portal/finanzas";
+  return canSeeContent(role) ? "/portal" : "/portal/facturacion";
 }
 
 /**

@@ -40,21 +40,28 @@ export default async function PortalLayout({
     : null;
 
   // Conteos para los badges del nav. La RLS ya limita cada tabla al mundo
-  // correcto (content_pieces: owner/content; installments: owner/finance), así
-  // que un rol que no corresponde recibe 0.
-  const [{ count: contentPend }, { count: financePend }] = await Promise.all([
+  // correcto (content_pieces/deliverables: owner/content; installments:
+  // owner/finance), así que un rol que no corresponde recibe 0.
+  // Aprobaciones = contenido por aprobar + entregables por revisar (la sección
+  // fusiona ambos). Facturación = cuotas facturadas.
+  const [{ count: contentPend }, { count: entregPend }, { count: financePend }] = await Promise.all([
     supabase
       .from("content_pieces")
       .select("id", { count: "exact", head: true })
       .eq("status", "propuesta"),
+    supabase
+      .from("deliverables")
+      .select("id", { count: "exact", head: true })
+      .eq("en_flujo_aprobacion", true)
+      .eq("approval_status", "enviado"),
     supabase
       .from("installments")
       .select("id", { count: "exact", head: true })
       .eq("status", "facturada"),
   ]);
   const navCounts: Record<string, number> = {
-    "/portal/contenido": contentPend ?? 0,
-    "/portal/finanzas": financePend ?? 0,
+    "/portal/aprobaciones": (contentPend ?? 0) + (entregPend ?? 0),
+    "/portal/facturacion": financePend ?? 0,
   };
 
   // Nombre = marca corta (clients.name), no la razón social legal.

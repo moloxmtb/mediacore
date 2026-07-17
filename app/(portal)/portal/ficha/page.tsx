@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { redirect } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import FichaForm from "@/components/admin/FichaForm";
@@ -49,15 +50,15 @@ export default async function PortalFichaPage() {
         title="Mi empresa"
         subtitle={editable ? "Antecedentes y contactos" : "Antecedentes y contactos (solo lectura)"}
       />
-      <div className="app-content">
+      <div className="app-content" style={{ ["--sec" as string]: "var(--accent)" } as CSSProperties}>
         <div className="stack">
           {/* Ficha */}
-          <div className="card">
-            <div className="card-head">
+          <div className="dbox">
+            <div className="dbox-head">
               <h3>Antecedentes de la empresa</h3>
             </div>
             {editable ? (
-              <div className="card-body">
+              <div className="dbox-body">
                 <FichaForm action={guardarFicha} clientId={clientId} details={ficha} />
               </div>
             ) : (
@@ -76,13 +77,13 @@ export default async function PortalFichaPage() {
           </div>
 
           {/* Contactos */}
-          <div className="card">
-            <div className="card-head">
+          <div className="dbox">
+            <div className="dbox-head">
               <h3>Contactos / funcionarios</h3>
-              <span className="tag">{contactos.length}</span>
+              <span className="dcount">{contactos.length}</span>
             </div>
             {contactos.length ? (
-              <table>
+              <table className="dtable">
                 <thead>
                   <tr>
                     <th>Nombre</th>
@@ -95,21 +96,21 @@ export default async function PortalFichaPage() {
                   {contactos.map((c) => (
                     <tr key={c.id}>
                       <td>{c.name}</td>
-                      <td style={{ color: "var(--muted)" }}>{c.role ?? "—"}</td>
-                      <td className="mono" style={{ color: "var(--muted)" }}>{c.phone ?? "—"}</td>
-                      <td className="mono" style={{ color: "var(--muted)" }}>{c.email ?? "—"}</td>
+                      <td className="mut">{c.role ?? "—"}</td>
+                      <td className="mono mut">{c.phone ?? "—"}</td>
+                      <td className="mono mut">{c.email ?? "—"}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             ) : (
-              <div className="empty">Aún no hay contactos en el directorio.</div>
+              <div className="dempty">Aún no hay contactos en el directorio.</div>
             )}
             {editable && (
-              <div className="card-body" style={{ borderTop: "1px solid var(--border-soft)", display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div className="dbox-body" style={{ borderTop: "0.5px solid var(--v2-line)", display: "flex", flexDirection: "column", gap: "10px" }}>
                 {contactos.map((c) => (
                   <details key={c.id}>
-                    <summary className="btn btn-sm">Editar · {c.name}</summary>
+                    <summary className="dbtn dbtn-sm">Editar · {c.name}</summary>
                     <div style={{ padding: "14px 2px 4px" }}>
                       <ContactoForm action={guardarContacto} clientId={clientId} contact={c} submitLabel="Guardar contacto" />
                       <div style={{ marginTop: "12px" }}>
@@ -119,7 +120,7 @@ export default async function PortalFichaPage() {
                   </details>
                 ))}
                 <details>
-                  <summary className="btn btn-sm btn-primary" style={{ width: "fit-content" }}>+ Agregar contacto</summary>
+                  <summary className="dbtn dbtn-primary dbtn-sm" style={{ width: "fit-content" }}>+ Agregar contacto</summary>
                   <div style={{ padding: "14px 2px 4px" }}>
                     <ContactoForm action={guardarContacto} clientId={clientId} submitLabel="Crear contacto" />
                   </div>
