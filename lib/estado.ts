@@ -173,3 +173,62 @@ export const invitationTone: Record<InvitationStatus, Tone> = {
 export function contractTone(status: string): Tone {
   return status === "activo" ? "ok" : status === "pausado" ? "wait" : "neutral";
 }
+
+// ============================================================
+//  ETIQUETAS CLIENTE-FACING (portal v2) — fuente única
+//  Separadas de las etiquetas internas (lib/format, lib/content): el cliente ve
+//  un lenguaje más suave y en segunda persona ("Por revisar", "Aprobado por ti").
+//
+//  REGLA DE SUAVIZACIÓN (propia del portal): el rojo se reserva. Fuera de
+//  Facturación no se usa el marco de alarma —una tarea vencida se muestra
+//  "Pendiente" en ámbar (sin "atrasada"), y una pieza/entregable rechazado por
+//  el cliente va en GRIS (una decisión suya, no una emergencia), no en rojo.
+//  EXCEPCIÓN única: en Facturación, una cuota VENCIDA sí va en rojo —es
+//  información accionable que el cliente necesita ver (installmentTone la
+//  mantiene en "bad"). Ver BRIEF del portal.
+// ============================================================
+
+// ---------- Contenido (portal) ----------
+export const contentClientLabel: Record<ContentStatus, string> = {
+  borrador: "En preparación",
+  propuesta: "Por revisar",
+  cambios_solicitados: "Pediste cambios",
+  aprobada_cliente: "Aprobado por ti",
+  aprobada: "Aprobado",
+  rechazada: "Rechazado por ti",
+};
+export const contentClientTone: Record<ContentStatus, Tone> = {
+  borrador: "neutral",
+  propuesta: "wait",
+  cambios_solicitados: "wait",
+  aprobada_cliente: "ok",
+  aprobada: "ok",
+  rechazada: "neutral", // suavizado: decisión del cliente, no alarma → gris, no rojo
+};
+
+// ---------- Entregables (portal) ----------
+export const deliverableClientLabel: Record<DeliverableApproval, string> = {
+  borrador: "En preparación",
+  enviado: "Por revisar",
+  cambios_solicitados: "Pediste cambios",
+  aprobado: "Aprobado por ti",
+  rechazado: "Rechazado por ti",
+};
+export const deliverableClientTone: Record<DeliverableApproval, Tone> = {
+  borrador: "neutral",
+  enviado: "wait",
+  cambios_solicitados: "wait",
+  aprobado: "ok",
+  rechazado: "neutral", // suavizado, igual que contenido
+};
+
+// ---------- Tareas (portal) ----------
+/** Tono SUAVIZADO: nunca "bad". Una tarea vencida del cliente NO se dramatiza
+ *  (a diferencia del panel, donde taskTone la pinta roja). Pendiente → ámbar,
+ *  hecha/confirmada → verde. */
+export function taskClientTone(estado: TaskStatus): Tone {
+  return estado === "hecha" || estado === "confirmada" ? "ok" : "wait";
+}
+export function taskClientLabel(estado: TaskStatus): string {
+  return estado === "confirmada" ? "Confirmada" : estado === "hecha" ? "Hecha" : "Pendiente";
+}

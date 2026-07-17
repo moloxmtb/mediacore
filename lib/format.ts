@@ -204,16 +204,5 @@ export function deliverableApprovalBadge(status: DeliverableApproval, respondedA
   return status === "aprobado" ? "b-ok" : status === "rechazado" ? "b-bad" : status === "enviado" ? "b-accent" : "b-warn";
 }
 
-// Idioma del CLIENTE (portal) — sin jerga interna (nada de "borrador"/"enviado").
-export function deliverableClientLabel(status: DeliverableApproval): string {
-  return {
-    borrador: "En preparación",
-    enviado: "Por revisar",
-    aprobado: "Aprobado por ti",
-    cambios_solicitados: "Enviaste un pedido de cambios",
-    rechazado: "Rechazado por ti",
-  }[status];
-}
-export function deliverableClientBadge(status: DeliverableApproval): string {
-  return status === "aprobado" ? "b-ok" : status === "rechazado" ? "b-bad" : status === "enviado" ? "b-accent" : status === "cambios_solicitados" ? "b-warn" : "b-idle";
-}
+// Las etiquetas cliente-facing viven ahora en lib/estado.ts (fuente única):
+// deliverableClientLabel/Tone, contentClientLabel/Tone, taskClientLabel/Tone.

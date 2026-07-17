@@ -1,9 +1,12 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import SolicitarReunionForm from "@/components/portal/SolicitarReunionForm";
 import { requirePortalWorld } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
+import StateChip from "@/components/admin/StateChip";
+import { stStyle as st, meetingRequestTone } from "@/lib/estado";
 import { confirmarAsistencia } from "../asistencia-actions";
 import type { MeetingRequest } from "@/lib/types";
 
@@ -100,7 +103,7 @@ export default async function CalendarioPage({
       type,
       title: e.title,
       meta: e.projects?.name ?? undefined,
-      href: e.project_id ? `/portal/proyectos/${e.project_id}` : undefined,
+      href: e.project_id ? `/portal/proyecto?p=${e.project_id}` : undefined,
       eventId: type === "reunion" ? e.id : undefined,
     });
   }
@@ -111,7 +114,7 @@ export default async function CalendarioPage({
       type: "entrega",
       title: d.title,
       meta: d.projects?.name ?? undefined,
-      href: `/portal/proyectos/${d.project_id}`,
+      href: `/portal/proyecto?p=${d.project_id}`,
     });
   }
 
@@ -178,18 +181,18 @@ export default async function CalendarioPage({
   return (
     <>
       <PageHeader title="Calendario" subtitle="Reuniones, hitos, entregas y rodajes en un solo lugar" />
-      <div className="app-content">
+      <div className="app-content" style={{ ["--sec" as string]: "var(--accent)" } as CSSProperties}>
         <div className="stack">
           {/* Tira de próximos hitos (liviana: fase + fecha) */}
           {hitosProx.length > 0 && (
-            <div className="card">
-              <div className="card-head">
+            <div className="dbox">
+              <div className="dbox-head">
                 <h3>Próximos hitos</h3>
-                <span className="tag">{hitosProx.length}</span>
+                <span className="dcount">{hitosProx.length}</span>
               </div>
               <div className="hito-strip">
                 {hitosProx.map((h) => (
-                  <Link key={h.id} href={`/portal/proyectos/${h.project_id}`} className="hito-chip">
+                  <Link key={h.id} href={`/portal/proyecto?p=${h.project_id}`} className="hito-chip">
                     <span className="hito-date mono">{formatDate(h.end_date)}</span>
                     <span className="hito-name">{h.name}</span>
                     {h.projects?.name && <span className="hito-proj">{h.projects.name}</span>}
@@ -206,9 +209,9 @@ export default async function CalendarioPage({
               <Link href={qp({ vista: "lista" })} className={`seg-btn${vista === "lista" ? " active" : ""}`}>Lista</Link>
             </div>
             <details className="solicitar">
-              <summary className="btn btn-sm btn-primary" style={{ width: "fit-content" }}>Solicitar reunión</summary>
-              <div className="card" style={{ marginTop: "10px" }}>
-                <div className="card-head"><h3>Solicitar una reunión a Color Media</h3></div>
+              <summary className="dbtn dbtn-primary dbtn-sm" style={{ width: "fit-content" }}>Solicitar reunión</summary>
+              <div className="dbox" style={{ marginTop: "10px" }}>
+                <div className="dbox-head"><h3>Solicitar una reunión a Color Media</h3></div>
                 <SolicitarReunionForm />
               </div>
             </details>
@@ -224,13 +227,13 @@ export default async function CalendarioPage({
           </div>
 
           {vista === "mes" ? (
-            <div className="card">
-              <div className="card-head">
+            <div className="dbox">
+              <div className="dbox-head">
                 <h3 style={{ textTransform: "capitalize" }}>{MESES[M - 1]} {Y}</h3>
                 <div style={{ display: "flex", gap: "6px" }}>
-                  <Link href={qp({ mes: prevMonth })} className="btn btn-sm">‹</Link>
-                  <Link href={qp({ mes: `${ty}-${pad(tm)}` })} className="btn btn-sm">Hoy</Link>
-                  <Link href={qp({ mes: nextMonth })} className="btn btn-sm">›</Link>
+                  <Link href={qp({ mes: prevMonth })} className="dbtn dbtn-sm">‹</Link>
+                  <Link href={qp({ mes: `${ty}-${pad(tm)}` })} className="dbtn dbtn-sm">Hoy</Link>
+                  <Link href={qp({ mes: nextMonth })} className="dbtn dbtn-sm">›</Link>
                 </div>
               </div>
               <div className="cal-grid">
@@ -252,10 +255,10 @@ export default async function CalendarioPage({
               </div>
             </div>
           ) : (
-            <div className="card">
-              <div className="card-head"><h3>Próximos eventos</h3><span className="tag">{upcoming.length}</span></div>
+            <div className="dbox">
+              <div className="dbox-head"><h3>Próximos eventos</h3><span className="dcount">{upcoming.length}</span></div>
               {upcoming.length ? (
-                <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div className="dbox-body" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   {[...listaByDay.entries()].map(([date, its]) => (
                     <div key={date}>
                       <div className="lista-fecha">{formatDate(date)}</div>
@@ -266,24 +269,24 @@ export default async function CalendarioPage({
                             <div style={{ fontSize: "13.5px", fontWeight: 500 }}>
                               {it.href ? <Link href={it.href} className="row-link">{it.title}</Link> : it.title}
                             </div>
-                            <div className="meta">
+                            <div className="mut">
                               {TIPO_LABEL[it.type]}{it.meta ? ` · ${it.meta}` : ""}
                               {it.datetime ? ` · ${new Date(it.datetime).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}` : ""}
                             </div>
                           </div>
                           {it.eventId && (
                             <span className="alert-actions">
-                              {attByEvent.get(it.eventId) === true && <span className="badge b-ok">Asistirás</span>}
-                              {attByEvent.get(it.eventId) === false && <span className="badge b-idle">No asistirás</span>}
+                              {attByEvent.get(it.eventId) === true && <StateChip tone="ok" label="Asistirás" />}
+                              {attByEvent.get(it.eventId) === false && <StateChip tone="neutral" label="No asistirás" />}
                               <form action={confirmarAsistencia} style={{ display: "inline" }}>
                                 <input type="hidden" name="event_id" value={it.eventId} />
                                 <input type="hidden" name="attending" value="si" />
-                                <button className={`btn btn-sm${attByEvent.get(it.eventId) === true ? " btn-primary" : ""}`} type="submit">Asistiré</button>
+                                <button className={`dbtn dbtn-sm${attByEvent.get(it.eventId) === true ? " dbtn-primary" : ""}`} type="submit">Asistiré</button>
                               </form>
                               <form action={confirmarAsistencia} style={{ display: "inline" }}>
                                 <input type="hidden" name="event_id" value={it.eventId} />
                                 <input type="hidden" name="attending" value="no" />
-                                <button className={`btn btn-sm${attByEvent.get(it.eventId) === false ? " btn-danger" : ""}`} type="submit">No podré</button>
+                                <button className={`dbtn dbtn-sm${attByEvent.get(it.eventId) === false ? " dbtn-danger" : ""}`} type="submit">No podré</button>
                               </form>
                             </span>
                           )}
@@ -293,27 +296,25 @@ export default async function CalendarioPage({
                   ))}
                 </div>
               ) : (
-                <div className="empty">No hay eventos próximos.</div>
+                <div className="dempty">No hay eventos próximos.</div>
               )}
             </div>
           )}
 
           {/* Mis solicitudes de reunión */}
           {solicitudes.length > 0 && (
-            <div className="card">
-              <div className="card-head"><h3>Tus solicitudes de reunión</h3></div>
-              <table>
+            <div className="dbox">
+              <div className="dbox-head"><h3>Tus solicitudes de reunión</h3></div>
+              <table className="dtable">
                 <thead><tr><th>Motivo</th><th>Preferida</th><th>Urgencia</th><th>Estado</th></tr></thead>
                 <tbody>
                   {solicitudes.map((r) => (
-                    <tr key={r.id}>
+                    <tr key={r.id} className="drow" style={st(meetingRequestTone[r.status])}>
                       <td>{r.reason}</td>
-                      <td className="mono" style={{ color: "var(--muted)" }}>{r.preferred_at ? formatDate(r.preferred_at.slice(0, 10)) : "—"}</td>
+                      <td className="mono mut">{r.preferred_at ? formatDate(r.preferred_at.slice(0, 10)) : "—"}</td>
                       <td style={{ textTransform: "capitalize" }}>{r.urgency}</td>
                       <td>
-                        <span className={`badge ${r.status === "agendada" ? "b-ok" : r.status === "descartada" ? "b-idle" : "b-warn"}`}>
-                          {r.status === "agendada" ? "Agendada" : r.status === "descartada" ? "Descartada" : "Pendiente"}
-                        </span>
+                        <StateChip tone={meetingRequestTone[r.status]} label={r.status === "agendada" ? "Agendada" : r.status === "descartada" ? "Descartada" : "Pendiente"} />
                       </td>
                     </tr>
                   ))}
