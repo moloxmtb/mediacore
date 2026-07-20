@@ -4,38 +4,86 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile, canSeeContent } from "@/lib/auth";
 import { notifyDeliverableResponse } from "@/lib/notify";
-import type { DeliverableApproval } from "@/lib/types";
-
-const DECISIONES: DeliverableApproval[] = ["aprobado", "cambios_solicitados", "rechazado"];
+import type { DeliverableReviewKind } from "@/lib/types";
 
 /**
- * El cliente responde un entregable ENVIADO (aprobar / pedir cambios / rechazar),
- * con comentario opcional. NO hace UPDATE directo: llama la RPC de Fase 1
- * (deliverable_client_respond, SECURITY DEFINER), que valida propiedad + rol
- * owner/content + estado 'enviado' y es columna-segura. El guard de sesión
- * (client + canSeeContent) es defensa en profundidad; el muro real es la RPC.
+ * Lado CLIENTE del flujo de entregables (v2).
+ *
+ * El cliente NUNCA hace UPDATE de estado: inserta su fila en deliverable_reviews
+ * con actor='client' y el trigger `apply_client_deliverable_review` la traduce a
+ * approval_status (mismo patrón que apply_client_review en contenido). La RLS de
+ * inserción acota qué puede escribir y en qué estado:
+ *   · comentario                 → mientras el entregable esté enviado+visible
+ *   · aprobacion/cambios/rechazo → solo si está 'enviado' (esperando respuesta)
+ * Así el cliente ya NO queda mudo tras responder: puede seguir comentando.
  */
+
+const DECISION_KIND: Record<string, DeliverableReviewKind> = {
+  aprobado: "aprobacion",
+  cambios_solicitados: "cambios",
+  rechazado: "rechazo",
+};
+
+async function clientCtx(deliverableId: string) {
+  const session = await getSessionProfile();
+  if (!session || session.role !== "client" || !canSeeContent(session.clientRole)) return null;
+  if (!session.clientId) return null;
+  const supabase = await createClient();
+  // La RLS ya limita a los entregables visibles de su empresa: si no lo alcanza,
+  // para este usuario no existe.
+  const { data: d } = await supabase.from("deliverables").select("id").eq("id", deliverableId).maybeSingle();
+  if (!d) return null;
+  return { supabase, clientId: session.clientId, userId: session.userId };
+}
+
+/** Aprobar / pedir cambios / rechazar, con comentario opcional. */
 export async function responderEntregable(fd: FormData): Promise<void> {
   const id = String(fd.get("id") ?? "").trim();
-  const decision = String(fd.get("decision") ?? "").trim() as DeliverableApproval;
+  const decision = String(fd.get("decision") ?? "").trim();
   const comment = String(fd.get("comment") ?? "").trim();
-  if (!id || !DECISIONES.includes(decision)) return;
+  const kind = DECISION_KIND[decision];
+  if (!id || !kind) return;
 
-  const session = await getSessionProfile();
-  if (!session || session.role !== "client" || !canSeeContent(session.clientRole)) return;
+  const ctx = await clientCtx(id);
+  if (!ctx) return;
 
-  const supabase = await createClient();
-  const { data: ok } = await supabase.rpc("deliverable_client_respond", {
-    p_id: id,
-    p_decision: decision,
-    p_comment: comment || null,
+  const { error } = await ctx.supabase.from("deliverable_reviews").insert({
+    deliverable_id: id,
+    client_id: ctx.clientId,
+    actor: "client",
+    kind,
+    body: comment || null,
+    created_by: ctx.userId,
   });
-  // Notificar al equipo SOLO si la RPC confirmó el cambio (n > 0): así no hay
-  // aviso fantasma si el permiso/estado no dio. Best-effort: si el correo falla,
-  // la respuesta del cliente igual quedó guardada.
-  if (ok === true) {
+  // El trigger ya movió el estado. Solo se avisa si la fila entró de verdad: si
+  // la RLS la rechazó (estado equivocado, rol), no hay aviso fantasma.
+  if (!error) {
     await notifyDeliverableResponse({ deliverableId: id }).catch(() => {});
   }
-  revalidatePath("/portal/entregables");
+  revalidatePath("/portal/aprobaciones");
+  revalidatePath("/portal");
+}
+
+/** Comentar SIN decidir. Disponible aunque ya haya respondido antes. */
+export async function comentarEntregable(fd: FormData): Promise<void> {
+  const id = String(fd.get("id") ?? "").trim();
+  const comment = String(fd.get("comment") ?? "").trim();
+  if (!id || !comment) return;
+
+  const ctx = await clientCtx(id);
+  if (!ctx) return;
+
+  const { error } = await ctx.supabase.from("deliverable_reviews").insert({
+    deliverable_id: id,
+    client_id: ctx.clientId,
+    actor: "client",
+    kind: "comentario",
+    body: comment,
+    created_by: ctx.userId,
+  });
+  if (!error) {
+    await notifyDeliverableResponse({ deliverableId: id }).catch(() => {});
+  }
+  revalidatePath("/portal/aprobaciones");
   revalidatePath("/portal");
 }

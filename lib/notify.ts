@@ -2,7 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/mail";
 import { appUrl } from "@/lib/app-url";
-import { eventEmail, deliverableResponseEmail } from "@/lib/email/templates";
+import { eventEmail, deliverableResponseEmail, manualNotifyEmail } from "@/lib/email/templates";
 
 export type NotifType = "accion" | "hito" | "reunion";
 
@@ -265,4 +265,58 @@ export async function notifyDeliverableResponse(opts: {
     if (res.ok) sent++;
   }
   return { sent, recipients: staff.length };
+}
+
+/**
+ * Entregables v2 — dirección ADMIN → CLIENTE (no existía: hasta ahora el staff
+ * tenía que apretar la campanita a mano después de cada corrección, y olvidarlo
+ * dejaba al cliente esperando sin saber que había algo nuevo).
+ *
+ * Destinatarios por el motor de v1.15: resolveClientRecipients(clientId,
+ * 'content') = owner + content de esa empresa. GATE DE VISIBILIDAD: no se avisa
+ * de un entregable que el cliente no puede ver (invisible o en borrador), que es
+ * el mismo predicado de `deliverable_sent_visible` en la RLS. Notificar sobre
+ * algo = revelar que existe.
+ */
+export async function notifyDeliverableToClient(opts: {
+  deliverableId: string;
+  kind: "version" | "comentario";
+  message?: string | null;
+}): Promise<{ sent: number; recipients: number }> {
+  const admin = createAdminClient();
+  const { data: d } = await admin
+    .from("deliverables")
+    .select("title, approval_status, visible_to_client, projects(client_id)")
+    .eq("id", opts.deliverableId)
+    .maybeSingle();
+  if (!d) return { sent: 0, recipients: 0 };
+
+  // Gate: calca deliverable_sent_visible (visible + fuera de borrador).
+  if (!d.visible_to_client || d.approval_status === "borrador") {
+    return { sent: 0, recipients: 0 };
+  }
+  const clientId = (d.projects as unknown as { client_id: string } | null)?.client_id;
+  if (!clientId) return { sent: 0, recipients: 0 };
+
+  const recipients = await resolveClientRecipients(clientId, "content");
+  if (!recipients.length) return { sent: 0, recipients: 0 };
+
+  const fallback =
+    opts.kind === "version"
+      ? "Subimos una versión nueva para tu revisión."
+      : "Te respondimos en este entregable.";
+  const { subject, html } = manualNotifyEmail({
+    objectLabel: "Entregable",
+    title: d.title as string,
+    message: (opts.message ?? "").trim() || fallback,
+    url: appUrl() + "/portal/aprobaciones",
+    audience: "cliente",
+  });
+
+  let sent = 0;
+  for (const r of recipients) {
+    const res = await sendEmail({ to: r.email, subject, html });
+    if (res.ok) sent++;
+  }
+  return { sent, recipients: recipients.length };
 }
