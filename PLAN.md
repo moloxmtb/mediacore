@@ -1445,3 +1445,54 @@ Decisiones tomadas donde el brief no llegaba: el historial "Lo que ha pasado" se
 Mi proyecto (el brief no lo ubicaba; borrarlo perdía las minutas); el pago en línea (Flow)
 se conservó restilado (quitarlo sería regresión funcional, no cambio visual); las tareas
 del cliente viven en el tablero de Inicio (redirect de /portal/tareas → /portal).
+
+## 📦 Versiones + conversación en ENTREGABLES — HECHO (DESPLEGADO v1.18)
+
+**v1.18 — Versiones + conversación en entregables.** El flujo era de una sola ronda y
+DESTRUÍA información: cada envío ponía `client_comment`/`responded_*` en null, cada
+reemplazo sobrescribía el archivo (ruta estable + upsert), el cliente solo podía hablar
+una vez y el admin no podía responder. Ahora nada se sobrescribe.
+
+Modelo (tablas GEMELAS de contenido, no compartidas — una RLS polimórfica se volvería
+turbia justo donde la queremos calcable):
+- **`deliverable_versions`**: `version_number`, `file_path` PROPIO por versión
+  (`<cliente>/<entregable>/<versión>`, nunca upsert sobre ruta estable), `note`
+  ("qué cambió"), + `deliverables.current_version_id`.
+- **`deliverable_reviews`**: historial unificado **append-only** (`actor` client|admin;
+  `kind` version|texto|comentario|aprobacion|cambios|rechazo), índice por
+  `(deliverable_id, created_at)`.
+
+RLS calcada del predicado de ENTREGABLES (`staff_sees_client` + `deliverable_sent_visible`),
+no del de contenido. El cliente NUNCA hace UPDATE de estado: inserta su fila y el trigger
+`apply_client_deliverable_review` la traduce. La RLS le impide escribir `version`/`texto`,
+y solo acepta decisiones si está `enviado`; comentar, en cambio, se permite mientras esté
+enviado+visible → **deja de quedar mudo tras responder**.
+
+**UN SOLO GESTO:** mandar una corrección era 4 pasos en 2 pantallas (reemplazar → editar
+texto → enviar → campanita) y olvidar uno dejaba al cliente esperando. Ahora "Subir versión
+nueva" pide archivo + nota y hace todo junto: crea la versión, la envía y avisa, con la
+casilla de aviso marcada por defecto. **La ficha del entregable se basta sola**: archivo
+actual, editar texto, subir versión, responder al cliente, historial completo y versiones
+anteriores descargables, sin salir a la ficha del proyecto.
+
+**Notificaciones:** nace la dirección **admin→cliente** (`notifyDeliverableToClient`,
+`resolveClientRecipients` mundo content) respetando el gate de visibilidad. Antes solo
+existía cliente→staff, y el aviso al cliente dependía de apretar la campanita a mano.
+
+**Portal:** "Lo último que te enviamos" (versión + su nota), "Conversación" con etiquetas
+cliente-facing y estados suavizados, comentar SIN decidir, y versiones anteriores
+descargables.
+
+**Migración:** aplicada y verificada en PRODUCCIÓN ANTES del deploy (el SQL primero es
+seguro: el código viejo ignora las tablas nuevas). La política de Storage se reemplaza para
+entender la ruta por versión y **resuelve también la forma legacy**, o habría dejado
+inaccesibles los archivos ya subidos. Backfill verificado fila por fila: la única v1 quedó
+apuntando al archivo correcto, cero comentarios y cero respuestas sin migrar, el entregable
+vivo intacto. `deliverable_files` no se borra.
+
+**Reversa:** `fase-entregables-versiones-ROLLBACK.sql`. ⚠️ Dropear las tablas nuevas NO
+basta: hay que restaurar primero la política de Storage, o el cliente pierde acceso a sus
+archivos. La ventana de reversa limpia se cierra con la primera versión que se suba con
+ruta nueva.
+
+Respaldo previo de producción: `~/mediacore-backups/prod-mediacore-20260720-154312.sql`.
