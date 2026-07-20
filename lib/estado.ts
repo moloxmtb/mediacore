@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import type {
   ClientStatus,
+  DeliverableReviewKind,
+  ReviewActor,
   ContentStatus,
   DeliverableApproval,
   DeliverableStatus,
@@ -221,6 +223,29 @@ export const deliverableClientTone: Record<DeliverableApproval, Tone> = {
   aprobado: "ok",
   rechazado: "neutral", // suavizado, igual que contenido
 };
+
+// ---------- Conversación de entregables (portal) ----------
+/** Etiqueta de una entrada del historial, en segunda persona y sin dramatizar
+ *  (misma regla de suavización: el rechazo del propio cliente no es una alarma). */
+export function deliverableEntryClientLabel(
+  kind: DeliverableReviewKind,
+  actor: ReviewActor,
+): string {
+  switch (kind) {
+    case "version":
+      return "Nueva versión";
+    case "texto":
+      return "Color Media actualizó la descripción";
+    case "comentario":
+      return actor === "admin" ? "Color Media" : "Tú";
+    case "aprobacion":
+      return "Aprobaste";
+    case "cambios":
+      return "Pediste cambios";
+    case "rechazo":
+      return "Rechazaste";
+  }
+}
 
 // ---------- Tareas (portal) ----------
 /** Tono SUAVIZADO: nunca "bad". Una tarea vencida del cliente NO se dramatiza

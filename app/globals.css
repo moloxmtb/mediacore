@@ -2241,6 +2241,16 @@ tbody tr:hover {
 .apr-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
 .apr-head .apr-title { font-weight: 600; font-size: 14px; flex: 1; min-width: 0; }
 
+/* Bloques dentro de un ítem de aprobación (última versión / conversación) */
+.aprbloque { margin-top: 12px; padding-top: 12px; border-top: 0.5px solid var(--v2-line); }
+.aprbloque-t {
+  font-size: 10.5px; letter-spacing: .7px; text-transform: uppercase;
+  color: var(--tx-3); font-weight: 600; margin-bottom: 8px;
+}
+/* Mensaje del hilo: el del propio cliente se marca con el acento del portal */
+.aprmsg { border-left: 2px solid var(--v2-line); padding-left: 10px; }
+.aprmsg-yo { border-left-color: var(--accent); }
+
 /* ---------- Tarjeta de MÉTRICA (dashboard) ----------
    NEUTRA por definición: una métrica no es un estado. Solo las tarjetas de
    ESTADO (.paycard) llevan color teñido. */

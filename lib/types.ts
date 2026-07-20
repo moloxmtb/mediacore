@@ -312,6 +312,44 @@ export type Deliverable = {
   created_at: string;
 };
 
+// ---------- Entregables v2: versiones + conversación ----------
+// Gemelas de content_versions / content_reviews (misma forma, tablas propias).
+
+export type DeliverableVersion = {
+  id: string;
+  deliverable_id: string;
+  client_id: string;
+  version_number: number;
+  file_path: string;
+  file_name: string | null;
+  file_mime: string | null;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+/** `version` y `texto` los escribe SOLO el staff; el resto puede venir de ambos
+ *  lados (la RLS lo acota). `comentario` = mensaje sin decisión. */
+export type DeliverableReviewKind =
+  | "version"
+  | "texto"
+  | "comentario"
+  | "aprobacion"
+  | "cambios"
+  | "rechazo";
+
+export type DeliverableReview = {
+  id: string;
+  deliverable_id: string;
+  client_id: string;
+  version_id: string | null;
+  actor: ReviewActor;
+  kind: DeliverableReviewKind;
+  body: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
 export type Action = {
   id: string;
   client_id: string;

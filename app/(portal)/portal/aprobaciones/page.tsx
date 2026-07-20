@@ -18,6 +18,7 @@ import {
   contentClientTone,
   deliverableClientLabel,
   deliverableClientTone,
+  deliverableEntryClientLabel,
   type Tone,
 } from "@/lib/estado";
 import type {
@@ -26,8 +27,10 @@ import type {
   ContentStatus,
   ContentVersion,
   DeliverableApproval,
+  DeliverableReview,
+  DeliverableVersion,
 } from "@/lib/types";
-import { responderEntregable } from "../entregables/actions";
+import { responderEntregable, comentarEntregable } from "../entregables/actions";
 
 const SEC = "var(--accent)";
 
@@ -66,8 +69,7 @@ type DelivRow = {
   title: string;
   description: string | null;
   approval_status: DeliverableApproval;
-  client_comment: string | null;
-  responded_at: string | null;
+  current_version_id: string | null;
 };
 
 export default async function PortalAprobacionesPage({
@@ -112,17 +114,30 @@ export default async function PortalAprobacionesPage({
   // ---------- Entregables del flujo (visibles) ----------
   const { data: delivData } = await supabase
     .from("deliverables")
-    .select("id, title, description, approval_status, client_comment, responded_at")
+    .select("id, title, description, approval_status, current_version_id")
     .eq("en_flujo_aprobacion", true)
     .order("created_at", { ascending: false });
-  const delivs = (delivData ?? []) as DelivRow[];
-  const urlByDeliv = new Map<string, string>();
-  if (delivs.length) {
-    const { data: files } = await supabase.from("deliverable_files").select("deliverable_id, path, file_name").in("deliverable_id", delivs.map((d) => d.id));
-    for (const f of (files ?? []) as { deliverable_id: string; path: string; file_name: string | null }[]) {
-      const u = await signEntregable(f.path, f.file_name);
-      if (u) urlByDeliv.set(f.deliverable_id, u);
-    }
+  const delivs = (delivData ?? []) as unknown as DelivRow[];
+
+  // Versiones + conversación de esos entregables (la RLS ya los acotó).
+  const delivIds = delivs.length ? delivs.map((d) => d.id) : ["00000000-0000-0000-0000-000000000000"];
+  const [{ data: dVersData }, { data: dRevData }] = await Promise.all([
+    supabase.from("deliverable_versions").select("*").in("deliverable_id", delivIds).order("version_number", { ascending: false }),
+    supabase.from("deliverable_reviews").select("*").in("deliverable_id", delivIds).order("created_at", { ascending: true }),
+  ]);
+  const allVersions = (dVersData ?? []) as unknown as DeliverableVersion[];
+  const allReviews = (dRevData ?? []) as unknown as DeliverableReview[];
+
+  const versionsByDeliv = new Map<string, DeliverableVersion[]>();
+  for (const v of allVersions) (versionsByDeliv.get(v.deliverable_id) ?? versionsByDeliv.set(v.deliverable_id, []).get(v.deliverable_id)!).push(v);
+  const reviewsByDeliv = new Map<string, DeliverableReview[]>();
+  for (const r of allReviews) (reviewsByDeliv.get(r.deliverable_id) ?? reviewsByDeliv.set(r.deliverable_id, []).get(r.deliverable_id)!).push(r);
+
+  // Firmar TODAS las versiones: la actual y las anteriores son descargables.
+  const urlByVersion = new Map<string, string>();
+  for (const v of allVersions) {
+    const u = await signEntregable(v.file_path, v.file_name);
+    if (u) urlByVersion.set(v.id, u);
   }
 
   // ---------- Unificar ----------
@@ -142,7 +157,10 @@ export default async function PortalAprobacionesPage({
 
   for (const d of delivs) {
     const enviado = d.approval_status === "enviado";
-    const url = urlByDeliv.get(d.id);
+    const versions = versionsByDeliv.get(d.id) ?? [];
+    const current = versions.find((v) => v.id === d.current_version_id) ?? versions[0] ?? null;
+    const previous = versions.filter((v) => v.id !== current?.id);
+    const conversacion = reviewsByDeliv.get(d.id) ?? [];
     items.push({
       key: "d" + d.id,
       tipo: "Entregable",
@@ -153,12 +171,55 @@ export default async function PortalAprobacionesPage({
       body: (
         <div>
           {d.description && <p className="mut" style={{ fontSize: "13px", margin: "0 0 10px" }}>{d.description}</p>}
-          {url ? (
-            <a href={url} target="_blank" rel="noopener noreferrer" className="dbtn dbtn-sm">Ver / descargar archivo</a>
+
+          {/* Lo último que te enviamos: versión actual + su nota de qué cambió */}
+          {current ? (
+            <div className="aprbloque">
+              <div className="aprbloque-t">Lo último que te enviamos</div>
+              <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                {urlByVersion.get(current.id) ? (
+                  <a href={urlByVersion.get(current.id)} target="_blank" rel="noopener noreferrer" className="dbtn dbtn-sm">
+                    Ver / descargar{current.file_name ? ` · ${current.file_name}` : ""}
+                  </a>
+                ) : (
+                  <span className="mut" style={{ fontSize: "12.5px" }}>Archivo no disponible.</span>
+                )}
+                <span className="mut" style={{ fontSize: "12px" }}>Versión {current.version_number}</span>
+              </div>
+              {current.note && (
+                <p style={{ margin: "8px 0 0", fontSize: "13px", color: "var(--tx-1)" }}>
+                  <b>Qué cambió:</b> {current.note}
+                </p>
+              )}
+            </div>
           ) : d.approval_status === "borrador" ? (
-            <p className="mut" style={{ fontSize: "12.5px", margin: 0 }}>Color Media está preparando esta versión. Te avisamos cuando esté lista para revisar.</p>
+            <p className="mut" style={{ fontSize: "12.5px", margin: 0 }}>
+              Color Media está preparando esta versión. Te avisamos cuando esté lista para revisar.
+            </p>
           ) : null}
-          {enviado ? (
+
+          {/* Conversación completa */}
+          {conversacion.length > 0 && (
+            <div className="aprbloque">
+              <div className="aprbloque-t">Conversación</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {conversacion.map((r) => (
+                  <div key={r.id} className={`aprmsg${r.actor === "client" ? " aprmsg-yo" : ""}`}>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                      <span className="dtype">{deliverableEntryClientLabel(r.kind, r.actor)}</span>
+                      <span className="mut" style={{ fontSize: "11.5px" }}>{formatDateTime(r.created_at)}</span>
+                    </div>
+                    {r.body && (
+                      <p style={{ margin: "5px 0 0", whiteSpace: "pre-wrap", fontSize: "13px", color: "var(--tx-1)" }}>{r.body}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Decidir (solo si está por revisar) */}
+          {enviado && (
             <form action={responderEntregable} style={{ marginTop: "12px" }}>
               <input type="hidden" name="id" value={d.id} />
               <textarea name="comment" rows={2} placeholder="Comentario (opcional)…" style={{ width: "100%" }} />
@@ -168,11 +229,42 @@ export default async function PortalAprobacionesPage({
                 <button className="dbtn dbtn-sm" type="submit" name="decision" value="rechazado">Rechazar</button>
               </div>
             </form>
-          ) : d.responded_at ? (
-            <div className="mut" style={{ fontSize: "12.5px", marginTop: "10px" }}>
-              Respondiste el {formatDateTime(d.responded_at)}{d.client_comment ? ` · "${d.client_comment}"` : ""}
+          )}
+
+          {/* Comentar SIN decidir: disponible también DESPUÉS de responder (el
+              cliente deja de quedar mudo). En 'borrador' no se ofrece: la RLS
+              solo acepta comentarios sobre lo ya enviado, y una caja que falla
+              en silencio es peor que no tenerla. */}
+          {d.approval_status !== "borrador" && (
+          <form action={comentarEntregable} style={{ marginTop: enviado ? "10px" : "12px" }}>
+            <input type="hidden" name="id" value={d.id} />
+            <textarea name="comment" rows={2} placeholder="Escríbenos algo sobre este entregable…" style={{ width: "100%" }} required />
+            <div style={{ marginTop: "8px" }}>
+              <button className="dbtn dbtn-sm" type="submit">Enviar comentario</button>
             </div>
-          ) : null}
+          </form>
+          )}
+
+          {/* Versiones anteriores, descargables */}
+          {previous.length > 0 && (
+            <details style={{ marginTop: "12px" }}>
+              <summary className="dbtn dbtn-sm" style={{ width: "fit-content" }}>
+                Versiones anteriores ({previous.length})
+              </summary>
+              <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                {previous.map((v) => (
+                  <div key={v.id} style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", fontSize: "12.5px" }}>
+                    <span className="mono mut">v{v.version_number}</span>
+                    <span className="mut">{formatDateTime(v.created_at)}</span>
+                    {v.note && <span className="mut">· {v.note}</span>}
+                    {urlByVersion.get(v.id) && (
+                      <a href={urlByVersion.get(v.id)} target="_blank" rel="noopener noreferrer" className="dbtn dbtn-sm">Descargar</a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
         </div>
       ),
     });
