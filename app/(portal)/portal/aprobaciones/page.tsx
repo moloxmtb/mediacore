@@ -231,7 +231,11 @@ export default async function PortalAprobacionesPage({
             </form>
           )}
 
-          {/* Comentar SIN decidir: disponible siempre, también después de responder */}
+          {/* Comentar SIN decidir: disponible también DESPUÉS de responder (el
+              cliente deja de quedar mudo). En 'borrador' no se ofrece: la RLS
+              solo acepta comentarios sobre lo ya enviado, y una caja que falla
+              en silencio es peor que no tenerla. */}
+          {d.approval_status !== "borrador" && (
           <form action={comentarEntregable} style={{ marginTop: enviado ? "10px" : "12px" }}>
             <input type="hidden" name="id" value={d.id} />
             <textarea name="comment" rows={2} placeholder="Escríbenos algo sobre este entregable…" style={{ width: "100%" }} required />
@@ -239,6 +243,7 @@ export default async function PortalAprobacionesPage({
               <button className="dbtn dbtn-sm" type="submit">Enviar comentario</button>
             </div>
           </form>
+          )}
 
           {/* Versiones anteriores, descargables */}
           {previous.length > 0 && (

@@ -58,7 +58,7 @@ export async function responderEntregable(fd: FormData): Promise<void> {
   // El trigger ya movió el estado. Solo se avisa si la fila entró de verdad: si
   // la RLS la rechazó (estado equivocado, rol), no hay aviso fantasma.
   if (!error) {
-    await notifyDeliverableResponse({ deliverableId: id }).catch(() => {});
+    await notifyDeliverableResponse({ deliverableId: id, kind: "decision" }).catch(() => {});
   }
   revalidatePath("/portal/aprobaciones");
   revalidatePath("/portal");
@@ -82,7 +82,7 @@ export async function comentarEntregable(fd: FormData): Promise<void> {
     created_by: ctx.userId,
   });
   if (!error) {
-    await notifyDeliverableResponse({ deliverableId: id }).catch(() => {});
+    await notifyDeliverableResponse({ deliverableId: id, kind: "comentario", comment }).catch(() => {});
   }
   revalidatePath("/portal/aprobaciones");
   revalidatePath("/portal");

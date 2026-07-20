@@ -224,6 +224,12 @@ const DELIV_DECISION_LABEL: Record<string, string> = {
  */
 export async function notifyDeliverableResponse(opts: {
   deliverableId: string;
+  /** 'comentario' = mensaje sin decisión. Sin esto el asunto mostraba el nombre
+   *  interno del estado ("— enviado"), porque comentar no cambia el estado. */
+  kind?: "decision" | "comentario";
+  /** Texto del comentario, cuando la entrada no es una decisión (el campo
+   *  client_comment solo cachea la última DECISIÓN). */
+  comment?: string | null;
 }): Promise<{ sent: number; recipients: number }> {
   const admin = createAdminClient();
   const { data: d } = await admin
@@ -237,8 +243,11 @@ export async function notifyDeliverableResponse(opts: {
   const clientId = project?.client_id;
   if (!clientId) return { sent: 0, recipients: 0 };
 
+  const esComentario = opts.kind === "comentario";
   const decision = d.approval_status as string;
-  const decisionLabel = DELIV_DECISION_LABEL[decision] ?? decision;
+  const decisionLabel = esComentario
+    ? "Comentó"
+    : (DELIV_DECISION_LABEL[decision] ?? decision);
 
   let responder = "El cliente";
   if (d.responded_by) {
@@ -253,7 +262,7 @@ export async function notifyDeliverableResponse(opts: {
     clientName: project?.clients?.name ?? null,
     title: d.title as string,
     decisionLabel,
-    comment: d.client_comment as string | null,
+    comment: esComentario ? (opts.comment ?? null) : (d.client_comment as string | null),
     projectName: project?.name ?? null,
     responder,
     url: appUrl() + `/entregables/${opts.deliverableId}`,
