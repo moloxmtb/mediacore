@@ -6,7 +6,7 @@ import StateChip from "@/components/admin/StateChip";
 import { reunionTone } from "@/lib/estado";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatDate, formatDateTime, REUNION_ESTADO_LABELS, reunionEstadoBadge } from "@/lib/format";
+import { formatDate, formatTime, formatDateTime, REUNION_ESTADO_LABELS, reunionEstadoBadge } from "@/lib/format";
 import { deriveReunionEstado } from "@/lib/reuniones";
 import NuevoEventoForm from "@/components/admin/NuevoEventoForm";
 import AgendarSolicitudForm from "@/components/admin/AgendarSolicitudForm";
@@ -382,7 +382,7 @@ export default async function AdminCalendarioPage({
                             </div>
                             <div className="meta">
                               {it.clientName} · {TIPO_LABEL[it.type]}
-                              {it.datetime ? ` · ${new Date(it.datetime).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                              {it.datetime ? ` · ${formatTime(it.datetime)}` : ""}
                             </div>
                           </div>
                         </div>

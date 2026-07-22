@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { chileLocalToISO, TZ_CL } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionProfile } from "@/lib/auth";
@@ -33,7 +34,9 @@ export async function solicitarReunion(
   }
 
   // datetime-local llega como "YYYY-MM-DDTHH:mm" (hora local); lo guardamos tal cual.
-  const preferred_at = preferredRaw ? new Date(preferredRaw).toISOString() : null;
+  // El input datetime-local del cliente viene SIN zona: se entiende como
+  // hora de Chile y se guarda como el instante UTC correcto.
+  const preferred_at = chileLocalToISO(preferredRaw);
 
   const supabase = await createClient();
   const { error } = await supabase.from("meeting_requests").insert({
@@ -59,7 +62,7 @@ export async function solicitarReunion(
       .filter((s) => s.includes("@"));
     if (to.length) {
       const when = preferred_at
-        ? new Date(preferred_at).toLocaleString("es-CL", { dateStyle: "long", timeStyle: "short" })
+        ? new Date(preferred_at).toLocaleString("es-CL", { dateStyle: "long", timeStyle: "short", timeZone: TZ_CL })
         : "sin preferencia";
       const { subject, html } = meetingRequestEmail({
         clientName: cli?.name ?? null,

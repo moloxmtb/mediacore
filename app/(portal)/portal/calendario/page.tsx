@@ -4,7 +4,7 @@ import PageHeader from "@/components/PageHeader";
 import SolicitarReunionForm from "@/components/portal/SolicitarReunionForm";
 import { requirePortalWorld } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatTime } from "@/lib/format";
 import StateChip from "@/components/admin/StateChip";
 import { stStyle as st, meetingRequestTone } from "@/lib/estado";
 import { confirmarAsistencia } from "../asistencia-actions";
@@ -271,7 +271,7 @@ export default async function CalendarioPage({
                             </div>
                             <div className="mut">
                               {TIPO_LABEL[it.type]}{it.meta ? ` · ${it.meta}` : ""}
-                              {it.datetime ? ` · ${new Date(it.datetime).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                              {it.datetime ? ` · ${formatTime(it.datetime)}` : ""}
                             </div>
                           </div>
                           {it.eventId && (

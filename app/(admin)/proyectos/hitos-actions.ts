@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { chileLocalToISO } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
@@ -30,8 +31,9 @@ function parseHito(fd: FormData) {
     project_id: opt(fd, "project_id"),
     title: str(fd, "title"),
     description: opt(fd, "description"),
-    starts_at: str(fd, "starts_at"),
-    ends_at: opt(fd, "ends_at"),
+    // hora de Chile del input datetime-local → instante UTC
+    starts_at: chileLocalToISO(str(fd, "starts_at")),
+    ends_at: chileLocalToISO(opt(fd, "ends_at")),
     kind: opt(fd, "kind"),
     visible_to_client: fd.get("visible_to_client") != null,
   };
@@ -46,6 +48,9 @@ async function pushToGoogle(
   h: ReturnType<typeof parseHito>,
   existingGoogleId: string | null,
 ) {
+  // Sin fecha válida no hay nada que empujar (los llamadores ya lo validan;
+  // esto además estrecha el tipo, que ahora admite null si el input vino mal).
+  if (!h.starts_at) return;
   await pushPanelEventToGoogle(
     supabase,
     eventId,

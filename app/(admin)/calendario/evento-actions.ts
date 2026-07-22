@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { chileLocalToISO } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { pushPanelEventToGoogle } from "@/lib/google";
 import { notifyEvent, type NotifType } from "@/lib/notify";
@@ -35,8 +36,10 @@ export async function crearEventoCalendario(
   const kind = KINDS.includes(kindRaw) ? kindRaw : "otro";
   const title = str(fd, "title");
   const description = opt(fd, "description");
-  const starts_at = str(fd, "starts_at");
-  const ends_at = opt(fd, "ends_at");
+  // El input datetime-local entrega hora de Chile SIN zona: se convierte
+  // al instante UTC correcto antes de guardar en timestamptz.
+  const starts_at = chileLocalToISO(str(fd, "starts_at"));
+  const ends_at = chileLocalToISO(opt(fd, "ends_at"));
   const visible_to_client = fd.get("visible_to_client") != null;
 
   if (!client_id) return { error: "Elige el cliente." };
@@ -74,7 +77,7 @@ export async function crearEventoCalendario(
 export async function agendarYCrearEvento(fd: FormData): Promise<void> {
   const id = str(fd, "id");
   const client_id = str(fd, "client_id");
-  const starts_at = str(fd, "starts_at");
+  const starts_at = chileLocalToISO(str(fd, "starts_at"));
   const title = str(fd, "title") || "Reunión con Color Media";
   if (!id || !client_id || !starts_at) return;
 
